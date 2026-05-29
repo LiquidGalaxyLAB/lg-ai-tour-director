@@ -1,0 +1,1 @@
+"""Rig configuration model."""
