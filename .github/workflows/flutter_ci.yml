@@ -13,13 +13,20 @@ jobs:
   flutter_ci:
     name: Run Flutter CI
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flutter_app
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: "stable"
       - run: flutter pub get
+        working-directory: flutter_app
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .
+        working-directory: flutter_app
       - run: flutter analyze
+        working-directory: flutter_app
       - run: flutter test
+        working-directory: flutter_app
