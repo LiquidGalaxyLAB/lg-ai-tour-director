@@ -1,1 +1,27 @@
 plan-proposal/
+
+# envs 
+.env
+.env.local
+.env.*.local
+
+# editor related
+.DS_Store
+.idea/
+.vscode/
+
+# python artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# build artifacts
+build/
+dist/
+.coverage
+.coverage.*
