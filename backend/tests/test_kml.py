@@ -1,1 +1,0 @@
-"""KML generation tests."""

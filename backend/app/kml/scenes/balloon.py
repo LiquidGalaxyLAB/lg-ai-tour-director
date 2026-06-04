@@ -1,1 +1,0 @@
-"""Balloon overlay scene."""

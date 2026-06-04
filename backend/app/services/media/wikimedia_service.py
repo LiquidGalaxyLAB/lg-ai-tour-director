@@ -1,1 +1,0 @@
-"""Wikimedia media service."""

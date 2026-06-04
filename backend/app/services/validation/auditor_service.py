@@ -1,1 +1,0 @@
-"""Validation and auditing service."""

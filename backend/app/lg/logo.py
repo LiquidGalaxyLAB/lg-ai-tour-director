@@ -1,1 +1,0 @@
-"""LG logo helpers."""
