@@ -1,22 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-void main() {
-  runApp(const AIThemeApp());
+import 'core/routes/app_router.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (e) {
+    debugPrint('[main] .env not loaded: $e');
+  }
+
+  runApp(const ProviderScope(child: AITourDirectorApp()));
 }
 
-class AIThemeApp extends StatelessWidget {
-  const AIThemeApp({super.key});
+class AITourDirectorApp extends StatelessWidget {
+  const AITourDirectorApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp.router(
       title: 'AI Tour Director',
       debugShowCheckedModeBanner: false,
-      home: Scaffold(body: Center(child: Text('AI Tour Director'))),
+      theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
+      routerConfig: appRouter,
     );
   }
 }
 
+/// Minimal app used by tests: a simple counter app named `MyApp`.
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 

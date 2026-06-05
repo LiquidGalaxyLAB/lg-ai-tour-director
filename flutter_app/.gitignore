@@ -1,3 +1,9 @@
+# Environment files — never commit real API keys (.env.example IS committed)
+.env
+.env.local
+.env.*.local
+!.env.example
+
 # Miscellaneous
 *.class
 *.log
