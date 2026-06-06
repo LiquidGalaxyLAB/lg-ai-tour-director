@@ -13,13 +13,6 @@ class SshService {
   bool get isConnected => _ssh.client != null && !_ssh.client!.isClosed;
 
   Future<bool> connect(LGConnection connection) async {
-    // We need to sync the settings since SSHConnection uses SharedPreferences
-    // while LGConnection is passed from the UI.
-    // For this implementation, we'll use the logic inside SSHConnection but
-    // ensure it's configured with the provided connection details.
-
-    // Note: SSHConnection.connect() reads from SharedPreferences.
-    // We'll manually set the values to ensure it connects with what the user just typed.
     try {
       final socket = await SSHSocket.connect(
         connection.host,
