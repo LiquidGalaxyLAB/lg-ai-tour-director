@@ -1,4 +1,4 @@
-import 'dart:developer' as developer;
+// import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'package:dartssh2/dartssh2.dart';
 import '../models/lg_connection.dart';
@@ -52,12 +52,12 @@ class SshService {
     await _ssh.sendKml(kml);
   }
 
-  void _log(String message, Object? error, StackTrace? stackTrace) {
-    developer.log(
-      message,
-      name: 'SSHService',
-      error: error,
-      stackTrace: stackTrace,
-    );
-  }
+  //   void _log(String message, Object? error, StackTrace? stackTrace) {
+  //     developer.log(
+  //       message,
+  //       name: 'SSHService',
+  //       error: error,
+  //       stackTrace: stackTrace,
+  //     );
+  //   }
 }
