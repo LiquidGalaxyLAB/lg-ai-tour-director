@@ -4,10 +4,10 @@ import 'package:dartssh2/dartssh2.dart';
 import '../models/lg_connection.dart';
 import 'ssh_client.dart';
 
-class SshService {
-  SshService._();
+class LGService {
+  LGService._();
 
-  static final SshService instance = SshService._();
+  static final LGService instance = LGService._();
 
   final SSHConnection _ssh = SSHConnection();
 
@@ -16,7 +16,7 @@ class SshService {
   Future<bool> connect(LGConnection connection) async {
     try {
       debugPrint(
-        'SshService: Connecting to ${connection.host}. isWeb = $kIsWeb',
+        'LGService: Connecting to ${connection.host}. isWeb = $kIsWeb',
       );
       final socket = await SSHSocket.connect(
         connection.host,
@@ -30,12 +30,12 @@ class SshService {
       );
 
       await _ssh.client!.authenticated;
-      debugPrint('SshService: Authenticated successfully');
+      debugPrint('LGService: Authenticated successfully');
       _ssh.screenAmount = connection.screenCount;
       return true;
     } catch (e, st) {
-      debugPrint('SshService: Connection failed error: $e');
-      debugPrint('SshService: Stack trace: $st');
+      debugPrint('LGService: Connection failed error: $e');
+      debugPrint('LGService: Stack trace: $st');
       return false;
     }
   }
@@ -48,16 +48,11 @@ class SshService {
     return await _ssh.sendCommand(command);
   }
 
-  Future<void> uploadKml(String kml) async {
-    await _ssh.sendKml(kml);
+  Future<void> sendKml(String kml, {String fileName = 'upload.kml'}) async {
+    await _ssh.sendKml(kml, fileName: fileName);
   }
 
-  //   void _log(String message, Object? error, StackTrace? stackTrace) {
-  //     developer.log(
-  //       message,
-  //       name: 'SSHService',
-  //       error: error,
-  //       stackTrace: stackTrace,
-  //     );
-  //   }
+  Future<void> cleanup() async {
+    await _ssh.cleanup();
+  }
 }

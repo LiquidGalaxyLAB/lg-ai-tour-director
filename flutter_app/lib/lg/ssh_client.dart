@@ -135,7 +135,11 @@ class SSHConnection {
     }
   }
 
-  Future<void> sendKml(String kml, {List<String> images = const []}) async {
+  Future<void> sendKml(
+    String kml, {
+    List<String> images = const [],
+    String fileName = 'upload.kml',
+  }) async {
     if (!await isConnected()) {
       return;
     }
@@ -145,7 +149,6 @@ class SSHConnection {
         await upload(image);
       }
 
-      const fileName = 'upload.kml';
       final sftpClient = await getSftp();
 
       final remoteFile = await sftpClient.open(
@@ -168,6 +171,25 @@ class SSHConnection {
       );
     } catch (e) {
       debugPrint('Error during KML file upload: $e');
+    }
+  }
+
+  Future<void> cleanup() async {
+    if (!await isConnected()) return;
+
+    try {
+      // Clear kmls.txt on master
+      await sendCommand('> /var/www/html/kmls.txt');
+
+      // Remove generated KMLs on master
+      await sendCommand('rm -f /var/www/html/*.kml');
+
+      // Clear slave screens if applicable
+      for (var i = 1; i <= screenAmount; i++) {
+        await sendCommand("echo '' > /var/www/html/kml/slave_$i.kml");
+      }
+    } catch (e) {
+      debugPrint('Error during LG cleanup: $e');
     }
   }
 

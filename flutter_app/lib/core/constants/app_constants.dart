@@ -15,15 +15,41 @@ class AppConstants {
   static const int defaultLgScreens = 3;
   static const String defaultLgUsername = 'lg';
 
-  /// KML serving directory on every LG node (master + slaves)
+  // KML serving directory on every LG node (master + slaves)
   static const String kmlServingPath = '/var/www/html/';
   static const String masterKmlFilename = 'tour.kml';
   static const String balloonKmlFilename = 'balloon.kml';
   static const String logoKmlFilename = 'logo.kml';
 
   // Tour generation tuning
-  /// Base narration speech rate in words/second used to estimate scene timing
+  // Base narration speech rate in words/second used to estimate scene timing
   static const double defaultSpeechRateWps = 2.5;
   static const int orbitKeyframeCount = 8;
   static const double orbitRadiusMeters = 600;
+
+  // Test KML Data
+  static const String puneKml = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+  <Document>
+    <name>Shaniwar Wada, Pune</name>
+    <Placemark>
+      <name>Shaniwar Wada</name>
+      <description>Historic fortification in the city of Pune, India.</description>
+      <LookAt>
+        <longitude>73.8553</longitude>
+        <latitude>18.5195</latitude>
+        <altitude>0</altitude>
+        <range>500</range>
+        <tilt>45</tilt>
+        <heading>0</heading>
+        <gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+      </LookAt>
+      <Point>
+        <coordinates>73.8553,18.5195,0</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>
+''';
 }

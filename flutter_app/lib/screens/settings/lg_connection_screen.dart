@@ -109,6 +109,24 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
     }
   }
 
+  Future<void> _sendTestKml() async {
+    final messenger = ScaffoldMessenger.of(context);
+    await ref.read(sshConnectionProvider.notifier).sendTestKml();
+    if (!mounted) return;
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Test KML sent to /var/www/html/test.kml')),
+    );
+  }
+
+  Future<void> _cleanupLg() async {
+    final messenger = ScaffoldMessenger.of(context);
+    await ref.read(sshConnectionProvider.notifier).cleanup();
+    if (!mounted) return;
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Liquid Galaxy files cleaned up')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final sshState = ref.watch(sshConnectionProvider);
@@ -231,6 +249,24 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: sshState.isConnected ? _sendTestKml : null,
+                  icon: const Icon(Icons.map),
+                  label: const Text('Send Test KML (Pune)'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: sshState.isConnected ? _cleanupLg : null,
+                  icon: const Icon(Icons.delete_sweep),
+                  label: const Text('Cleanup LG (Wipe KMLs)'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
               ],
             ),
           ),
@@ -240,7 +276,6 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
   }
 }
 
-/// Coloured dot + label reflecting the current [SshStatus].
 class _StatusIndicator extends StatelessWidget {
   const _StatusIndicator({required this.status});
 
