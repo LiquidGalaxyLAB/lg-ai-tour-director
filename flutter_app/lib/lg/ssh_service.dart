@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'package:flutter/foundation.dart';
 import 'package:dartssh2/dartssh2.dart';
 import '../models/lg_connection.dart';
 import 'ssh_client.dart';
@@ -14,6 +15,9 @@ class SshService {
 
   Future<bool> connect(LGConnection connection) async {
     try {
+      debugPrint(
+        'SshService: Connecting to ${connection.host}. isWeb = $kIsWeb',
+      );
       final socket = await SSHSocket.connect(
         connection.host,
         connection.port,
@@ -26,10 +30,12 @@ class SshService {
       );
 
       await _ssh.client!.authenticated;
+      debugPrint('SshService: Authenticated successfully');
       _ssh.screenAmount = connection.screenCount;
       return true;
     } catch (e, st) {
-      _log('connect failed', e, st);
+      debugPrint('SshService: Connection failed error: $e');
+      debugPrint('SshService: Stack trace: $st');
       return false;
     }
   }

@@ -63,6 +63,7 @@ class SSHConnection {
       return false;
     }
     try {
+      debugPrint('SSH: Attempting connection. isWeb = $kIsWeb');
       final socket = await SSHSocket.connect(
         prefs.getString('lg_ip')!,
         int.parse(prefs.getString('lg_port')!),
@@ -75,12 +76,15 @@ class SSHConnection {
       );
 
       await client!.authenticated;
+      debugPrint('SSH: Authenticated successfully');
 
       final screenAmountString = prefs.getString('lg_screen_amount') ?? "3";
       screenAmount = int.parse(screenAmountString);
 
       prefs.setString('lg_screen_amount', screenAmountString);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('SSH: Connection failed error: $e');
+      debugPrint('SSH: Stack trace: $st');
       return false;
     }
     return true;
