@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/lg_connection.dart';
 import '../../providers/ssh_provider.dart';
@@ -77,56 +78,6 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
     }
   }
 
-  Future<void> _runUbuntuTest() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final result = await ref
-        .read(sshConnectionProvider.notifier)
-        .runCommand('echo "LG connected"');
-
-    if (!mounted) return;
-
-    if (result != null) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Ubuntu Test Result'),
-          content: Text('Response: $result'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      messenger.showSnackBar(
-        SnackBar(
-          content: const Text('Test failed. Are you connected?'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-    }
-  }
-
-  Future<void> _sendTestKml() async {
-    final messenger = ScaffoldMessenger.of(context);
-    await ref.read(sshConnectionProvider.notifier).sendTestKml();
-    if (!mounted) return;
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Test KML sent to /var/www/html/test.kml')),
-    );
-  }
-
-  Future<void> _cleanupLg() async {
-    final messenger = ScaffoldMessenger.of(context);
-    await ref.read(sshConnectionProvider.notifier).cleanup();
-    if (!mounted) return;
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Liquid Galaxy files cleaned up')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final sshState = ref.watch(sshConnectionProvider);
@@ -137,7 +88,13 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
     final isConnecting = sshState.isConnecting;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('LG Connection Settings')),
+      appBar: AppBar(
+        title: const Text('LG Connection Settings'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -237,33 +194,6 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                       : const Icon(Icons.link),
                   label: Text(isConnecting ? 'Connecting…' : 'Connect to LG'),
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: sshState.isConnected ? _runUbuntuTest : null,
-                  icon: const Icon(Icons.terminal),
-                  label: const Text('Run Ubuntu Test (echo)'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: sshState.isConnected ? _sendTestKml : null,
-                  icon: const Icon(Icons.map),
-                  label: const Text('Send Test KML (Pune)'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: sshState.isConnected ? _cleanupLg : null,
-                  icon: const Icon(Icons.delete_sweep),
-                  label: const Text('Cleanup LG (Wipe KMLs)'),
-                  style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
