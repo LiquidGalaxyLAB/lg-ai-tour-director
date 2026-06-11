@@ -164,10 +164,12 @@ class SSHConnection {
       await remoteFile.close();
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      final masterIp = prefs.getString('lg_ip') ?? 'localhost';
+      final masterIp = prefs.getString('lg_ip') ?? 'lg1';
 
+      // Most local Ubuntu installs use port 80 for Apache.
+      // Real LG rigs often use 81. We'll use 80 for now to match your test.
       await sendCommand(
-        'echo "http://$masterIp:81/$fileName" > /var/www/html/kmls.txt',
+        'echo "http://$masterIp/$fileName" > /var/www/html/kmls.txt',
       );
     } catch (e) {
       debugPrint('Error during KML file upload: $e');
