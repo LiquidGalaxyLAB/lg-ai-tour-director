@@ -53,6 +53,14 @@ class HomeScreen extends ConsumerWidget {
       );
     }
 
+    Future<void> runFlyToTest() async {
+      await ref.read(sshConnectionProvider.notifier).flyToPune();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('FlyTo Pune command sent')));
+    }
+
     Future<void> cleanupLg() async {
       await ref.read(sshConnectionProvider.notifier).cleanup();
       if (!context.mounted) return;
@@ -97,6 +105,15 @@ class HomeScreen extends ConsumerWidget {
               onPressed: isConnected ? sendTestKml : null,
               icon: const Icon(Icons.map),
               label: const Text('Send Test KML (Pune)'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: isConnected ? runFlyToTest : null,
+              icon: const Icon(Icons.flight_takeoff),
+              label: const Text('Run FlyTo Pune'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),

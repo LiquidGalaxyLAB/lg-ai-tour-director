@@ -92,15 +92,23 @@ class SSHConnection {
 
   Future<String?> sendCommand(String command) async {
     try {
-      if (client == null) return null;
+      if (client == null) {
+        debugPrint('SSH: Attempted sendCommand "$command" but client is null.');
+        return null;
+      }
+      debugPrint('SSH: Executing command >>> $command');
       final result = await client!.run(command);
-      return utf8.decode(result);
+      final decoded = utf8.decode(result);
+      debugPrint('SSH: Command Result <<< ${decoded.trim()}');
+      return decoded;
     } on SSHChannelOpenError {
+      debugPrint('SSH: Channel open error. Attempting to reconnect...');
       await handleSSHChannelOpenError();
       if (client == null) return null;
       final result = await client!.run(command);
       return utf8.decode(result);
     } catch (e) {
+      debugPrint('SSH: Command execution failed: $e');
       return null;
     }
   }
@@ -108,6 +116,23 @@ class SSHConnection {
   Future<void> handleSSHChannelOpenError() async {
     await disconnect();
     await connect();
+  }
+
+  Future<void> flyTo(
+    double lat,
+    double lng,
+    double altitude,
+    double tilt,
+    double bearing,
+  ) async {
+    if (!await isConnected()) return;
+
+    // Liquid Galaxy standard flyto command
+    final command =
+        'echo "flytoview=<LookAt><longitude>$lng</longitude><latitude>$lat</latitude><altitude>$altitude</altitude><range>0</range><tilt>$tilt</tilt><heading>$bearing</bearing><gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode></LookAt>" > /tmp/query.txt';
+
+    debugPrint('SSH: Sending flyTo command for ($lat, $lng)');
+    await sendCommand(command);
   }
 
   Future<void> upload(String filePath) async {

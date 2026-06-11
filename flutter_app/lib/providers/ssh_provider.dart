@@ -113,6 +113,11 @@ class SshConnection extends _$SshConnection {
     );
   }
 
+  Future<void> flyToPune() async {
+    // Shaniwar Wada, Pune coordinates
+    await LGService.instance.flyTo(18.5195, 73.8553, tilt: 45);
+  }
+
   Future<void> cleanup() async {
     await LGService.instance.cleanup();
   }

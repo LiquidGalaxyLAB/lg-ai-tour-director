@@ -49,10 +49,23 @@ class LGService {
   }
 
   Future<void> sendKml(String kml, {String fileName = 'upload.kml'}) async {
+    debugPrint('LGService: Sending KML file "$fileName"');
     await _ssh.sendKml(kml, fileName: fileName);
   }
 
+  Future<void> flyTo(
+    double lat,
+    double lng, {
+    double altitude = 0,
+    double tilt = 0,
+    double bearing = 0,
+  }) async {
+    debugPrint('LGService: Navigating to ($lat, $lng)');
+    await _ssh.flyTo(lat, lng, altitude, tilt, bearing);
+  }
+
   Future<void> cleanup() async {
+    debugPrint('LGService: Performing rig cleanup');
     await _ssh.cleanup();
   }
 }
