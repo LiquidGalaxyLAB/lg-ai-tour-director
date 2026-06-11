@@ -189,11 +189,17 @@ class SSHConnection {
       await remoteFile.write(Stream.value(kmlBytes).cast<Uint8List>());
       await remoteFile.close();
 
-      // Use the stored host IP or fallback to localhost for the KML URL
-      final masterIp = host ?? 'localhost';
+      // Use the stored host IP or fallback to lg1 for the KML URL
+      final masterIp = host ?? 'lg1';
 
+      // 1. Update kmls.txt (for the NetworkLink)
       await sendCommand(
-        'echo "http://$masterIp/$fileName" > /var/www/html/kmls.txt',
+        'echo "http://$masterIp:81/$fileName" > /var/www/html/kmls.txt',
+      );
+
+      // 2. Trigger immediate load via query.txt (as seen in your working old app)
+      await sendCommand(
+        'echo "http://$masterIp:81/$fileName" > /tmp/query.txt',
       );
     } catch (e) {
       debugPrint('Error during KML file upload: $e');
