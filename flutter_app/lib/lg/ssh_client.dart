@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SSHConnection {
   SSHClient? client;
   int screenAmount = 3;
+  String? host;
 
   int get leftScreen {
     return screenAmount ~/ 2 + 2;
@@ -188,12 +189,9 @@ class SSHConnection {
       await remoteFile.write(Stream.value(kmlBytes).cast<Uint8List>());
       await remoteFile.close();
 
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      final masterIp = prefs.getString('lg_ip') ?? 'lg1';
+      // Use the stored host IP or fallback to localhost for the KML URL
+      final masterIp = host ?? 'localhost';
 
-      // Use localhost or the actual IP for the KML URL to ensure resolvability
-      // On most LG rigs, slaves resolve 'lg1' to the master, but for local tests,
-      // the master's own Apache might be accessed via its IP or localhost.
       await sendCommand(
         'echo "http://$masterIp/$fileName" > /var/www/html/kmls.txt',
       );

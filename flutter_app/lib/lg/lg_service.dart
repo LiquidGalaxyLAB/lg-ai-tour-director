@@ -32,6 +32,7 @@ class LGService {
       await _ssh.client!.authenticated;
       debugPrint('LGService: Authenticated successfully');
       _ssh.screenAmount = connection.screenCount;
+      _ssh.host = connection.host;
       return true;
     } catch (e, st) {
       debugPrint('LGService: Connection failed error: $e');
