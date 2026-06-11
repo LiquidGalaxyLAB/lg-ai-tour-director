@@ -129,7 +129,7 @@ class SSHConnection {
 
     // Liquid Galaxy standard flyto command
     final command =
-        'echo "flytoview=<LookAt><longitude>$lng</longitude><latitude>$lat</latitude><altitude>$altitude</altitude><range>0</range><tilt>$tilt</tilt><heading>$bearing</bearing><gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode></LookAt>" > /tmp/query.txt';
+        'echo "flytoview=<LookAt><longitude>$lng</longitude><latitude>$lat</latitude><altitude>$altitude</altitude><range>0</range><tilt>$tilt</tilt><heading>$bearing</heading><gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode></LookAt>" > /tmp/query.txt';
 
     debugPrint('SSH: Sending flyTo command for ($lat, $lng)');
     await sendCommand(command);
@@ -191,8 +191,9 @@ class SSHConnection {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final masterIp = prefs.getString('lg_ip') ?? 'lg1';
 
-      // Most local Ubuntu installs use port 80 for Apache.
-      // Real LG rigs often use 81. We'll use 80 for now to match your test.
+      // Use localhost or the actual IP for the KML URL to ensure resolvability
+      // On most LG rigs, slaves resolve 'lg1' to the master, but for local tests,
+      // the master's own Apache might be accessed via its IP or localhost.
       await sendCommand(
         'echo "http://$masterIp/$fileName" > /var/www/html/kmls.txt',
       );
