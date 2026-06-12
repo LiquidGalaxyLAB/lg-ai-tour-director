@@ -2,6 +2,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:dartssh2/dartssh2.dart';
 import '../models/lg_connection.dart';
+import '../models/rig_config.dart';
 import 'ssh_client.dart';
 
 class LGService {
@@ -68,5 +69,49 @@ class LGService {
   Future<void> cleanup() async {
     debugPrint('LGService: Performing rig cleanup');
     await _ssh.cleanup();
+  }
+
+  Future<void> relaunchLg(RigConfig config) async {
+    debugPrint('LGService: Relaunching Google Earth on all screens');
+    for (var i = 1; i <= config.totalScreens; i++) {
+      if (i == 1) {
+        await runCommand('killall -9 googleearth-bin; google-earth-pro &');
+      } else {
+        final pass = _ssh.client?.onPasswordRequest?.call();
+        await runCommand(
+          'sshpass -p $pass ssh -t lg$i "killall -9 googleearth-bin; google-earth-pro &"',
+        );
+      }
+    }
+  }
+
+  Future<void> rebootLg(RigConfig config) async {
+    debugPrint('LGService: Rebooting all LG nodes');
+    final password = _ssh.client?.onPasswordRequest?.call() ?? '';
+
+    // Trigger slaves first (lg2, lg3...)
+    for (var i = config.totalScreens; i >= 2; i--) {
+      await runCommand(
+        'sshpass -p $password ssh -t lg$i "echo \'$password\' | sudo -S reboot"',
+      );
+    }
+
+    // Trigger master last
+    await runCommand('echo "$password" | sudo -S reboot');
+  }
+
+  Future<void> shutdownLg(RigConfig config) async {
+    debugPrint('LGService: Shutting down all LG nodes');
+    final password = _ssh.client?.onPasswordRequest?.call() ?? '';
+
+    // Trigger slaves first (lg2, lg3...)
+    for (var i = config.totalScreens; i >= 2; i--) {
+      await runCommand(
+        'sshpass -p $password ssh -t lg$i "echo \'$password\' | sudo -S poweroff"',
+      );
+    }
+
+    // Trigger master last
+    await runCommand('echo "$password" | sudo -S poweroff');
   }
 }

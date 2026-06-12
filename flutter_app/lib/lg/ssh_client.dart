@@ -128,7 +128,7 @@ class SSHConnection {
   ) async {
     if (!await isConnected()) return;
 
-    // Liquid Galaxy standard flyto command
+    // lg standard flyto command
     final command =
         'echo "flytoview=<LookAt><longitude>$lng</longitude><latitude>$lat</latitude><altitude>$altitude</altitude><range>0</range><tilt>$tilt</tilt><heading>$bearing</heading><gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode></LookAt>" > /tmp/query.txt';
 
@@ -188,8 +188,6 @@ class SSHConnection {
       final kmlBytes = Uint8List.fromList(kml.codeUnits);
       await remoteFile.write(Stream.value(kmlBytes).cast<Uint8List>());
       await remoteFile.close();
-
-      // Use the stored host IP or fallback to lg1 for the KML URL
       final masterIp = host ?? 'lg1';
 
       // 1. Update kmls.txt (for the NetworkLink)
@@ -197,7 +195,7 @@ class SSHConnection {
         'echo "http://$masterIp:81/$fileName" > /var/www/html/kmls.txt',
       );
 
-      // 2. Trigger immediate load via query.txt (as seen in your working old app)
+      // 2. Trigger immediate load via query.txt
       await sendCommand(
         'echo "http://$masterIp:81/$fileName" > /tmp/query.txt',
       );
@@ -210,13 +208,16 @@ class SSHConnection {
     if (!await isConnected()) return;
 
     try {
-      // Clear kmls.txt on master
+      // ensuring that the directories exist with correct permissions
+      await sendCommand('mkdir -p /var/www/html/kml');
+
+      // clearing kmls.txt on master
       await sendCommand('> /var/www/html/kmls.txt');
 
-      // Remove generated KMLs on master
+      // removing generated kmls on master
       await sendCommand('rm -f /var/www/html/*.kml');
 
-      // Clear slave screens if applicable
+      // clearing slave screens if applicable
       for (var i = 1; i <= screenAmount; i++) {
         await sendCommand("echo '' > /var/www/html/kml/slave_$i.kml");
       }

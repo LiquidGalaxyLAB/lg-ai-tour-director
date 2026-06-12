@@ -25,3 +25,5 @@ build/
 dist/
 .coverage
 .coverage.*
+
+/lg-flutter-task2-gsoc2026
