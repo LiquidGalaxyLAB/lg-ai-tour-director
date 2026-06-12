@@ -69,6 +69,45 @@ class HomeScreen extends ConsumerWidget {
       );
     }
 
+    Future<bool> confirm(String action) async {
+      return await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Confirm $action'),
+              content: Text('Are you sure you want to $action Liquid Galaxy?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(
+                    action,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+    }
+
+    Future<void> relaunchLg() async {
+      if (!await confirm('Relaunch')) return;
+      await ref.read(sshConnectionProvider.notifier).relaunchLg();
+    }
+
+    Future<void> rebootLg() async {
+      if (!await confirm('Reboot')) return;
+      await ref.read(sshConnectionProvider.notifier).rebootLg();
+    }
+
+    Future<void> shutdownLg() async {
+      if (!await confirm('Shutdown')) return;
+      await ref.read(sshConnectionProvider.notifier).shutdownLg();
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Tour Director'),
@@ -126,6 +165,44 @@ class HomeScreen extends ConsumerWidget {
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
+            ),
+            const SizedBox(height: 32),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Text(
+              'System Controls',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: isConnected ? relaunchLg : null,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Relaunch'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: isConnected ? rebootLg : null,
+                    icon: const Icon(Icons.restart_alt),
+                    label: const Text('Reboot'),
+                    style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              onPressed: isConnected ? shutdownLg : null,
+              icon: const Icon(Icons.power_settings_new),
+              label: const Text('Shutdown Rig'),
+              style: FilledButton.styleFrom(backgroundColor: Colors.black87),
             ),
           ],
         ),
