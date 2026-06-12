@@ -14,7 +14,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
     GoRoute(
       path: '/generation',
-      builder: (context, state) => const GenerationScreen(),
+      builder: (context, state) {
+        final prompt = state.extra as String? ?? 'A beautiful random tour';
+        return GenerationScreen(prompt: prompt);
+      },
     ),
     GoRoute(
       path: '/active_tour',

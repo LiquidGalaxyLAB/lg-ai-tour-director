@@ -193,7 +193,7 @@ class HomeScreen extends ConsumerWidget {
               ),
               onSubmitted: (value) {
                 if (value.trim().isNotEmpty) {
-                  context.push('/generation');
+                  context.push('/generation', extra: value.trim());
                 }
               },
             ),
@@ -209,22 +209,32 @@ class HomeScreen extends ConsumerWidget {
               children: [
                 ActionChip(
                   label: const Text('Historic Forts'),
-                  onPressed: () => context.push('/generation'),
+                  onPressed: () => context.push(
+                    '/generation',
+                    extra: 'Historic Forts in India',
+                  ),
                   avatar: const Icon(Icons.castle, size: 16),
                 ),
                 ActionChip(
                   label: const Text('World Wonders'),
-                  onPressed: () => context.push('/generation'),
+                  onPressed: () =>
+                      context.push('/generation', extra: 'World Wonders'),
                   avatar: const Icon(Icons.public, size: 16),
                 ),
                 ActionChip(
                   label: const Text('Hidden Cities'),
-                  onPressed: () => context.push('/generation'),
+                  onPressed: () => context.push(
+                    '/generation',
+                    extra: 'Hidden Cities around the globe',
+                  ),
                   avatar: const Icon(Icons.location_city, size: 16),
                 ),
                 ActionChip(
                   label: const Text('Random Discovery'),
-                  onPressed: () => context.push('/generation'),
+                  onPressed: () => context.push(
+                    '/generation',
+                    extra: 'Random amazing places on Earth',
+                  ),
                   avatar: const Icon(Icons.explore, size: 16),
                 ),
               ],
