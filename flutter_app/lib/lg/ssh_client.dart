@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SSHConnection {
   SSHClient? client;
   int screenAmount = 3;
+  String? host;
 
   int get leftScreen {
     return screenAmount ~/ 2 + 2;
@@ -92,15 +93,23 @@ class SSHConnection {
 
   Future<String?> sendCommand(String command) async {
     try {
-      if (client == null) return null;
+      if (client == null) {
+        debugPrint('SSH: Attempted sendCommand "$command" but client is null.');
+        return null;
+      }
+      debugPrint('SSH: Executing command >>> $command');
       final result = await client!.run(command);
-      return utf8.decode(result);
+      final decoded = utf8.decode(result);
+      debugPrint('SSH: Command Result <<< ${decoded.trim()}');
+      return decoded;
     } on SSHChannelOpenError {
+      debugPrint('SSH: Channel open error. Attempting to reconnect...');
       await handleSSHChannelOpenError();
       if (client == null) return null;
       final result = await client!.run(command);
       return utf8.decode(result);
     } catch (e) {
+      debugPrint('SSH: Command execution failed: $e');
       return null;
     }
   }
@@ -108,6 +117,23 @@ class SSHConnection {
   Future<void> handleSSHChannelOpenError() async {
     await disconnect();
     await connect();
+  }
+
+  Future<void> flyTo(
+    double lat,
+    double lng,
+    double altitude,
+    double tilt,
+    double bearing,
+  ) async {
+    if (!await isConnected()) return;
+
+    // Liquid Galaxy standard flyto command
+    final command =
+        'echo "flytoview=<LookAt><longitude>$lng</longitude><latitude>$lat</latitude><altitude>$altitude</altitude><range>0</range><tilt>$tilt</tilt><heading>$bearing</heading><gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode></LookAt>" > /tmp/query.txt';
+
+    debugPrint('SSH: Sending flyTo command for ($lat, $lng)');
+    await sendCommand(command);
   }
 
   Future<void> upload(String filePath) async {
@@ -135,7 +161,11 @@ class SSHConnection {
     }
   }
 
-  Future<void> sendKml(String kml, {List<String> images = const []}) async {
+  Future<void> sendKml(
+    String kml, {
+    List<String> images = const [],
+    String fileName = 'upload.kml',
+  }) async {
     if (!await isConnected()) {
       return;
     }
@@ -145,7 +175,6 @@ class SSHConnection {
         await upload(image);
       }
 
-      const fileName = 'upload.kml';
       final sftpClient = await getSftp();
 
       final remoteFile = await sftpClient.open(
@@ -160,14 +189,39 @@ class SSHConnection {
       await remoteFile.write(Stream.value(kmlBytes).cast<Uint8List>());
       await remoteFile.close();
 
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      final masterIp = prefs.getString('lg_ip') ?? 'localhost';
+      // Use the stored host IP or fallback to lg1 for the KML URL
+      final masterIp = host ?? 'lg1';
 
+      // 1. Update kmls.txt (for the NetworkLink)
       await sendCommand(
         'echo "http://$masterIp:81/$fileName" > /var/www/html/kmls.txt',
       );
+
+      // 2. Trigger immediate load via query.txt (as seen in your working old app)
+      await sendCommand(
+        'echo "http://$masterIp:81/$fileName" > /tmp/query.txt',
+      );
     } catch (e) {
       debugPrint('Error during KML file upload: $e');
+    }
+  }
+
+  Future<void> cleanup() async {
+    if (!await isConnected()) return;
+
+    try {
+      // Clear kmls.txt on master
+      await sendCommand('> /var/www/html/kmls.txt');
+
+      // Remove generated KMLs on master
+      await sendCommand('rm -f /var/www/html/*.kml');
+
+      // Clear slave screens if applicable
+      for (var i = 1; i <= screenAmount; i++) {
+        await sendCommand("echo '' > /var/www/html/kml/slave_$i.kml");
+      }
+    } catch (e) {
+      debugPrint('Error during LG cleanup: $e');
     }
   }
 

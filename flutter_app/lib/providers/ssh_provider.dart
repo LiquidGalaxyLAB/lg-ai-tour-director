@@ -1,7 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../lg/ssh_service.dart';
+import '../core/constants/app_constants.dart';
+import '../lg/lg_service.dart';
 import '../models/lg_connection.dart';
 
 part 'ssh_provider.g.dart';
@@ -75,7 +76,7 @@ class SshConnection extends _$SshConnection {
       errorMessage: null,
     );
     try {
-      final ok = await SshService.instance.connect(connection);
+      final ok = await LGService.instance.connect(connection);
       if (ok) {
         await _persist(connection);
         state = state.copyWith(status: SshStatus.connected, errorMessage: null);
@@ -97,11 +98,27 @@ class SshConnection extends _$SshConnection {
   }
 
   Future<void> disconnect() async {
-    await SshService.instance.disconnect();
+    await LGService.instance.disconnect();
     state = state.copyWith(status: SshStatus.disconnected, errorMessage: null);
   }
 
   Future<String?> runCommand(String command) async {
-    return await SshService.instance.runCommand(command);
+    return await LGService.instance.runCommand(command);
+  }
+
+  Future<void> sendTestKml() async {
+    await LGService.instance.sendKml(
+      AppConstants.puneKml,
+      fileName: 'test.kml',
+    );
+  }
+
+  Future<void> flyToPune() async {
+    // Shaniwar Wada, Pune coordinates
+    await LGService.instance.flyTo(18.5195, 73.8553, tilt: 45);
+  }
+
+  Future<void> cleanup() async {
+    await LGService.instance.cleanup();
   }
 }
