@@ -84,40 +84,56 @@ class GeminiService {
     }
   }
 
+  Future<String?> getAlternativeName(String locationName) async {
+    try {
+      debugPrint('GeminiService: Asking for alternative name for "$locationName"');
+      final result = await _callApi(GeminiPrompts.buildAlternativeNamePrompt(locationName));
+      return result.trim();
+    } catch (e) {
+      debugPrint('GeminiService: Failed to get alternative name: $e');
+      return null;
+    }
+  }
+
   Future<String> _callApi(String promptText) async {
-    final response = await _dio.post(
-      '/models/gemini-1.5-flash:generateContent',
-      queryParameters: {'key': _apiKey},
-      data: {
-        "system_instruction": {
-          "parts": [
-            {"text": GeminiPrompts.systemInstruction},
-          ],
-        },
-        "contents": [
-          {
+    try {
+      final response = await _dio.post(
+        'models/gemini-2.5-flash:generateContent?key=$_apiKey',
+        data: {
+          "systemInstruction": {
             "parts": [
-              {"text": promptText},
+              {"text": GeminiPrompts.systemInstruction},
             ],
           },
-        ],
-        "generationConfig": {
-          "temperature": 0.4,
-          "response_mime_type": "application/json",
+          "contents": [
+            {
+              "parts": [
+                {"text": promptText},
+              ],
+            },
+          ],
+          "generationConfig": {
+            "temperature": 0.4,
+            "response_mime_type": "application/json",
+          },
         },
-      },
-    );
+      );
 
-    if (response.statusCode == 200) {
-      final data = response.data;
-      final candidates = data['candidates'] as List?;
-      if (candidates != null && candidates.isNotEmpty) {
-        final text = candidates.first['content']['parts'][0]['text'] as String;
-        debugPrint('GeminiService: Raw Response:\n$text');
-        return text;
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final candidates = data['candidates'] as List?;
+        if (candidates != null && candidates.isNotEmpty) {
+          final text =
+              candidates.first['content']['parts'][0]['text'] as String;
+          debugPrint('GeminiService: Raw Response:\n$text');
+          return text;
+        }
       }
+      throw Exception('Invalid API Response: ${response.statusCode}');
+    } on DioException catch (e) {
+      debugPrint('Gemini API Error Data: ${e.response?.data}');
+      rethrow;
     }
-    throw Exception('Invalid API Response: \${response.statusCode}');
   }
 
   List<TourLocation> _parseLocations(String rawJson) {

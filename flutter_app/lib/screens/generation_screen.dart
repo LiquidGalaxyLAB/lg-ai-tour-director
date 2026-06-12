@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/location.dart';
 import '../services/gemini/gemini_service.dart';
+import '../services/maps/geocoding_service.dart';
+import '../services/maps/places_service.dart';
+import '../services/media/wikimedia_service.dart';
+import '../services/validation/auditor_service.dart';
 
 class GenerationScreen extends StatefulWidget {
   final String prompt;
@@ -14,6 +18,7 @@ class GenerationScreen extends StatefulWidget {
 class _GenerationScreenState extends State<GenerationScreen> {
   List<TourLocation>? _locations;
   String? _error;
+  String _statusMessage = 'Gemini is crafting your tour...';
 
   @override
   void initState() {
@@ -23,12 +28,52 @@ class _GenerationScreenState extends State<GenerationScreen> {
 
   Future<void> _generateTour() async {
     try {
-      final locations = await GeminiService.instance.extractLocations(
+      if (mounted) setState(() => _statusMessage = 'Extracting locations via Gemini...');
+      final initialLocations = await GeminiService.instance.extractLocations(
         widget.prompt,
       );
+
+      if (mounted) setState(() => _statusMessage = 'Enriching locations with Google Maps & Wikimedia...');
+      
+      final enrichedLocations = <TourLocation>[];
+      for (var loc in initialLocations) {
+        var currentName = loc.name;
+        Map<String, double>? coords = await GeocodingService.instance.getCoordinates(currentName);
+        
+        // Fallback logic
+        if (coords == null) {
+          final altName = await GeminiService.instance.getAlternativeName(currentName);
+          if (altName != null && altName.isNotEmpty) {
+            currentName = altName;
+            coords = await GeocodingService.instance.getCoordinates(currentName);
+          }
+        }
+
+        if (coords != null) {
+          final placeDetails = await PlacesService.instance.getPlaceDetails(currentName);
+          final imageUrl = await WikimediaService.instance.getImageUrl(currentName);
+          
+          enrichedLocations.add(loc.copyWith(
+            name: currentName,
+            latitude: coords['lat'],
+            longitude: coords['lng'],
+            placeId: placeDetails?['place_id'] as String?,
+            address: placeDetails?['formatted_address'] as String?,
+            imageUrl: imageUrl,
+          ));
+        }
+      }
+
+      if (mounted) setState(() => _statusMessage = 'Auditing generated coordinates...');
+      final validLocations = AuditorService.instance.validateLocations(enrichedLocations);
+
+      if (validLocations.isEmpty) {
+        throw Exception('No valid locations found after auditing.');
+      }
+
       if (mounted) {
         setState(() {
-          _locations = locations;
+          _locations = validLocations;
         });
       }
     } catch (e) {
