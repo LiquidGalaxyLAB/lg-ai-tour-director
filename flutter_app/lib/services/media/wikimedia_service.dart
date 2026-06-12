@@ -5,9 +5,7 @@ class WikimediaService {
   WikimediaService._();
   static final WikimediaService instance = WikimediaService._();
 
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: AppConstants.wikimediaBaseUrl,
-  ));
+  final Dio _dio = Dio(BaseOptions(baseUrl: AppConstants.wikimediaBaseUrl));
 
   Future<String?> getImageUrl(String query) async {
     try {
@@ -19,7 +17,8 @@ class WikimediaService {
         final data = response.data;
         if (data['thumbnail'] != null && data['thumbnail']['source'] != null) {
           return data['thumbnail']['source'] as String;
-        } else if (data['originalimage'] != null && data['originalimage']['source'] != null) {
+        } else if (data['originalimage'] != null &&
+            data['originalimage']['source'] != null) {
           return data['originalimage']['source'] as String;
         }
       }
@@ -48,7 +47,8 @@ class WikimediaService {
         final pages = response.data['query']['pages'] as Map<String, dynamic>;
         if (pages.isNotEmpty) {
           final firstPage = pages.values.first;
-          if (firstPage['original'] != null && firstPage['original']['source'] != null) {
+          if (firstPage['original'] != null &&
+              firstPage['original']['source'] != null) {
             return firstPage['original']['source'] as String;
           }
         }

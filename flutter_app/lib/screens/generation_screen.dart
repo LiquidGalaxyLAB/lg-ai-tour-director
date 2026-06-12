@@ -28,44 +28,66 @@ class _GenerationScreenState extends State<GenerationScreen> {
 
   Future<void> _generateTour() async {
     try {
-      if (mounted) setState(() => _statusMessage = 'Extracting locations via Gemini...');
+      if (mounted) {
+        setState(() => _statusMessage = 'Extracting locations via Gemini...');
+      }
       final initialLocations = await GeminiService.instance.extractLocations(
         widget.prompt,
       );
 
-      if (mounted) setState(() => _statusMessage = 'Enriching locations with Google Maps & Wikimedia...');
-      
+      if (mounted) {
+        setState(
+          () => _statusMessage =
+              'Enriching locations with Google Maps & Wikimedia...',
+        );
+      }
+
       final enrichedLocations = <TourLocation>[];
       for (var loc in initialLocations) {
         var currentName = loc.name;
-        Map<String, double>? coords = await GeocodingService.instance.getCoordinates(currentName);
-        
+        Map<String, double>? coords = await GeocodingService.instance
+            .getCoordinates(currentName);
+
         // Fallback logic
         if (coords == null) {
-          final altName = await GeminiService.instance.getAlternativeName(currentName);
+          final altName = await GeminiService.instance.getAlternativeName(
+            currentName,
+          );
           if (altName != null && altName.isNotEmpty) {
             currentName = altName;
-            coords = await GeocodingService.instance.getCoordinates(currentName);
+            coords = await GeocodingService.instance.getCoordinates(
+              currentName,
+            );
           }
         }
 
         if (coords != null) {
-          final placeDetails = await PlacesService.instance.getPlaceDetails(currentName);
-          final imageUrl = await WikimediaService.instance.getImageUrl(currentName);
-          
-          enrichedLocations.add(loc.copyWith(
-            name: currentName,
-            latitude: coords['lat'],
-            longitude: coords['lng'],
-            placeId: placeDetails?['place_id'] as String?,
-            address: placeDetails?['formatted_address'] as String?,
-            imageUrl: imageUrl,
-          ));
+          final placeDetails = await PlacesService.instance.getPlaceDetails(
+            currentName,
+          );
+          final imageUrl = await WikimediaService.instance.getImageUrl(
+            currentName,
+          );
+
+          enrichedLocations.add(
+            loc.copyWith(
+              name: currentName,
+              latitude: coords['lat'],
+              longitude: coords['lng'],
+              placeId: placeDetails?['place_id'] as String?,
+              address: placeDetails?['formatted_address'] as String?,
+              imageUrl: imageUrl,
+            ),
+          );
         }
       }
 
-      if (mounted) setState(() => _statusMessage = 'Auditing generated coordinates...');
-      final validLocations = AuditorService.instance.validateLocations(enrichedLocations);
+      if (mounted) {
+        setState(() => _statusMessage = 'Auditing generated coordinates...');
+      }
+      final validLocations = AuditorService.instance.validateLocations(
+        enrichedLocations,
+      );
 
       if (validLocations.isEmpty) {
         throw Exception('No valid locations found after auditing.');
@@ -127,13 +149,28 @@ class _GenerationScreenState extends State<GenerationScreen> {
         itemCount: _locations!.length,
         itemBuilder: (context, index) {
           final loc = _locations![index];
-          return ListTile(
-            leading: CircleAvatar(child: Text('${index + 1}')),
-            title: Text(loc.name),
-            subtitle: Text(
-              '${loc.type} • ${loc.suggestedDurationSeconds}s\n${loc.whySignificant}',
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ListTile(
+              leading: loc.imageUrl != null
+                  ? Image.network(
+                      loc.imageUrl!,
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.image_not_supported),
+                    )
+                  : const CircleAvatar(child: Icon(Icons.place)),
+              title: Text(loc.name),
+              subtitle: Text(
+                '${loc.type} • ${loc.suggestedDurationSeconds}s\n'
+                '${loc.address ?? 'No address'}\n'
+                'Coords: ${loc.latitude?.toStringAsFixed(4)}, ${loc.longitude?.toStringAsFixed(4)}\n\n'
+                '${loc.whySignificant}',
+              ),
+              isThreeLine: true,
             ),
-            isThreeLine: true,
           );
         },
       );
@@ -144,9 +181,12 @@ class _GenerationScreenState extends State<GenerationScreen> {
       children: [
         const CircularProgressIndicator(),
         const SizedBox(height: 20),
-        Text(
-          'Gemini is crafting a tour for:\n"${widget.prompt}"',
-          textAlign: TextAlign.center,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+          child: Text(
+            '$_statusMessage\n\nPrompt: "${widget.prompt}"',
+            textAlign: TextAlign.center,
+          ),
         ),
       ],
     );

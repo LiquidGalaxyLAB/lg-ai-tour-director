@@ -86,19 +86,40 @@ class GeminiService {
 
   Future<String?> getAlternativeName(String locationName) async {
     try {
-      debugPrint('GeminiService: Asking for alternative name for "$locationName"');
-      final result = await _callApi(GeminiPrompts.buildAlternativeNamePrompt(locationName));
-      return result.trim();
+      debugPrint(
+        'GeminiService: Asking for alternative name for "$locationName"',
+      );
+      final result = await _callApi(
+        GeminiPrompts.buildAlternativeNamePrompt(locationName),
+      );
+      return _parseAlternativeName(result);
     } catch (e) {
       debugPrint('GeminiService: Failed to get alternative name: $e');
       return null;
     }
   }
 
+  String _parseAlternativeName(String rawResponse) {
+    try {
+      final decoded = jsonDecode(rawResponse);
+      if (decoded is String) return decoded;
+      if (decoded is List && decoded.isNotEmpty) {
+        if (decoded.first is Map)
+          return decoded.first['name'] ?? decoded.first.values.first.toString();
+        return decoded.first.toString();
+      }
+      if (decoded is Map)
+        return decoded['name'] ?? decoded.values.first.toString();
+      return decoded.toString();
+    } catch (_) {
+      return rawResponse.trim().replaceAll('"', '');
+    }
+  }
+
   Future<String> _callApi(String promptText) async {
     try {
       final response = await _dio.post(
-        'models/gemini-2.5-flash:generateContent?key=$_apiKey',
+        'models/gemini-1.5-flash-latest:generateContent?key=$_apiKey',
         data: {
           "systemInstruction": {
             "parts": [

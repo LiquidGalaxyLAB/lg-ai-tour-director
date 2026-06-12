@@ -15,7 +15,7 @@ class TourLocation {
   final String type;
   final String whySignificant;
   final int suggestedDurationSeconds;
-  
+
   // Enriched fields
   final double? latitude;
   final double? longitude;
@@ -38,7 +38,8 @@ class TourLocation {
       name: name ?? this.name,
       type: type ?? this.type,
       whySignificant: whySignificant ?? this.whySignificant,
-      suggestedDurationSeconds: suggestedDurationSeconds ?? this.suggestedDurationSeconds,
+      suggestedDurationSeconds:
+          suggestedDurationSeconds ?? this.suggestedDurationSeconds,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       placeId: placeId ?? this.placeId,

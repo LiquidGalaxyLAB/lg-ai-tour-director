@@ -5,9 +5,9 @@ class PlacesService {
   PlacesService._();
   static final PlacesService instance = PlacesService._();
 
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://maps.googleapis.com/maps/api/place',
-  ));
+  final Dio _dio = Dio(
+    BaseOptions(baseUrl: 'https://maps.googleapis.com/maps/api/place'),
+  );
 
   Future<Map<String, dynamic>?> getPlaceDetails(String locationName) async {
     final apiKey = dotenv.env['MAPS_KEY'];
