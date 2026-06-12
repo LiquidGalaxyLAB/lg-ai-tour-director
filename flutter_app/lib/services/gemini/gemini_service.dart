@@ -119,7 +119,7 @@ class GeminiService {
   Future<String> _callApi(String promptText) async {
     try {
       final response = await _dio.post(
-        'models/gemini-1.5-flash-latest:generateContent?key=$_apiKey',
+        'models/gemini-pro:generateContent?key=$_apiKey',
         data: {
           "systemInstruction": {
             "parts": [
