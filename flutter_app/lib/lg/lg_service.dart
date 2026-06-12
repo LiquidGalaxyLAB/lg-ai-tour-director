@@ -87,19 +87,33 @@ class LGService {
 
   Future<void> rebootLg(RigConfig config) async {
     debugPrint('LGService: Rebooting all LG nodes');
+    final password = _ssh.client?.onPasswordRequest?.call() ?? '';
     for (var i = 1; i <= config.totalScreens; i++) {
-      await runCommand(
-        'sshpass -p ${_ssh.client?.onPasswordRequest?.call()} ssh -t lg$i "sudo -S reboot" << ${_ssh.client?.onPasswordRequest?.call()}',
-      );
+      if (i == 1) {
+        // Master node: Execute directly
+        await runCommand('echo "$password" | sudo -S reboot');
+      } else {
+        // Slave nodes: standard LG multi-node command
+        await runCommand(
+          'sshpass -p $password ssh -t lg$i "echo \'$password\' | sudo -S reboot"',
+        );
+      }
     }
   }
 
   Future<void> shutdownLg(RigConfig config) async {
     debugPrint('LGService: Shutting down all LG nodes');
+    final password = _ssh.client?.onPasswordRequest?.call() ?? '';
     for (var i = 1; i <= config.totalScreens; i++) {
-      await runCommand(
-        'sshpass -p ${_ssh.client?.onPasswordRequest?.call()} ssh -t lg$i "sudo -S poweroff" << ${_ssh.client?.onPasswordRequest?.call()}',
-      );
+      if (i == 1) {
+        // Master node: Execute directly
+        await runCommand('echo "$password" | sudo -S poweroff');
+      } else {
+        // Slave nodes: standard LG multi-node command
+        await runCommand(
+          'sshpass -p $password ssh -t lg$i "echo \'$password\' | sudo -S poweroff"',
+        );
+      }
     }
   }
 }
