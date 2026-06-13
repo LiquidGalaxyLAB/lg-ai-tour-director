@@ -29,6 +29,10 @@ Example output format:
     return 'Your previous response was invalid JSON or missing fields. Please STRICTLY follow the JSON structure. Extract 4 to 6 relevant locations for: "$userPrompt". Respond ONLY with the JSON array.';
   }
 
+  static String buildBroadScopePrompt(String userPrompt) {
+    return 'Too few usable locations were found for: "$userPrompt". Broaden the scope — include more widely-known, easily searchable landmarks, and if the request is very specific, expand to the surrounding region or related places. Extract 4 to 6 well-known locations. Respond ONLY with the JSON array.';
+  }
+
   static String buildAlternativeNamePrompt(String locationName) {
     return 'The location "$locationName" could not be found accurately on Google Maps. Please provide exactly ONE alternative, better-known, or broader name for this location that is highly likely to be found on Google Maps. Respond ONLY with the alternative name string.';
   }

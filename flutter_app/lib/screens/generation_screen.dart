@@ -4,7 +4,8 @@ import '../services/gemini/gemini_service.dart';
 import '../services/maps/geocoding_service.dart';
 import '../services/maps/places_service.dart';
 import '../services/media/wikimedia_service.dart';
-import '../services/validation/auditor_service.dart';
+// ignore: unused_import
+import '../services/validation/auditor_service.dart'; // kept for re-enabling auditing later
 
 class GenerationScreen extends StatefulWidget {
   final String prompt;
@@ -44,53 +45,34 @@ class _GenerationScreenState extends State<GenerationScreen> {
 
       final enrichedLocations = <TourLocation>[];
       for (var loc in initialLocations) {
-        var currentName = loc.name;
-        Map<String, double>? coords = await GeocodingService.instance
-            .getCoordinates(currentName);
+        final currentName = loc.name;
+        final coords =
+            await GeocodingService.instance.getCoordinates(currentName);
 
-        // Fallback logic
-        if (coords == null) {
-          final altName = await GeminiService.instance.getAlternativeName(
-            currentName,
-          );
-          if (altName != null && altName.isNotEmpty) {
-            currentName = altName;
-            coords = await GeocodingService.instance.getCoordinates(
-              currentName,
-            );
-          }
-        }
+        // Keep every Gemini location. Attach coords/place/image when available,
+        // but don't drop a location just because geocoding failed.
+        final placeDetails = coords != null
+            ? await PlacesService.instance.getPlaceDetails(currentName)
+            : null;
+        final imageUrl = await WikimediaService.instance.getImageUrl(currentName);
 
-        if (coords != null) {
-          final placeDetails = await PlacesService.instance.getPlaceDetails(
-            currentName,
-          );
-          final imageUrl = await WikimediaService.instance.getImageUrl(
-            currentName,
-          );
-
-          enrichedLocations.add(
-            loc.copyWith(
-              name: currentName,
-              latitude: coords['lat'],
-              longitude: coords['lng'],
-              placeId: placeDetails?['place_id'] as String?,
-              address: placeDetails?['formatted_address'] as String?,
-              imageUrl: imageUrl,
-            ),
-          );
-        }
+        enrichedLocations.add(loc.copyWith(
+          name: currentName,
+          latitude: coords?['lat'],
+          longitude: coords?['lng'],
+          placeId: placeDetails?['place_id'] as String?,
+          address: placeDetails?['formatted_address'] as String?,
+          imageUrl: imageUrl,
+        ));
       }
 
-      if (mounted) {
-        setState(() => _statusMessage = 'Auditing generated coordinates...');
-      }
-      final validLocations = AuditorService.instance.validateLocations(
-        enrichedLocations,
-      );
+      // TODO: Auditing temporarily skipped — geocoding is unreliable right now.
+      // Re-enable AuditorService.instance.validateLocations() once geocoding
+      // consistently returns coordinates.
+      final validLocations = enrichedLocations;
 
       if (validLocations.isEmpty) {
-        throw Exception('No valid locations found after auditing.');
+        throw Exception('No locations returned from Gemini.');
       }
 
       if (mounted) {
