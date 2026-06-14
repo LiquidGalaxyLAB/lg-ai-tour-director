@@ -45,19 +45,25 @@ class _GenerationScreenState extends State<GenerationScreen> {
 
       final enrichedLocations = <TourLocation>[];
       for (var loc in initialLocations) {
-        final currentName = loc.name;
         final coords =
-            await GeocodingService.instance.getCoordinates(currentName);
+            await GeocodingService.instance.getCoordinates(loc.name);
+
+        // No Gemini alternative-name fallback for now (saves API credits).
+        // If geocoding fails, keep the location but log that it has no coords.
+        if (coords == null) {
+          debugPrint(
+            'Generation: no coordinates for "${loc.name}" — keeping it un-geocoded',
+          );
+        }
 
         // Keep every Gemini location. Attach coords/place/image when available,
         // but don't drop a location just because geocoding failed.
         final placeDetails = coords != null
-            ? await PlacesService.instance.getPlaceDetails(currentName)
+            ? await PlacesService.instance.getPlaceDetails(loc.name)
             : null;
-        final imageUrl = await WikimediaService.instance.getImageUrl(currentName);
+        final imageUrl = await WikimediaService.instance.getImageUrl(loc.name);
 
         enrichedLocations.add(loc.copyWith(
-          name: currentName,
           latitude: coords?['lat'],
           longitude: coords?['lng'],
           placeId: placeDetails?['place_id'] as String?,
