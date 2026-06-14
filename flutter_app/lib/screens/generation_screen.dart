@@ -45,8 +45,7 @@ class _GenerationScreenState extends State<GenerationScreen> {
 
       final enrichedLocations = <TourLocation>[];
       for (var loc in initialLocations) {
-        final coords =
-            await GeocodingService.instance.getCoordinates(loc.name);
+        final coords = await GeocodingService.instance.getCoordinates(loc.name);
 
         // No Gemini alternative-name fallback for now (saves API credits).
         // If geocoding fails, keep the location but log that it has no coords.
@@ -63,13 +62,15 @@ class _GenerationScreenState extends State<GenerationScreen> {
             : null;
         final imageUrl = await WikimediaService.instance.getImageUrl(loc.name);
 
-        enrichedLocations.add(loc.copyWith(
-          latitude: coords?['lat'],
-          longitude: coords?['lng'],
-          placeId: placeDetails?['place_id'] as String?,
-          address: placeDetails?['formatted_address'] as String?,
-          imageUrl: imageUrl,
-        ));
+        enrichedLocations.add(
+          loc.copyWith(
+            latitude: coords?['lat'],
+            longitude: coords?['lng'],
+            placeId: placeDetails?['place_id'] as String?,
+            address: placeDetails?['formatted_address'] as String?,
+            imageUrl: imageUrl,
+          ),
+        );
       }
 
       // TODO: Auditing temporarily skipped — geocoding is unreliable right now.

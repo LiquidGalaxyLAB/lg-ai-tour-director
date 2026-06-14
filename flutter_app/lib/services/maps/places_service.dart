@@ -9,18 +9,22 @@ class PlacesService {
   PlacesService._();
   static final PlacesService instance = PlacesService._();
 
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: AppConstants.placesBaseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 10),
-  ));
+  final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: AppConstants.placesBaseUrl,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+    ),
+  );
 
   /// Returns the first candidate as `{place_id, formatted_address, types}`
   /// or `null` if nothing is found.
   Future<Map<String, dynamic>?> getPlaceDetails(String locationName) async {
     final apiKey = dotenv.env['MAPS_KEY'];
     if (apiKey == null || apiKey.isEmpty) {
-      debugPrint('Places: MAPS_KEY missing or empty — skipping "$locationName"');
+      debugPrint(
+        'Places: MAPS_KEY missing or empty — skipping "$locationName"',
+      );
       return null;
     }
 

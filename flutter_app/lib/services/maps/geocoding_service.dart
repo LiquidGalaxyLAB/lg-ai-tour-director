@@ -10,17 +10,21 @@ class GeocodingService {
   GeocodingService._();
   static final GeocodingService instance = GeocodingService._();
 
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: AppConstants.geocodingBaseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 10),
-  ));
+  final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: AppConstants.geocodingBaseUrl,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+    ),
+  );
 
   /// Returns `{'lat': ..., 'lng': ...}` or `null` if the lookup fails.
   Future<Map<String, double>?> getCoordinates(String locationName) async {
     final apiKey = dotenv.env['MAPS_KEY'];
     if (apiKey == null || apiKey.isEmpty) {
-      debugPrint('Geocoding: MAPS_KEY missing or empty — skipping "$locationName"');
+      debugPrint(
+        'Geocoding: MAPS_KEY missing or empty — skipping "$locationName"',
+      );
       return null;
     }
 
