@@ -3,7 +3,7 @@ class AppConstants {
 
   //External API base URLs
   static const String geminiBaseUrl =
-      'https://generativelanguage.googleapis.com/v1beta';
+      'https://generativelanguage.googleapis.com/v1beta/';
   static const String geocodingBaseUrl =
       'https://maps.googleapis.com/maps/api/geocode';
   static const String placesBaseUrl =

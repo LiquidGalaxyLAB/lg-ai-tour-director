@@ -111,14 +111,54 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Tour Director'),
-        actions: [
-          _ConnectionDot(isConnected: isConnected),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'LG Connection Settings',
-            onPressed: () => context.push('/settings/lg'),
-          ),
-        ],
+        actions: [_ConnectionDot(isConnected: isConnected)],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Colors.blue),
+              child: Text(
+                'AI Tour Director',
+                style: TextStyle(color: Colors.white, fontSize: 24),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.library_books),
+              title: const Text('Tour Library'),
+              onTap: () {
+                context.pop();
+                context.push('/library');
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.settings_ethernet),
+              title: const Text('LG Connection Settings'),
+              onTap: () {
+                context.pop();
+                context.push('/settings/lg');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: const Text('App Language'),
+              onTap: () {
+                context.pop();
+                context.push('/settings/language');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.color_lens),
+              title: const Text('App Theme'),
+              onTap: () {
+                context.pop();
+                context.push('/settings/theme');
+              },
+            ),
+          ],
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -127,10 +167,86 @@ class HomeScreen extends ConsumerWidget {
           children: [
             const Text(
               'Where to next?',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'e.g. Historical places in Pune...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.mic),
+                  onPressed: () {
+                    // Placeholder for mic action
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Mic placeholder tapped')),
+                    );
+                  },
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                filled: true,
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
+              ),
+              onSubmitted: (value) {
+                if (value.trim().isNotEmpty) {
+                  context.push('/generation', extra: value.trim());
+                }
+              },
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Quick Launch',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ActionChip(
+                  label: const Text('Historic Forts'),
+                  onPressed: () => context.push(
+                    '/generation',
+                    extra: 'Historic Forts in India',
+                  ),
+                  avatar: const Icon(Icons.castle, size: 16),
+                ),
+                ActionChip(
+                  label: const Text('World Wonders'),
+                  onPressed: () =>
+                      context.push('/generation', extra: 'World Wonders'),
+                  avatar: const Icon(Icons.public, size: 16),
+                ),
+                ActionChip(
+                  label: const Text('Hidden Cities'),
+                  onPressed: () => context.push(
+                    '/generation',
+                    extra: 'Hidden Cities around the globe',
+                  ),
+                  avatar: const Icon(Icons.location_city, size: 16),
+                ),
+                ActionChip(
+                  label: const Text('Random Discovery'),
+                  onPressed: () => context.push(
+                    '/generation',
+                    extra: 'Random amazing places on Earth',
+                  ),
+                  avatar: const Icon(Icons.explore, size: 16),
+                ),
+              ],
             ),
             const SizedBox(height: 40),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Text(
+              'Developer Tests',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: isConnected ? runUbuntuTest : null,
               icon: const Icon(Icons.terminal),
