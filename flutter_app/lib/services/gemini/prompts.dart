@@ -37,7 +37,7 @@ Example output format:
     return 'The location "$locationName" could not be found accurately on Google Maps. Please provide exactly ONE alternative, better-known, or broader name for this location that is highly likely to be found on Google Maps. Respond ONLY with the alternative name string.';
   }
 
-  static String buildBroadScopePrompt(String userPrompt) {
-    return 'Your previous response returned fewer than 3 locations. Please broaden your search scope and return 4 to 6 relevant locations for: "$userPrompt". You MUST return at least 3 locations. Respond ONLY with the JSON array.';
-  }
+  // static String buildBroadScopePrompt(String userPrompt) {
+  //   return 'Your previous response returned fewer than 3 locations. Please broaden your search scope and return 4 to 6 relevant locations for: "$userPrompt". You MUST return at least 3 locations. Respond ONLY with the JSON array.';
+  // }
 }
