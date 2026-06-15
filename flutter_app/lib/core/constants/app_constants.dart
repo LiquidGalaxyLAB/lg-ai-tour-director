@@ -4,6 +4,17 @@ class AppConstants {
   //External API base URLs
   static const String geminiBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/';
+
+  // Gemini model fallback chain. Cheapest/lightest first — extracting ~5
+  // locations does not need a top-tier model. If one model is unavailable
+  // (404/quota), the service falls through to the next. Stable (non-preview)
+  // models only, so the app does not break when a preview is retired.
+  static const List<String> geminiModels = [
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+  ];
   static const String geocodingBaseUrl =
       'https://maps.googleapis.com/maps/api/geocode';
   static const String placesBaseUrl =
