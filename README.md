@@ -7,3 +7,6 @@ The project is an AI-powered cinematic tour generation system for Liquid Galaxy.
 
 This system follows a Flutter-first architecture. The application directly communicates with Gemini, Google Maps APIs, Wikimedia Commons, and Liquid Galaxy. Tour generation, validation, KML generation, and deployment are handled entirely inside the Flutter application.
 
+## current working 
+
+<img width="489" height="752" alt="image" src="https://github.com/user-attachments/assets/b7cf33a0-f8ef-4928-9fae-7359fc3043be" />
