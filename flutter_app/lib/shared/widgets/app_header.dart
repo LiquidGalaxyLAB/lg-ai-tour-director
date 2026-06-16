@@ -3,12 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/ssh_provider.dart';
 import 'connection_dot.dart';
-import 'liquid_galaxy_logo.dart';
 import 'settings_sheet.dart';
 
-/// The in-body app header used on the main tab screens and most settings
-/// screens: brand mark (left) · "Tour Director" + live connection status
-/// (center) · settings gear (right). The gear opens the Settings sheet.
 class AppHeader extends ConsumerWidget {
   const AppHeader({super.key});
 
@@ -29,7 +25,13 @@ class AppHeader extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          const LiquidGalaxyLogo(barHeight: 22),
+          Image.asset(
+            'assets/logos/lg-logo-for-app.png',
+            height: 34,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => const SizedBox(width: 40, height: 34),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,

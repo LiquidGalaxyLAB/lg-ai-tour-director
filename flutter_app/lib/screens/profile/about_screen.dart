@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../shared/widgets/liquid_galaxy_logo.dart';
-
-/// About (mockup 26): what the project is and the inspiration behind it.
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
@@ -24,13 +21,22 @@ class AboutScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          const Center(child: LiquidGalaxyLogo(barHeight: 34)),
+          Center(
+            child: Image.asset(
+              'assets/logos/lg-logo-for-app.png',
+              height: 90,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => const SizedBox(height: 90),
+            ),
+          ),
           const SizedBox(height: 4),
           Center(
-            child: Text('Powered by Liquid Galaxy',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                )),
+            child: Text(
+              'Powered by Liquid Galaxy',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
           const SizedBox(height: 24),
           _Section(
@@ -78,11 +84,13 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w700,
-              )),
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 8),
           Text(body, style: theme.textTheme.bodyMedium?.copyWith(height: 1.5)),
         ],
