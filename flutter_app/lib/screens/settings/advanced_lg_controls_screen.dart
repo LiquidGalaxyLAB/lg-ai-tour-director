@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/ssh_provider.dart';
 
-/// Advanced LG Controls (mockup 19): the 2×3 grid of rig commands, moved out of
-/// Home. Relaunch/Reboot/Shutdown/Clear are wired to the SSH provider; Send
-/// Logos and Set Refresh are stubbed until those LG commands are implemented.
+// Advanced LG Controls (mockup 19): the 2×3 grid of rig commands, moved out of
+// Home. Relaunch/Reboot/Shutdown/Clear are wired to the SSH provider; Send
+// Logos and Set Refresh are stubbed until those LG commands are implemented
 class AdvancedLgControlsScreen extends ConsumerWidget {
   const AdvancedLgControlsScreen({super.key});
 
@@ -42,8 +42,11 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
     void toast(String msg) =>
         messenger.showSnackBar(SnackBar(content: Text(msg)));
 
-    Future<void> run(String action, Future<void> Function() fn,
-        {bool destructive = false}) async {
+    Future<void> run(
+      String action,
+      Future<void> Function() fn, {
+      bool destructive = false,
+    }) async {
       if (!connected) {
         toast('Connect to Liquid Galaxy first');
         return;
@@ -54,31 +57,97 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
     }
 
     final tiles = <_Tile>[
-      _Tile('Relaunch LG', Icons.refresh_rounded, AppColors.tileRelaunch,
-          () => run('Relaunch', notifier.relaunchLg, destructive: true)),
-      _Tile('Shutdown LG', Icons.power_settings_new_rounded, AppColors.tileShutdown,
-          () => run('Shutdown', notifier.shutdownLg, destructive: true)),
-      _Tile('Reboot LG', Icons.restart_alt_rounded, AppColors.tileReboot,
-          () => run('Reboot', notifier.rebootLg, destructive: true)),
-      _Tile('Send Logos', Icons.image_outlined, AppColors.tileSendLogos,
-          () => toast('Send Logos — coming soon')),
-      _Tile('Set Refresh', Icons.sync_rounded, AppColors.tileSetRefresh,
-          () => toast('Set Refresh — coming soon')),
-      _Tile('Clear Logo', Icons.layers_clear_rounded, AppColors.tileClearLogo,
-          () => run('Clear', notifier.cleanup)),
+      _Tile(
+        'Relaunch LG',
+        Icons.refresh_rounded,
+        AppColors.tileRelaunch,
+        () => run('Relaunch', notifier.relaunchLg, destructive: true),
+      ),
+      _Tile(
+        'Shutdown LG',
+        Icons.power_settings_new_rounded,
+        AppColors.tileShutdown,
+        () => run('Shutdown', notifier.shutdownLg, destructive: true),
+      ),
+      _Tile(
+        'Reboot LG',
+        Icons.restart_alt_rounded,
+        AppColors.tileReboot,
+        () => run('Reboot', notifier.rebootLg, destructive: true),
+      ),
+      _Tile(
+        'Send Logos',
+        Icons.image_outlined,
+        AppColors.tileSendLogos,
+        () => toast('Send Logos — coming soon'),
+      ),
+      _Tile(
+        'Set Refresh',
+        Icons.sync_rounded,
+        AppColors.tileSetRefresh,
+        () => toast('Set Refresh — coming soon'),
+      ),
+      _Tile(
+        'Clear Logo',
+        Icons.layers_clear_rounded,
+        AppColors.tileClearLogo,
+        () => run('Clear', notifier.cleanup),
+      ),
     ];
 
     return Scaffold(
       appBar: AppBar(title: const Text('Advanced LG Controls')),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
-          child: GridView.count(
-            crossAxisCount: 2,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            childAspectRatio: 1.1,
-            children: [for (final t in tiles) _ControlTile(tile: t)],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 1.1,
+                children: [for (final t in tiles) _ControlTile(tile: t)],
+              ),
+              const SizedBox(height: 28),
+              const Divider(),
+              const SizedBox(height: 12),
+              Text(
+                'DEVELOPER TESTS',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  letterSpacing: 1,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Send a sample KML / camera move to verify the rig connection.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => run('Send Test KML', notifier.sendTestKml),
+                icon: const Icon(Icons.description_outlined),
+                label: const Text('Send Test KML (Shaniwar Wada)'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () => run('FlyTo Pune', notifier.flyToPune),
+                icon: const Icon(Icons.flight_takeoff_rounded),
+                label: const Text('FlyTo Pune'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () => run('Clean up', notifier.cleanup),
+                icon: const Icon(Icons.cleaning_services_outlined),
+                label: const Text('Clear KML files'),
+              ),
+            ],
           ),
         ),
       ),
