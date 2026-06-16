@@ -1,0 +1,127 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/theme/app_colors.dart';
+import '../../providers/ssh_provider.dart';
+
+/// Advanced LG Controls (mockup 19): the 2×3 grid of rig commands, moved out of
+/// Home. Relaunch/Reboot/Shutdown/Clear are wired to the SSH provider; Send
+/// Logos and Set Refresh are stubbed until those LG commands are implemented.
+class AdvancedLgControlsScreen extends ConsumerWidget {
+  const AdvancedLgControlsScreen({super.key});
+
+  Future<bool> _confirm(BuildContext context, String action) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('$action Liquid Galaxy?'),
+            content: Text('Are you sure you want to $action the rig?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(action),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(sshConnectionProvider.notifier);
+    final connected = ref.watch(
+      sshConnectionProvider.select((s) => s.isConnected),
+    );
+    final messenger = ScaffoldMessenger.of(context);
+
+    void toast(String msg) =>
+        messenger.showSnackBar(SnackBar(content: Text(msg)));
+
+    Future<void> run(String action, Future<void> Function() fn,
+        {bool destructive = false}) async {
+      if (!connected) {
+        toast('Connect to Liquid Galaxy first');
+        return;
+      }
+      if (destructive && !await _confirm(context, action)) return;
+      await fn();
+      toast('$action sent');
+    }
+
+    final tiles = <_Tile>[
+      _Tile('Relaunch LG', Icons.refresh_rounded, AppColors.tileRelaunch,
+          () => run('Relaunch', notifier.relaunchLg, destructive: true)),
+      _Tile('Shutdown LG', Icons.power_settings_new_rounded, AppColors.tileShutdown,
+          () => run('Shutdown', notifier.shutdownLg, destructive: true)),
+      _Tile('Reboot LG', Icons.restart_alt_rounded, AppColors.tileReboot,
+          () => run('Reboot', notifier.rebootLg, destructive: true)),
+      _Tile('Send Logos', Icons.image_outlined, AppColors.tileSendLogos,
+          () => toast('Send Logos — coming soon')),
+      _Tile('Set Refresh', Icons.sync_rounded, AppColors.tileSetRefresh,
+          () => toast('Set Refresh — coming soon')),
+      _Tile('Clear Logo', Icons.layers_clear_rounded, AppColors.tileClearLogo,
+          () => run('Clear', notifier.cleanup)),
+    ];
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Advanced LG Controls')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: GridView.count(
+            crossAxisCount: 2,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            childAspectRatio: 1.1,
+            children: [for (final t in tiles) _ControlTile(tile: t)],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Tile {
+  const _Tile(this.label, this.icon, this.color, this.onTap);
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+}
+
+class _ControlTile extends StatelessWidget {
+  const _ControlTile({required this.tile});
+  final _Tile tile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: tile.color,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: tile.onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(tile.icon, color: Colors.white, size: 30),
+            const SizedBox(height: 10),
+            Text(
+              tile.label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
