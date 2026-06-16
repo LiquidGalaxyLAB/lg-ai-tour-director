@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../providers/theme_provider.dart';
 
 /// Opens the Settings modal sheet (mockup screen 17) from the header gear.
 Future<void> showSettingsSheet(BuildContext context) {
@@ -11,12 +14,19 @@ Future<void> showSettingsSheet(BuildContext context) {
   );
 }
 
-class _SettingsSheet extends StatelessWidget {
+class _SettingsSheet extends ConsumerWidget {
   const _SettingsSheet();
 
+  static String _themeLabel(ThemeMode mode) => switch (mode) {
+        ThemeMode.system => 'System',
+        ThemeMode.light => 'Light',
+        ThemeMode.dark => 'Dark',
+      };
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final themeMode = ref.watch(themeModeProvider);
 
     void go(String route) {
       Navigator.of(context).pop();
@@ -80,7 +90,7 @@ class _SettingsSheet extends StatelessWidget {
             _SettingsRow(
               icon: Icons.palette_outlined,
               title: 'App Theme',
-              trailing: 'System',
+              trailing: _themeLabel(themeMode),
               onTap: () => go('/settings/theme'),
             ),
           ],

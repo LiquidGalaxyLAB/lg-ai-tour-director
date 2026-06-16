@@ -36,6 +36,14 @@ class AppTheme {
         surfaceContainerHighest: AppColors.surfaceVariant,
         outlineVariant: AppColors.outline,
       );
+    } else {
+      scheme = scheme.copyWith(
+        surface: AppColors.surfaceDark,
+        surfaceContainerLowest: AppColors.surfaceDark,
+        surfaceContainerLow: AppColors.backgroundDark,
+        surfaceContainerHighest: AppColors.surfaceVariantDark,
+        outlineVariant: AppColors.outlineDark,
+      );
     }
 
     final bg = isLight ? AppColors.background : AppColors.backgroundDark;

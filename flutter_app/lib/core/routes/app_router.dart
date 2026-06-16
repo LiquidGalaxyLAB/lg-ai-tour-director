@@ -1,23 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/saved_tour.dart';
+import '../../models/tour_flow.dart';
 import '../../screens/dev/theme_preview_screen.dart';
 import '../../screens/generation_screen.dart';
 import '../../screens/home/home_screen.dart';
+import '../../screens/profile/about_screen.dart';
+import '../../screens/profile/help_screen.dart';
 import '../../screens/profile/profile_screen.dart';
+import '../../screens/saved/saved_detail_screen.dart';
 import '../../screens/saved/saved_screen.dart';
 import '../../screens/settings/advanced_lg_controls_screen.dart';
 import '../../screens/settings/language_screen.dart';
 import '../../screens/settings/lg_connection_screen.dart';
 import '../../screens/settings/theme_screen.dart';
 import '../../screens/settings/tour_preferences_screen.dart';
+import '../../screens/tour/active_tour_screen.dart';
+import '../../screens/tour/inspection_screen.dart';
+import '../../screens/tour/post_tour_screen.dart';
+import '../../screens/tour/preview_screen.dart';
 import '../../screens/tours/tours_screen.dart';
 import 'scaffold_with_nav.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// App navigation: a 4-tab bottom-nav shell (Home · Saved · Tours · Profile)
-/// with generation / settings / dev routes pushed on top of it.
+/// App navigation: a 4-tab bottom-nav shell (Home · Saved · Tours · Profile).
+/// The tour flow nests under Home, saved-detail under Saved, and help/about
+/// under Profile so the bottom nav stays visible (as in the mockups). Settings
+/// screens push full-screen over the shell.
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
@@ -26,19 +37,60 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state, navigationShell) =>
           ScaffoldWithNav(navigationShell: navigationShell),
       branches: [
+        // Home + tour flow
         StatefulShellBranch(
           routes: [
-            GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+            GoRoute(
+              path: '/',
+              builder: (context, state) => const HomeScreen(),
+              routes: [
+                GoRoute(
+                  path: 'generation',
+                  builder: (context, state) => GenerationScreen(
+                    prompt: state.extra as String? ?? 'A beautiful random tour',
+                  ),
+                ),
+                GoRoute(
+                  path: 'preview',
+                  builder: (context, state) =>
+                      PreviewScreen(args: state.extra as TourFlowArgs),
+                ),
+                GoRoute(
+                  path: 'active',
+                  builder: (context, state) =>
+                      ActiveTourScreen(args: state.extra as TourFlowArgs),
+                ),
+                GoRoute(
+                  path: 'inspection',
+                  builder: (context, state) =>
+                      InspectionScreen(args: state.extra as TourFlowArgs),
+                ),
+                GoRoute(
+                  path: 'post-tour',
+                  builder: (context, state) =>
+                      PostTourScreen(args: state.extra as TourFlowArgs),
+                ),
+              ],
+            ),
           ],
         ),
+        // Saved + detail
         StatefulShellBranch(
           routes: [
             GoRoute(
               path: '/saved',
               builder: (context, state) => const SavedScreen(),
+              routes: [
+                GoRoute(
+                  path: 'detail',
+                  builder: (context, state) =>
+                      SavedDetailScreen(tour: state.extra as SavedTour),
+                ),
+              ],
             ),
           ],
         ),
+        // Tours
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -47,26 +99,29 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
+        // Profile + help/about
         StatefulShellBranch(
           routes: [
             GoRoute(
               path: '/profile',
               builder: (context, state) => const ProfileScreen(),
+              routes: [
+                GoRoute(
+                  path: 'help',
+                  builder: (context, state) => const HelpScreen(),
+                ),
+                GoRoute(
+                  path: 'about',
+                  builder: (context, state) => const AboutScreen(),
+                ),
+              ],
             ),
           ],
         ),
       ],
     ),
 
-    // Pushed over the shell (full-screen, no bottom nav).
-    GoRoute(
-      path: '/generation',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final prompt = state.extra as String? ?? 'A beautiful random tour';
-        return GenerationScreen(prompt: prompt);
-      },
-    ),
+    // Settings — pushed full-screen over the shell (own back button).
     GoRoute(
       path: '/settings/lg',
       parentNavigatorKey: _rootNavigatorKey,

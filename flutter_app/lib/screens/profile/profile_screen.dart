@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../providers/ssh_provider.dart';
 import '../../shared/widgets/app_header.dart';
@@ -16,10 +17,6 @@ class ProfileScreen extends ConsumerWidget {
     final connected = ref.watch(
       sshConnectionProvider.select((s) => s.isConnected),
     );
-
-    void soon(String label) => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$label — coming soon')),
-        );
 
     return Scaffold(
       body: Column(
@@ -91,13 +88,13 @@ class ProfileScreen extends ConsumerWidget {
                 _ProfileRow(
                   icon: Icons.help_outline_rounded,
                   label: 'Help & Support',
-                  onTap: () => soon('Help & Support'),
+                  onTap: () => context.push('/profile/help'),
                 ),
                 const SizedBox(height: 12),
                 _ProfileRow(
                   icon: Icons.info_outline_rounded,
                   label: 'About',
-                  onTap: () => soon('About'),
+                  onTap: () => context.push('/profile/about'),
                 ),
                 const SizedBox(height: 28),
                 Center(

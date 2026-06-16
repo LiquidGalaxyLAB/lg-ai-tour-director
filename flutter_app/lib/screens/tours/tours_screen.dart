@@ -1,25 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/tour_history_entry.dart';
+import '../../providers/library_provider.dart';
 import '../../shared/widgets/app_header.dart';
+import '../../shared/widgets/empty_state.dart';
 
 /// Tours tab (mockup 12): chronological history of every generated tour.
-/// Lightweight — no KML. Backed by sample data until sqflite is wired.
-class ToursScreen extends StatefulWidget {
+/// Lightweight — no KML. Persisted via [tourHistoryProvider].
+class ToursScreen extends ConsumerStatefulWidget {
   const ToursScreen({super.key});
 
   @override
-  State<ToursScreen> createState() => _ToursScreenState();
+  ConsumerState<ToursScreen> createState() => _ToursScreenState();
 }
 
-class _ToursScreenState extends State<ToursScreen> {
+class _ToursScreenState extends ConsumerState<ToursScreen> {
   int _filter = 0; // 0 All · 1 Today · 2 This Week
   static const _filters = ['All', 'Today', 'This Week'];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final entries = TourHistoryEntry.sample();
+    final entries = ref.watch(tourHistoryProvider).value ?? const [];
 
     return Scaffold(
       body: Column(
@@ -67,7 +70,15 @@ class _ToursScreenState extends State<ToursScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                for (final e in entries) _HistoryCard(entry: e),
+                if (entries.isEmpty)
+                  const EmptyState(
+                    icon: Icons.history_rounded,
+                    title: 'No tours yet',
+                    message:
+                        'Tours you generate will appear here as a timeline.',
+                  )
+                else
+                  ...[for (final e in entries) _HistoryCard(entry: e)],
               ],
             ),
           ),

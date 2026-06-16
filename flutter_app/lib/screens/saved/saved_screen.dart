@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../models/saved_tour.dart';
+import '../../providers/library_provider.dart';
 import '../../shared/widgets/app_header.dart';
+import '../../shared/widgets/empty_state.dart';
 
 /// Saved tab (mockups 13/14): the library of tours the user persisted (with
-/// KML). Filters Offline/Curated and the playlist categories are stubbed
-/// ("coming soon") until those features land.
-class SavedScreen extends StatefulWidget {
+/// KML). Persisted via [savedToursProvider]. Filters Offline/Curated and the
+/// playlist categories are stubbed ("coming soon") until those features land.
+class SavedScreen extends ConsumerStatefulWidget {
   const SavedScreen({super.key});
 
   @override
-  State<SavedScreen> createState() => _SavedScreenState();
+  ConsumerState<SavedScreen> createState() => _SavedScreenState();
 }
 
-class _SavedScreenState extends State<SavedScreen> {
+class _SavedScreenState extends ConsumerState<SavedScreen> {
   int _filter = 0;
   static const _filters = ['All Tours', 'Recent', 'Offline', 'Curated'];
   static const _stubFilters = {2, 3}; // Offline, Curated
@@ -29,7 +33,7 @@ class _SavedScreenState extends State<SavedScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tours = SavedTour.sample();
+    final tours = ref.watch(savedToursProvider).value ?? const <SavedTour>[];
     final locationCount =
         tours.fold<int>(0, (sum, t) => sum + t.stopCount);
 
@@ -108,7 +112,21 @@ class _SavedScreenState extends State<SavedScreen> {
                 const SizedBox(height: 20),
                 _SectionLabel('SAVED TOUR LIBRARY'),
                 const SizedBox(height: 12),
-                for (final t in tours) _SavedCard(tour: t),
+                if (tours.isEmpty)
+                  const EmptyState(
+                    icon: Icons.bookmark_border_rounded,
+                    title: 'No saved tours yet',
+                    message:
+                        'Save a tour after it finishes to keep it here for replay.',
+                  )
+                else
+                  ...[
+                    for (final t in tours)
+                      _SavedCard(
+                        tour: t,
+                        onTap: () => context.push('/saved/detail', extra: t),
+                      ),
+                  ],
               ],
             ),
           ),
@@ -193,13 +211,17 @@ class _CategoryTile extends StatelessWidget {
 }
 
 class _SavedCard extends StatelessWidget {
-  const _SavedCard({required this.tour});
+  const _SavedCard({required this.tour, required this.onTap});
   final SavedTour tour;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -266,13 +288,14 @@ class _SavedCard extends StatelessWidget {
                   ),
                 ),
                 IconButton.filledTonal(
-                  onPressed: () {},
+                  onPressed: onTap,
                   icon: const Icon(Icons.play_arrow_rounded),
                 ),
               ],
             ),
           ),
         ],
+      ),
       ),
     );
   }
