@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
 import '../models/location.dart';
+import '../models/tour_flow.dart';
 import '../services/gemini/gemini_service.dart';
 import '../services/maps/geocoding_service.dart';
 import '../services/maps/places_service.dart';
 import '../services/media/wikimedia_service.dart';
 // ignore: unused_import
 import '../services/validation/auditor_service.dart'; // kept for re-enabling auditing later
+import '../shared/widgets/app_header.dart';
 
 class GenerationScreen extends StatefulWidget {
   final String prompt;
@@ -20,6 +24,7 @@ class _GenerationScreenState extends State<GenerationScreen> {
   List<TourLocation>? _locations;
   String? _error;
   String _statusMessage = 'Gemini is crafting your tour...';
+  bool _navigated = false;
 
   @override
   void initState() {
@@ -27,6 +32,7 @@ class _GenerationScreenState extends State<GenerationScreen> {
     _generateTour();
   }
 
+  // ── Working pipeline — unchanged. Do not edit without care. ───────────────
   Future<void> _generateTour() async {
     try {
       if (mounted) {
@@ -95,89 +101,167 @@ class _GenerationScreenState extends State<GenerationScreen> {
       }
     }
   }
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Maps the pipeline's status message to a step index (0..3) for the checklist.
+  int get _step {
+    if (_locations != null) return 4;
+    if (_statusMessage.contains('Enriching')) return 2;
+    if (_statusMessage.contains('Extracting')) return 1;
+    return 0;
+  }
+
+  String _titleFromPrompt() {
+    final p = widget.prompt.trim();
+    if (p.isEmpty) return 'Custom Tour';
+    final first = p[0].toUpperCase() + p.substring(1);
+    return first.length > 40 ? '${first.substring(0, 40)}…' : first;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // On success, hand off to the preview screen (once).
+    if (_locations != null && !_navigated) {
+      _navigated = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.pushReplacement(
+          '/preview',
+          extra: TourFlowArgs(
+            title: _titleFromPrompt(),
+            prompt: widget.prompt,
+            locations: _locations!,
+          ),
+        );
+      });
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Generating Tour')),
-      body: Center(child: _buildContent()),
+      body: Column(
+        children: [
+          const SafeArea(bottom: false, child: AppHeader()),
+          Expanded(
+            child: _error != null
+                ? _ErrorView(
+                    error: _error!,
+                    onRetry: () {
+                      setState(() => _error = null);
+                      _generateTour();
+                    },
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                    children: [
+                      Text('Generating your immersive tour',
+                          style: theme.textTheme.headlineSmall),
+                      const SizedBox(height: 4),
+                      Text(
+                        _statusMessage,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text('"${widget.prompt}"',
+                            style: theme.textTheme.bodyMedium),
+                      ),
+                      const SizedBox(height: 24),
+                      LinearProgressIndicator(
+                        value: (_step / 4).clamp(0.05, 1.0),
+                        minHeight: 6,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      const SizedBox(height: 20),
+                      _Step(label: 'Selecting meaningful landmarks', done: _step > 1, active: _step == 1),
+                      _Step(label: 'Fetching geographic coordinates', done: _step > 2, active: _step == 2),
+                      _Step(label: 'Constructing immersive tour', done: _step > 2, active: _step == 2),
+                      _Step(label: 'Preparing map preview', done: _step >= 4, active: false),
+                    ],
+                  ),
+          ),
+        ],
+      ),
     );
   }
+}
 
-  Widget _buildContent() {
-    if (_error != null) {
-      return Padding(
-        padding: const EdgeInsets.all(24.0),
+class _Step extends StatelessWidget {
+  const _Step({required this.label, required this.done, required this.active});
+  final String label;
+  final bool done;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final Widget leading;
+    if (done) {
+      leading = Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 22);
+    } else if (active) {
+      leading = const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    } else {
+      leading = Icon(Icons.radio_button_unchecked,
+          color: theme.colorScheme.outline, size: 22);
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          SizedBox(width: 22, child: Center(child: leading)),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: (done || active)
+                  ? theme.colorScheme.onSurface
+                  : theme.colorScheme.onSurfaceVariant,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  const _ErrorView({required this.error, required this.onRetry});
+  final String error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 64),
+            Icon(Icons.error_outline, color: theme.colorScheme.error, size: 64),
             const SizedBox(height: 16),
             Text(
-              'Error generating tour:\n$_error',
+              'Error generating tour:\n$error',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red),
+              style: TextStyle(color: theme.colorScheme.error),
             ),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _error = null;
-                });
-                _generateTour();
-              },
-              child: const Text('Retry'),
-            ),
+            FilledButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         ),
-      );
-    }
-
-    if (_locations != null) {
-      return ListView.builder(
-        itemCount: _locations!.length,
-        itemBuilder: (context, index) {
-          final loc = _locations![index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ListTile(
-              leading: loc.imageUrl != null
-                  ? Image.network(
-                      loc.imageUrl!,
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.image_not_supported),
-                    )
-                  : const CircleAvatar(child: Icon(Icons.place)),
-              title: Text(loc.name),
-              subtitle: Text(
-                '${loc.type} • ${loc.suggestedDurationSeconds}s\n'
-                '${loc.address ?? 'No address'}\n'
-                'Coords: ${loc.latitude?.toStringAsFixed(4)}, ${loc.longitude?.toStringAsFixed(4)}\n\n'
-                '${loc.whySignificant}',
-              ),
-              isThreeLine: true,
-            ),
-          );
-        },
-      );
-    }
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const CircularProgressIndicator(),
-        const SizedBox(height: 20),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0),
-          child: Text(
-            '$_statusMessage\n\nPrompt: "${widget.prompt}"',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

@@ -4,6 +4,17 @@ class AppConstants {
   //External API base URLs
   static const String geminiBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/';
+
+  // Gemini model fallback chain. Cheapest/lightest first — extracting ~5
+  // locations does not need a top-tier model. If one model is unavailable
+  // (404/quota), the service falls through to the next. Stable (non-preview)
+  // models only, so the app does not break when a preview is retired.
+  static const List<String> geminiModels = [
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+  ];
   static const String geocodingBaseUrl =
       'https://maps.googleapis.com/maps/api/geocode';
   static const String placesBaseUrl =
@@ -20,6 +31,12 @@ class AppConstants {
   static const String masterKmlFilename = 'tour.kml';
   static const String balloonKmlFilename = 'balloon.kml';
   static const String logoKmlFilename = 'logo.kml';
+
+  // Logo overlay shown on the left-most screen (top-right corner)
+  static const String logoAssetPath = 'assets/logos/logo.png';
+  // Overlay width as a fraction of the screen; height auto-scales to keep the
+  // image's native aspect ratio (KML size y=0 preserves aspect ratio)
+  static const double logoOverlayWidthFraction = 0.3;
 
   // Tour generation tuning
   // Base narration speech rate in words/second used to estimate scene timing

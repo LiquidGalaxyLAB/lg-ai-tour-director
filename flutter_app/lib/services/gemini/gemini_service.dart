@@ -21,6 +21,10 @@ class GeminiService {
 
   String? get _apiKey => dotenv.env['GEMINI_KEY'];
 
+  /// First model from [AppConstants.geminiModels] that responded successfully.
+  /// Cached so we don't re-probe the whole chain on every call.
+  String? _workingModel;
+
   Future<List<TourLocation>> extractLocations(String userPrompt) async {
     if (_apiKey == null || _apiKey!.isEmpty) {
       throw Exception('GEMINI_KEY not found in .env');
@@ -117,44 +121,80 @@ class GeminiService {
   }
 
   Future<String> _callApi(String promptText) async {
-    try {
-      final response = await _dio.post(
-        'models/gemini-pro:generateContent?key=$_apiKey',
-        data: {
-          "systemInstruction": {
+    // Try the cached working model first, then the rest of the chain.
+    final models = <String>[
+      ?_workingModel,
+      ...AppConstants.geminiModels.where((m) => m != _workingModel),
+    ];
+
+    Object? lastError;
+    for (final model in models) {
+      try {
+        final text = await _callModel(model, promptText);
+        if (_workingModel != model) {
+          debugPrint('GeminiService: Using model "$model"');
+          _workingModel = model;
+        }
+        return text;
+      } on DioException catch (e) {
+        final status = e.response?.statusCode ?? 0;
+        debugPrint(
+          'GeminiService: model "$model" failed ($status). '
+          '${e.response?.data ?? e.message}',
+        );
+        lastError = e;
+        // Only fall through to the next model when this one is unavailable
+        // (not found / quota / capacity). Auth or bad-request errors will
+        // fail identically on every model, so stop and surface them.
+        if (status == 404 || status == 429 || status >= 500) {
+          // If we had cached this model, clear it so we re-probe next time.
+          if (_workingModel == model) {
+            _workingModel = null;
+          }
+          continue;
+        }
+        rethrow;
+      }
+    }
+    throw Exception(
+      'All Gemini models failed. Last error: $lastError',
+    );
+  }
+
+  /// Single generateContent call against one model. Returns the raw text part.
+  Future<String> _callModel(String model, String promptText) async {
+    final response = await _dio.post(
+      'models/$model:generateContent?key=$_apiKey',
+      data: {
+        "systemInstruction": {
+          "parts": [
+            {"text": GeminiPrompts.systemInstruction},
+          ],
+        },
+        "contents": [
+          {
             "parts": [
-              {"text": GeminiPrompts.systemInstruction},
+              {"text": promptText},
             ],
           },
-          "contents": [
-            {
-              "parts": [
-                {"text": promptText},
-              ],
-            },
-          ],
-          "generationConfig": {
-            "temperature": 0.4,
-            "response_mime_type": "application/json",
-          },
+        ],
+        "generationConfig": {
+          "temperature": 0.4,
+          "response_mime_type": "application/json",
         },
-      );
+      },
+    );
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        final candidates = data['candidates'] as List?;
-        if (candidates != null && candidates.isNotEmpty) {
-          final text =
-              candidates.first['content']['parts'][0]['text'] as String;
-          debugPrint('GeminiService: Raw Response:\n$text');
-          return text;
-        }
+    if (response.statusCode == 200) {
+      final data = response.data;
+      final candidates = data['candidates'] as List?;
+      if (candidates != null && candidates.isNotEmpty) {
+        final text = candidates.first['content']['parts'][0]['text'] as String;
+        debugPrint('GeminiService: Raw Response:\n$text');
+        return text;
       }
-      throw Exception('Invalid API Response: ${response.statusCode}');
-    } on DioException catch (e) {
-      debugPrint('Gemini API Error Data: ${e.response?.data}');
-      rethrow;
     }
+    throw Exception('Invalid API Response: ${response.statusCode}');
   }
 
   List<TourLocation> _parseLocations(String rawJson) {

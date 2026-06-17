@@ -26,4 +26,7 @@ dist/
 .coverage
 .coverage.*
 
+# folders for reference locally
 /lg-flutter-task2-gsoc2026
+/UIs
+/flutter_app/context

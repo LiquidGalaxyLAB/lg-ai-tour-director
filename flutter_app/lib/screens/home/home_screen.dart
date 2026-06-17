@@ -1,348 +1,288 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../providers/ssh_provider.dart';
+import '../../core/theme/app_colors.dart';
+import '../../shared/widgets/app_header.dart';
 
-class HomeScreen extends ConsumerWidget {
+/// Home tab (mockups 1/2): prompt entry + mic, a "Try" suggestion, the
+/// Quick Launch grid, and the Generate Tour CTA. The connection dot and gear
+/// live in [AppHeader].
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final sshState = ref.watch(sshConnectionProvider);
-    final isConnected = sshState.isConnected;
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
-    Future<void> runUbuntuTest() async {
-      final result = await ref
-          .read(sshConnectionProvider.notifier)
-          .runCommand('echo "LG connected"');
+class _HomeScreenState extends State<HomeScreen> {
+  final _promptController = TextEditingController();
 
-      if (!context.mounted) return;
+  static const _suggestion = 'Lost empires of Rajasthan';
 
-      if (result != null) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Ubuntu Test Result'),
-            content: Text('Response: $result'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
-              ),
-            ],
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Test failed. Are you connected?'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+  static const _quickLaunch = <_QuickLaunch>[
+    _QuickLaunch(
+      'Historic Forts',
+      Icons.castle_rounded,
+      AppColors.googleRed,
+      'Historic Forts in India',
+    ),
+    _QuickLaunch(
+      'World Wonders',
+      Icons.public_rounded,
+      AppColors.googleBlueBright,
+      'The Seven Wonders of the World',
+    ),
+    _QuickLaunch(
+      'Hidden Cities',
+      Icons.visibility_off_rounded,
+      AppColors.googleGreen,
+      'Hidden ancient cities of the world',
+    ),
+    _QuickLaunch(
+      'Random Discovery',
+      Icons.shuffle_rounded,
+      AppColors.tileSetRefresh,
+      'Surprise me with a fascinating destination',
+    ),
+  ];
 
-    Future<void> sendTestKml() async {
-      await ref.read(sshConnectionProvider.notifier).sendTestKml();
-      if (!context.mounted) return;
+  @override
+  void dispose() {
+    _promptController.dispose();
+    super.dispose();
+  }
+
+  void _generate([String? preset]) {
+    final prompt = (preset ?? _promptController.text).trim();
+    if (prompt.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Test KML sent to /var/www/html/test.kml'),
-        ),
+        const SnackBar(content: Text('Describe a place or theme to begin.')),
       );
+      return;
     }
+    context.push('/generation', extra: prompt);
+  }
 
-    Future<void> runFlyToTest() async {
-      await ref.read(sshConnectionProvider.notifier).flyToPune();
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('FlyTo Pune command sent')));
-    }
-
-    Future<void> cleanupLg() async {
-      await ref.read(sshConnectionProvider.notifier).cleanup();
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Liquid Galaxy files cleaned up')),
-      );
-    }
-
-    Future<bool> confirm(String action) async {
-      return await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text('Confirm $action'),
-              content: Text('Are you sure you want to $action Liquid Galaxy?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text(
-                    action,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                ),
-              ],
-            ),
-          ) ??
-          false;
-    }
-
-    Future<void> relaunchLg() async {
-      if (!await confirm('Relaunch')) return;
-      await ref.read(sshConnectionProvider.notifier).relaunchLg();
-    }
-
-    Future<void> rebootLg() async {
-      if (!await confirm('Reboot')) return;
-      await ref.read(sshConnectionProvider.notifier).rebootLg();
-    }
-
-    Future<void> shutdownLg() async {
-      if (!await confirm('Shutdown')) return;
-      await ref.read(sshConnectionProvider.notifier).shutdownLg();
-    }
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('AI Tour Director'),
-        actions: [_ConnectionDot(isConnected: isConnected)],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
-              child: Text(
-                'AI Tour Director',
-                style: TextStyle(color: Colors.white, fontSize: 24),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.library_books),
-              title: const Text('Tour Library'),
-              onTap: () {
-                context.pop();
-                context.push('/library');
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.settings_ethernet),
-              title: const Text('LG Connection Settings'),
-              onTap: () {
-                context.pop();
-                context.push('/settings/lg');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: const Text('App Language'),
-              onTap: () {
-                context.pop();
-                context.push('/settings/language');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.color_lens),
-              title: const Text('App Theme'),
-              onTap: () {
-                context.pop();
-                context.push('/settings/theme');
-              },
-            ),
-          ],
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Where to next?',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'e.g. Historical places in Pune...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.mic),
-                  onPressed: () {
-                    // Placeholder for mic action
+      body: Column(
+        children: [
+          const SafeArea(bottom: false, child: AppHeader()),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              children: [
+                Text('Where to next?', style: theme.textTheme.headlineMedium),
+                const SizedBox(height: 4),
+                Text(
+                  'Describe your dream journey',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _PromptCard(
+                  controller: _promptController,
+                  suggestion: _suggestion,
+                  onSuggestionTap: () {
+                    _promptController.text = _suggestion;
+                  },
+                  onMic: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Mic placeholder tapped')),
+                      const SnackBar(content: Text('Voice input coming soon')),
                     );
                   },
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                filled: true,
-                fillColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest,
-              ),
-              onSubmitted: (value) {
-                if (value.trim().isNotEmpty) {
-                  context.push('/generation', extra: value.trim());
-                }
-              },
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Quick Launch',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ActionChip(
-                  label: const Text('Historic Forts'),
-                  onPressed: () => context.push(
-                    '/generation',
-                    extra: 'Historic Forts in India',
+                const SizedBox(height: 28),
+                Text(
+                  'QUICK LAUNCH',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    letterSpacing: 1,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  avatar: const Icon(Icons.castle, size: 16),
                 ),
-                ActionChip(
-                  label: const Text('World Wonders'),
-                  onPressed: () =>
-                      context.push('/generation', extra: 'World Wonders'),
-                  avatar: const Icon(Icons.public, size: 16),
+                const SizedBox(height: 12),
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 1.5,
+                  children: [
+                    for (final q in _quickLaunch)
+                      _QuickLaunchCard(
+                        item: q,
+                        onTap: () => _generate(q.prompt),
+                      ),
+                  ],
                 ),
-                ActionChip(
-                  label: const Text('Hidden Cities'),
-                  onPressed: () => context.push(
-                    '/generation',
-                    extra: 'Hidden Cities around the globe',
-                  ),
-                  avatar: const Icon(Icons.location_city, size: 16),
-                ),
-                ActionChip(
-                  label: const Text('Random Discovery'),
-                  onPressed: () => context.push(
-                    '/generation',
-                    extra: 'Random amazing places on Earth',
-                  ),
-                  avatar: const Icon(Icons.explore, size: 16),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: () => _generate(),
+                  icon: const Icon(Icons.rocket_launch_rounded, size: 20),
+                  label: const Text('Generate Tour'),
                 ),
               ],
             ),
-            const SizedBox(height: 40),
-            const Divider(),
-            const SizedBox(height: 16),
-            const Text(
-              'Developer Tests',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: isConnected ? runUbuntuTest : null,
-              icon: const Icon(Icons.terminal),
-              label: const Text('Run Ubuntu Test (echo)'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: isConnected ? sendTestKml : null,
-              icon: const Icon(Icons.map),
-              label: const Text('Send Test KML (Pune)'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: isConnected ? runFlyToTest : null,
-              icon: const Icon(Icons.flight_takeoff),
-              label: const Text('Run FlyTo Pune'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: isConnected ? cleanupLg : null,
-              icon: const Icon(Icons.delete_sweep),
-              label: const Text('Cleanup LG (Wipe KMLs)'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Divider(),
-            const SizedBox(height: 16),
-            const Text(
-              'System Controls',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: isConnected ? relaunchLg : null,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Relaunch'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: isConnected ? rebootLg : null,
-                    icon: const Icon(Icons.restart_alt),
-                    label: const Text('Reboot'),
-                    style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed: isConnected ? shutdownLg : null,
-              icon: const Icon(Icons.power_settings_new),
-              label: const Text('Shutdown Rig'),
-              style: FilledButton.styleFrom(backgroundColor: Colors.black87),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _ConnectionDot extends StatelessWidget {
-  const _ConnectionDot({required this.isConnected});
+class _PromptCard extends StatelessWidget {
+  const _PromptCard({
+    required this.controller,
+    required this.suggestion,
+    required this.onSuggestionTap,
+    required this.onMic,
+  });
 
-  final bool isConnected;
+  final TextEditingController controller;
+  final String suggestion;
+  final VoidCallback onSuggestionTap;
+  final VoidCallback onMic;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Center(
-        child: Container(
-          width: 12,
-          height: 12,
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  minLines: 3,
+                  maxLines: 5,
+                  textInputAction: TextInputAction.newline,
+                  decoration: const InputDecoration(
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    hintText: 'Start your adventure with a prompt...',
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.mic_none_rounded),
+                color: theme.colorScheme.primary,
+                onPressed: onMic,
+              ),
+            ],
+          ),
+          const Divider(height: 1),
+          InkWell(
+            onTap: onSuggestionTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.place_outlined,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Try: $suggestion',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickLaunch {
+  const _QuickLaunch(this.label, this.icon, this.color, this.prompt);
+  final String label;
+  final IconData icon;
+  final Color color;
+  final String prompt;
+}
+
+class _QuickLaunchCard extends StatelessWidget {
+  const _QuickLaunchCard({required this.item, required this.onTap});
+
+  final _QuickLaunch item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Ink(
           decoration: BoxDecoration(
-            color: isConnected ? Colors.green : Colors.red,
-            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [item.color, item.color.withValues(alpha: 0.72)],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -6,
+                top: -6,
+                child: Icon(
+                  item.icon,
+                  size: 64,
+                  color: Colors.white.withValues(alpha: 0.18),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.22),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(item.icon, color: Colors.white, size: 18),
+                    ),
+                    Text(
+                      item.label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

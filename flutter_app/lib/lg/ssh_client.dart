@@ -9,6 +9,48 @@ class SSHConnection {
   SSHClient? client;
   int screenAmount = 3;
   String? host;
+  int port = 22;
+  String? _user;
+  String? _pass;
+
+  // Remembers the live credentials so [_reconnect] can rebuild the client.
+  void rememberCredentials({
+    required String host,
+    required int port,
+    required String username,
+    required String password,
+  }) {
+    this.host = host;
+    this.port = port;
+    _user = username;
+    _pass = password;
+  }
+
+  Future<bool> _reconnect() async {
+    if (host == null || _user == null) return false;
+    try {
+      client?.close();
+    } catch (_) {}
+    try {
+      debugPrint('SSH: Reconnecting to $host:$port ...');
+      final socket = await SSHSocket.connect(
+        host!,
+        port,
+      ).timeout(const Duration(seconds: 8));
+      final fresh = SSHClient(
+        socket,
+        username: _user!,
+        onPasswordRequest: () => _pass ?? '',
+      );
+      await fresh.authenticated;
+      client = fresh;
+      debugPrint('SSH: Reconnected successfully');
+      return true;
+    } catch (e) {
+      debugPrint('SSH: Reconnect failed: $e');
+      return false;
+    }
+  }
 
   int get leftScreen {
     return screenAmount ~/ 2 + 2;
@@ -39,19 +81,19 @@ class SSHConnection {
   }
 
   Future<bool> isConnected() async {
-    if (client == null || client!.isClosed) return false;
-    try {
-      final result = await sendCommand('echo "check connection"');
-      return result != null;
-    } catch (e) {
-      return false;
-    }
+    if (client == null) return false;
+    // A closed transport is recoverable — try to silently reconnect so callers
+    // that guard on isConnected() (setLogos, cleanup, flyTo...) self-heal.
+    if (client!.isClosed) return await _reconnect();
+    return true;
   }
 
   Future<void> disconnect() async {
-    if (await isConnected()) {
-      client!.close();
-    }
+    try {
+      client?.close();
+    } catch (_) {}
+    // Null the client so we don't auto-reconnect after an explicit disconnect
+    client = null;
   }
 
   Future<bool> connect() async {
@@ -92,11 +134,16 @@ class SSHConnection {
   }
 
   Future<String?> sendCommand(String command) async {
+    if (client == null) {
+      debugPrint('SSH: Attempted sendCommand "$command" but client is null.');
+      return null;
+    }
+    // Proactively heal a transport that died between commands
+    if (client!.isClosed && !await _reconnect()) {
+      debugPrint('SSH: client closed and reconnect failed for "$command"');
+      return null;
+    }
     try {
-      if (client == null) {
-        debugPrint('SSH: Attempted sendCommand "$command" but client is null.');
-        return null;
-      }
       debugPrint('SSH: Executing command >>> $command');
       final result = await client!.run(command);
       final decoded = utf8.decode(result);
@@ -104,19 +151,32 @@ class SSHConnection {
       return decoded;
     } on SSHChannelOpenError {
       debugPrint('SSH: Channel open error. Attempting to reconnect...');
-      await handleSSHChannelOpenError();
-      if (client == null) return null;
-      final result = await client!.run(command);
-      return utf8.decode(result);
+      if (!await _reconnect()) return null;
+      return _runOnce(command);
+    } on SSHStateError catch (e) {
+      // "Transport is closed" mid-flight : reconnect once and retry
+      debugPrint('SSH: $e. Attempting to reconnect...');
+      if (!await _reconnect()) return null;
+      return _runOnce(command);
     } catch (e) {
       debugPrint('SSH: Command execution failed: $e');
       return null;
     }
   }
 
+  // Single best-effort run used after a reconnect: never throws
+  Future<String?> _runOnce(String command) async {
+    try {
+      final result = await client!.run(command);
+      return utf8.decode(result);
+    } catch (e) {
+      debugPrint('SSH: Retry after reconnect failed: $e');
+      return null;
+    }
+  }
+
   Future<void> handleSSHChannelOpenError() async {
-    await disconnect();
-    await connect();
+    await _reconnect();
   }
 
   Future<void> flyTo(
@@ -235,4 +295,100 @@ class SSHConnection {
       "echo '$kml' > /var/www/html/kml/slave_$screenNumber.kml",
     );
   }
+
+  /// Uploads [logoPath] to the master web server and shows it as a
+  /// ScreenOverlay on the left-most screen, anchored to the top-right corner.
+  ///
+  /// The overlay width is [widthFraction] of the screen; the height is left to
+  /// auto-scale (`<size y="0">`) so the image keeps its native aspect ratio —
+  /// the picture is never stretched/squished, only uniformly resized.
+  Future<void> setLogos({
+    String logoPath = 'assets/logos/logo.png',
+    double widthFraction = 0.3,
+  }) async {
+    if (!await isConnected()) return;
+
+    try {
+      // 1. Push the image onto the master's web root (/var/www/html/<file>).
+      await upload(logoPath);
+
+      final fileName = logoPath.split('/').last;
+      final masterIp = host ?? 'lg1';
+
+      // 2. ScreenOverlay: image top-left corner pinned near the screen's
+      //    top-left; sized by width only so the aspect ratio is preserved.
+      final kml =
+          '''<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Tour Director Logo</name>
+    <ScreenOverlay>
+      <name>LogoOverlay</name>
+      <Icon><href>http://$masterIp:81/$fileName</href></Icon>
+      <overlayXY x="0" y="1" xunits="fraction" yunits="fraction"/>
+      <screenXY x="0.02" y="0.98" xunits="fraction" yunits="fraction"/>
+      <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
+      <size x="$widthFraction" y="0" xunits="fraction" yunits="fraction"/>
+    </ScreenOverlay>
+  </Document>
+</kml>''';
+
+      // 3. Render it on the left-most screen.
+      await sendKMLToSlave(leftScreen, kml);
+    } catch (e) {
+      debugPrint('Error during setLogos: $e');
+    }
+  }
+
+  // Removes the logo overlay by blanking the left-most screen's slave file
+  Future<void> clearLogos() async {
+    if (!await isConnected()) return;
+
+    try {
+      await sendKMLToSlave(
+        leftScreen,
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<kml xmlns="http://www.opengis.net/kml/2.2"><Document></Document></kml>',
+      );
+    } catch (e) {
+      debugPrint('Error during clearLogos: $e');
+    }
+  }
+
+  static const List<String> _slaveLoaderFiles = [
+    '~/earth/kml/slave/myplaces.kml',
+    '~/.googleearth/myplaces.kml',
+  ];
+
+  Future<void> setRefresh({int seconds = 2}) async {
+    if (!await isConnected()) return;
+    final pass = _pass ?? '';
+    final files = _slaveLoaderFiles.join(' ');
+
+    for (var i = 2; i <= screenAmount; i++) {
+      final strip = _stripExpr(i);
+      final inject =
+          "/slave_$i.kml/ s#</href>#</href>"
+          "<refreshMode>onInterval</refreshMode>"
+          "<refreshInterval>$seconds</refreshInterval>#";
+      final remote =
+          "echo $pass | sudo -S sed -i -e '$strip' -e '$inject' $files";
+      await sendCommand('sshpass -p $pass ssh -t lg$i "$remote"');
+    }
+  }
+
+  Future<void> resetRefresh() async {
+    if (!await isConnected()) return;
+    final pass = _pass ?? '';
+    final files = _slaveLoaderFiles.join(' ');
+
+    for (var i = 2; i <= screenAmount; i++) {
+      final remote = "echo $pass | sudo -S sed -i -e '${_stripExpr(i)}' $files";
+      await sendCommand('sshpass -p $pass ssh -t lg$i "$remote"');
+    }
+  }
+
+  String _stripExpr(int i) =>
+      "/slave_$i.kml/ s#<refreshMode>onInterval</refreshMode>"
+      "<refreshInterval>[0-9]*</refreshInterval>##";
 }
