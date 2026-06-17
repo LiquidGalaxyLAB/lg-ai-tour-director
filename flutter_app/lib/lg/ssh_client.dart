@@ -340,7 +340,7 @@ class SSHConnection {
     }
   }
 
-  /// Removes the logo overlay by blanking the left-most screen's slave file.
+  // Removes the logo overlay by blanking the left-most screen's slave file
   Future<void> clearLogos() async {
     if (!await isConnected()) return;
 
@@ -355,48 +355,40 @@ class SSHConnection {
     }
   }
 
-  /// Makes every slave screen auto-reload its `slave_N.kml` every [seconds]
-  /// by injecting an `onInterval` refresh into the NetworkLink that GE loads
-  /// at startup (`~/earth/kml/slave_N.kml`). Without this, overlays/KML only
-  /// appear after a full Google Earth relaunch — with it, add/clear is live.
-  ///
-  /// This is a one-time rig setup; the edit only takes effect after the slaves
-  /// relaunch (handled by the caller). Uses the standard LG file layout and
-  /// the `##LG_PHPIFACE##` href placeholder shipped on official LG installs.
+  static const List<String> _slaveLoaderFiles = [
+    '~/earth/kml/slave/myplaces.kml',
+    '~/.googleearth/myplaces.kml',
+  ];
+
   Future<void> setRefresh({int seconds = 2}) async {
     if (!await isConnected()) return;
     final pass = _pass ?? '';
+    final files = _slaveLoaderFiles.join(' ');
 
     for (var i = 2; i <= screenAmount; i++) {
-      final search = '<href>##LG_PHPIFACE##kml\\/slave_$i.kml<\\/href>';
-      final replace =
-          '<href>##LG_PHPIFACE##kml\\/slave_$i.kml<\\/href>'
-          '<refreshMode>onInterval<\\/refreshMode>'
-          '<refreshInterval>$seconds<\\/refreshInterval>';
-      // Undo any previous injection first so we never stack intervals, then add.
-      final clear =
-          'sshpass -p $pass ssh -t lg$i \'echo $pass | sudo -S sed -i "s/$replace/$search/" ~/earth/kml/slave_$i.kml\'';
-      final cmd =
-          'sshpass -p $pass ssh -t lg$i \'echo $pass | sudo -S sed -i "s/$search/$replace/" ~/earth/kml/slave_$i.kml\'';
-      await sendCommand(clear);
-      await sendCommand(cmd);
+      final strip = _stripExpr(i);
+      final inject =
+          "/slave_$i.kml/ s#</href>#</href>"
+          "<refreshMode>onInterval</refreshMode>"
+          "<refreshInterval>$seconds</refreshInterval>#";
+      final remote =
+          "echo $pass | sudo -S sed -i -e '$strip' -e '$inject' $files";
+      await sendCommand('sshpass -p $pass ssh -t lg$i "$remote"');
     }
   }
 
-  /// Reverts [setRefresh] — strips the `onInterval` refresh from every slave.
   Future<void> resetRefresh() async {
     if (!await isConnected()) return;
     final pass = _pass ?? '';
+    final files = _slaveLoaderFiles.join(' ');
 
     for (var i = 2; i <= screenAmount; i++) {
-      final search = '<href>##LG_PHPIFACE##kml\\/slave_$i.kml<\\/href>';
-      final replace =
-          '<href>##LG_PHPIFACE##kml\\/slave_$i.kml<\\/href>'
-          '<refreshMode>onInterval<\\/refreshMode>'
-          '<refreshInterval>[0-9]*<\\/refreshInterval>';
-      final cmd =
-          'sshpass -p $pass ssh -t lg$i \'echo $pass | sudo -S sed -i "s/$replace/$search/" ~/earth/kml/slave_$i.kml\'';
-      await sendCommand(cmd);
+      final remote = "echo $pass | sudo -S sed -i -e '${_stripExpr(i)}' $files";
+      await sendCommand('sshpass -p $pass ssh -t lg$i "$remote"');
     }
   }
+
+  String _stripExpr(int i) =>
+      "/slave_$i.kml/ s#<refreshMode>onInterval</refreshMode>"
+      "<refreshInterval>[0-9]*</refreshInterval>##";
 }
