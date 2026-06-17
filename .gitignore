@@ -30,3 +30,7 @@ dist/
 /lg-flutter-task2-gsoc2026
 /UIs
 /flutter_app/context
+
+# local AI assistant context (not for the repo)
+CLAUDE.md
+**/CLAUDE.md
