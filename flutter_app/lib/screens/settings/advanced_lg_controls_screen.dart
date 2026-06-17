@@ -175,20 +175,28 @@ class _ControlTile extends StatelessWidget {
       child: InkWell(
         onTap: tile.onTap,
         borderRadius: BorderRadius.circular(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(tile.icon, color: Colors.white, size: 30),
-            const SizedBox(height: 10),
-            Text(
-              tile.label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 15,
-              ),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(tile.icon, color: Colors.white, size: 30),
+                const SizedBox(height: 10),
+                Text(
+                  tile.label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
