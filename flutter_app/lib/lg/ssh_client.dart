@@ -235,4 +235,63 @@ class SSHConnection {
       "echo '$kml' > /var/www/html/kml/slave_$screenNumber.kml",
     );
   }
+
+  /// Uploads [logoPath] to the master web server and shows it as a
+  /// ScreenOverlay on the left-most screen, anchored to the top-right corner.
+  ///
+  /// The overlay width is [widthFraction] of the screen; the height is left to
+  /// auto-scale (`<size y="0">`) so the image keeps its native aspect ratio —
+  /// the picture is never stretched/squished, only uniformly resized.
+  Future<void> setLogos({
+    String logoPath = 'assets/logos/logo.png',
+    double widthFraction = 0.3,
+  }) async {
+    if (!await isConnected()) return;
+
+    try {
+      // 1. Push the image onto the master's web root (/var/www/html/<file>).
+      await upload(logoPath);
+
+      final fileName = logoPath.split('/').last;
+      final masterIp = host ?? 'lg1';
+
+      // 2. ScreenOverlay: image top-right corner pinned near the screen's
+      //    top-right; sized by width only so the aspect ratio is preserved.
+      final kml =
+          '''<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Tour Director Logo</name>
+    <ScreenOverlay>
+      <name>LogoOverlay</name>
+      <Icon><href>http://$masterIp:81/$fileName</href></Icon>
+      <overlayXY x="1" y="1" xunits="fraction" yunits="fraction"/>
+      <screenXY x="0.98" y="0.98" xunits="fraction" yunits="fraction"/>
+      <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
+      <size x="$widthFraction" y="0" xunits="fraction" yunits="fraction"/>
+    </ScreenOverlay>
+  </Document>
+</kml>''';
+
+      // 3. Render it on the left-most screen.
+      await sendKMLToSlave(leftScreen, kml);
+    } catch (e) {
+      debugPrint('Error during setLogos: $e');
+    }
+  }
+
+  /// Removes the logo overlay by blanking the left-most screen's slave file.
+  Future<void> clearLogos() async {
+    if (!await isConnected()) return;
+
+    try {
+      await sendKMLToSlave(
+        leftScreen,
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<kml xmlns="http://www.opengis.net/kml/2.2"><Document></Document></kml>',
+      );
+    } catch (e) {
+      debugPrint('Error during clearLogos: $e');
+    }
+  }
 }

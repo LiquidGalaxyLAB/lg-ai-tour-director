@@ -71,6 +71,19 @@ class LGService {
     await _ssh.cleanup();
   }
 
+  Future<void> setLogos({
+    String logoPath = 'assets/logos/logo.png',
+    double widthFraction = 0.3,
+  }) async {
+    debugPrint('LGService: Showing logo overlay on the left-most screen');
+    await _ssh.setLogos(logoPath: logoPath, widthFraction: widthFraction);
+  }
+
+  Future<void> clearLogos() async {
+    debugPrint('LGService: Clearing logo overlay');
+    await _ssh.clearLogos();
+  }
+
   Future<void> relaunchLg(RigConfig config) async {
     debugPrint('LGService: Relaunching Google Earth on all screens');
     for (var i = 1; i <= config.totalScreens; i++) {

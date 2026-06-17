@@ -148,4 +148,15 @@ class SshConnection extends _$SshConnection {
   Future<void> cleanup() async {
     await LGService.instance.cleanup();
   }
+
+  Future<void> setLogos() async {
+    await LGService.instance.setLogos(
+      logoPath: AppConstants.logoAssetPath,
+      widthFraction: AppConstants.logoOverlayWidthFraction,
+    );
+  }
+
+  Future<void> clearLogos() async {
+    await LGService.instance.clearLogos();
+  }
 }

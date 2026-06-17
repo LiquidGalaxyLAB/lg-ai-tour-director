@@ -79,7 +79,7 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
         'Send Logos',
         Icons.image_outlined,
         AppColors.tileSendLogos,
-        () => toast('Send Logos — coming soon'),
+        () => run('Send Logos', notifier.setLogos),
       ),
       _Tile(
         'Set Refresh',
@@ -91,7 +91,7 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
         'Clear Logo',
         Icons.layers_clear_rounded,
         AppColors.tileClearLogo,
-        () => run('Clear', notifier.cleanup),
+        () => run('Clear Logo', notifier.clearLogos),
       ),
     ];
 
