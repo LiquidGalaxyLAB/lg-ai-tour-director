@@ -85,13 +85,19 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
         'Set Refresh',
         Icons.sync_rounded,
         AppColors.tileSetRefresh,
-        () => toast('Set Refresh — coming soon'),
+        () => run('Set Refresh', notifier.setRefresh, destructive: true),
       ),
       _Tile(
         'Clear Logo',
         Icons.layers_clear_rounded,
         AppColors.tileClearLogo,
         () => run('Clear Logo', notifier.clearLogos),
+      ),
+      _Tile(
+        'Reset Refresh',
+        Icons.sync_disabled_rounded,
+        AppColors.tileResetRefresh,
+        () => run('Reset Refresh', notifier.resetRefresh, destructive: true),
       ),
     ];
 

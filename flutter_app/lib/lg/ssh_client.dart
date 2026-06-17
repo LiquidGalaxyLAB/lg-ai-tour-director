@@ -9,6 +9,48 @@ class SSHConnection {
   SSHClient? client;
   int screenAmount = 3;
   String? host;
+  int port = 22;
+  String? _user;
+  String? _pass;
+
+  // Remembers the live credentials so [_reconnect] can rebuild the client.
+  void rememberCredentials({
+    required String host,
+    required int port,
+    required String username,
+    required String password,
+  }) {
+    this.host = host;
+    this.port = port;
+    _user = username;
+    _pass = password;
+  }
+
+  Future<bool> _reconnect() async {
+    if (host == null || _user == null) return false;
+    try {
+      client?.close();
+    } catch (_) {}
+    try {
+      debugPrint('SSH: Reconnecting to $host:$port ...');
+      final socket = await SSHSocket.connect(
+        host!,
+        port,
+      ).timeout(const Duration(seconds: 8));
+      final fresh = SSHClient(
+        socket,
+        username: _user!,
+        onPasswordRequest: () => _pass ?? '',
+      );
+      await fresh.authenticated;
+      client = fresh;
+      debugPrint('SSH: Reconnected successfully');
+      return true;
+    } catch (e) {
+      debugPrint('SSH: Reconnect failed: $e');
+      return false;
+    }
+  }
 
   int get leftScreen {
     return screenAmount ~/ 2 + 2;
@@ -39,19 +81,19 @@ class SSHConnection {
   }
 
   Future<bool> isConnected() async {
-    if (client == null || client!.isClosed) return false;
-    try {
-      final result = await sendCommand('echo "check connection"');
-      return result != null;
-    } catch (e) {
-      return false;
-    }
+    if (client == null) return false;
+    // A closed transport is recoverable — try to silently reconnect so callers
+    // that guard on isConnected() (setLogos, cleanup, flyTo...) self-heal.
+    if (client!.isClosed) return await _reconnect();
+    return true;
   }
 
   Future<void> disconnect() async {
-    if (await isConnected()) {
-      client!.close();
-    }
+    try {
+      client?.close();
+    } catch (_) {}
+    // Null the client so we don't auto-reconnect after an explicit disconnect
+    client = null;
   }
 
   Future<bool> connect() async {
@@ -92,11 +134,16 @@ class SSHConnection {
   }
 
   Future<String?> sendCommand(String command) async {
+    if (client == null) {
+      debugPrint('SSH: Attempted sendCommand "$command" but client is null.');
+      return null;
+    }
+    // Proactively heal a transport that died between commands
+    if (client!.isClosed && !await _reconnect()) {
+      debugPrint('SSH: client closed and reconnect failed for "$command"');
+      return null;
+    }
     try {
-      if (client == null) {
-        debugPrint('SSH: Attempted sendCommand "$command" but client is null.');
-        return null;
-      }
       debugPrint('SSH: Executing command >>> $command');
       final result = await client!.run(command);
       final decoded = utf8.decode(result);
@@ -104,19 +151,32 @@ class SSHConnection {
       return decoded;
     } on SSHChannelOpenError {
       debugPrint('SSH: Channel open error. Attempting to reconnect...');
-      await handleSSHChannelOpenError();
-      if (client == null) return null;
-      final result = await client!.run(command);
-      return utf8.decode(result);
+      if (!await _reconnect()) return null;
+      return _runOnce(command);
+    } on SSHStateError catch (e) {
+      // "Transport is closed" mid-flight : reconnect once and retry
+      debugPrint('SSH: $e. Attempting to reconnect...');
+      if (!await _reconnect()) return null;
+      return _runOnce(command);
     } catch (e) {
       debugPrint('SSH: Command execution failed: $e');
       return null;
     }
   }
 
+  // Single best-effort run used after a reconnect: never throws
+  Future<String?> _runOnce(String command) async {
+    try {
+      final result = await client!.run(command);
+      return utf8.decode(result);
+    } catch (e) {
+      debugPrint('SSH: Retry after reconnect failed: $e');
+      return null;
+    }
+  }
+
   Future<void> handleSSHChannelOpenError() async {
-    await disconnect();
-    await connect();
+    await _reconnect();
   }
 
   Future<void> flyTo(
@@ -255,8 +315,8 @@ class SSHConnection {
       final fileName = logoPath.split('/').last;
       final masterIp = host ?? 'lg1';
 
-      // 2. ScreenOverlay: image top-right corner pinned near the screen's
-      //    top-right; sized by width only so the aspect ratio is preserved.
+      // 2. ScreenOverlay: image top-left corner pinned near the screen's
+      //    top-left; sized by width only so the aspect ratio is preserved.
       final kml =
           '''<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -265,8 +325,8 @@ class SSHConnection {
     <ScreenOverlay>
       <name>LogoOverlay</name>
       <Icon><href>http://$masterIp:81/$fileName</href></Icon>
-      <overlayXY x="1" y="1" xunits="fraction" yunits="fraction"/>
-      <screenXY x="0.98" y="0.98" xunits="fraction" yunits="fraction"/>
+      <overlayXY x="0" y="1" xunits="fraction" yunits="fraction"/>
+      <screenXY x="0.02" y="0.98" xunits="fraction" yunits="fraction"/>
       <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
       <size x="$widthFraction" y="0" xunits="fraction" yunits="fraction"/>
     </ScreenOverlay>
@@ -292,6 +352,51 @@ class SSHConnection {
       );
     } catch (e) {
       debugPrint('Error during clearLogos: $e');
+    }
+  }
+
+  /// Makes every slave screen auto-reload its `slave_N.kml` every [seconds]
+  /// by injecting an `onInterval` refresh into the NetworkLink that GE loads
+  /// at startup (`~/earth/kml/slave_N.kml`). Without this, overlays/KML only
+  /// appear after a full Google Earth relaunch — with it, add/clear is live.
+  ///
+  /// This is a one-time rig setup; the edit only takes effect after the slaves
+  /// relaunch (handled by the caller). Uses the standard LG file layout and
+  /// the `##LG_PHPIFACE##` href placeholder shipped on official LG installs.
+  Future<void> setRefresh({int seconds = 2}) async {
+    if (!await isConnected()) return;
+    final pass = _pass ?? '';
+
+    for (var i = 2; i <= screenAmount; i++) {
+      final search = '<href>##LG_PHPIFACE##kml\\/slave_$i.kml<\\/href>';
+      final replace =
+          '<href>##LG_PHPIFACE##kml\\/slave_$i.kml<\\/href>'
+          '<refreshMode>onInterval<\\/refreshMode>'
+          '<refreshInterval>$seconds<\\/refreshInterval>';
+      // Undo any previous injection first so we never stack intervals, then add.
+      final clear =
+          'sshpass -p $pass ssh -t lg$i \'echo $pass | sudo -S sed -i "s/$replace/$search/" ~/earth/kml/slave_$i.kml\'';
+      final cmd =
+          'sshpass -p $pass ssh -t lg$i \'echo $pass | sudo -S sed -i "s/$search/$replace/" ~/earth/kml/slave_$i.kml\'';
+      await sendCommand(clear);
+      await sendCommand(cmd);
+    }
+  }
+
+  /// Reverts [setRefresh] — strips the `onInterval` refresh from every slave.
+  Future<void> resetRefresh() async {
+    if (!await isConnected()) return;
+    final pass = _pass ?? '';
+
+    for (var i = 2; i <= screenAmount; i++) {
+      final search = '<href>##LG_PHPIFACE##kml\\/slave_$i.kml<\\/href>';
+      final replace =
+          '<href>##LG_PHPIFACE##kml\\/slave_$i.kml<\\/href>'
+          '<refreshMode>onInterval<\\/refreshMode>'
+          '<refreshInterval>[0-9]*<\\/refreshInterval>';
+      final cmd =
+          'sshpass -p $pass ssh -t lg$i \'echo $pass | sudo -S sed -i "s/$replace/$search/" ~/earth/kml/slave_$i.kml\'';
+      await sendCommand(cmd);
     }
   }
 }

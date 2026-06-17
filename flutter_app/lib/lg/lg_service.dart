@@ -34,6 +34,13 @@ class LGService {
       debugPrint('LGService: Authenticated successfully');
       _ssh.screenAmount = connection.screenCount;
       _ssh.host = connection.host;
+
+      _ssh.rememberCredentials(
+        host: connection.host,
+        port: connection.port,
+        username: connection.username,
+        password: connection.password,
+      );
       return true;
     } catch (e, st) {
       debugPrint('LGService: Connection failed error: $e');
@@ -82,6 +89,20 @@ class LGService {
   Future<void> clearLogos() async {
     debugPrint('LGService: Clearing logo overlay');
     await _ssh.clearLogos();
+  }
+
+  // One-time rig setup: makes the slave screens auto-reload their KML so logo
+  // overlay changes appear live. Relaunches afterwards to apply the edit
+  Future<void> setRefresh(RigConfig config) async {
+    debugPrint('LGService: Setting slave auto-refresh interval');
+    await _ssh.setRefresh();
+    await relaunchLg(config);
+  }
+
+  Future<void> resetRefresh(RigConfig config) async {
+    debugPrint('LGService: Removing slave auto-refresh interval');
+    await _ssh.resetRefresh();
+    await relaunchLg(config);
   }
 
   Future<void> relaunchLg(RigConfig config) async {

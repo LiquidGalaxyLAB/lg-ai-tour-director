@@ -19,6 +19,7 @@ class AppColors {
   static const Color tileSendLogos = googleYellow;
   static const Color tileSetRefresh = Color(0xFFFB8C00); // orange
   static const Color tileClearLogo = Color(0xFFA142F4); // purple
+  static const Color tileResetRefresh = Color(0xFF00897B); // teal
 
   // Neutrals / surfaces (light)
   static const Color background = Color(0xFFF8F9FB);

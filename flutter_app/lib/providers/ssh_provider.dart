@@ -159,4 +159,12 @@ class SshConnection extends _$SshConnection {
   Future<void> clearLogos() async {
     await LGService.instance.clearLogos();
   }
+
+  Future<void> setRefresh() async {
+    await LGService.instance.setRefresh(state.config);
+  }
+
+  Future<void> resetRefresh() async {
+    await LGService.instance.resetRefresh(state.config);
+  }
 }
