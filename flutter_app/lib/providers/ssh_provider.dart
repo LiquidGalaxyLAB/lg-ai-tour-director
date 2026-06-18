@@ -3,8 +3,10 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/constants/app_constants.dart';
+import '../kml/assembler.dart';
 import '../lg/lg_service.dart';
 import '../models/lg_connection.dart';
+import '../models/location.dart';
 import '../models/rig_config.dart';
 
 part 'ssh_provider.g.dart';
@@ -166,5 +168,40 @@ class SshConnection extends _$SshConnection {
 
   Future<void> resetRefresh() async {
     await LGService.instance.resetRefresh(state.config);
+  }
+
+  /// Builds a cinematic `<gx:Tour>` from the geocoded [locations], deploys it to
+  /// the master, and plays it so Google Earth flies through every stop.
+  ///
+  /// Returns the number of stops actually flown (the geocoded ones). Returns 0
+  /// without doing anything if not connected or no location has coordinates.
+  Future<int> flyGeneratedTour(List<TourLocation> locations) async {
+    if (!state.isConnected) {
+      debugPrint('SSH: flyGeneratedTour skipped — not connected');
+      return 0;
+    }
+
+    final geocoded = locations
+        .where((l) => l.latitude != null && l.longitude != null)
+        .toList();
+    final kml = KmlAssembler.buildTour(locations: geocoded);
+    if (kml == null) {
+      debugPrint('SSH: flyGeneratedTour skipped — no geocoded locations');
+      return 0;
+    }
+
+    // 1. Upload the tour KML + register it as the master's NetworkLink.
+    await LGService.instance.sendKml(kml, fileName: 'tour.kml');
+
+    // 2. Give Google Earth a moment to fetch/parse the doc before playing.
+    await Future<void>.delayed(const Duration(seconds: 2));
+
+    // 3. Play the named tour via the LG query.txt hook.
+    await LGService.instance.runCommand(
+      'echo "playtour=${KmlAssembler.defaultTourName}" > /tmp/query.txt',
+    );
+
+    debugPrint('SSH: playing tour with ${geocoded.length} stop(s)');
+    return geocoded.length;
   }
 }
