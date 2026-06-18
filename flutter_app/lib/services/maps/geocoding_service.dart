@@ -1,70 +1,114 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../../core/constants/app_constants.dart';
+import 'package:geocoding/geocoding.dart';
 
-/// Calls the Google Geocoding REST API directly (no SDK) and returns the
-/// lat/lng for a location name. Logs every step to the terminal so we can
-/// see exactly why a lookup succeeds or fails while we get geocoding right.
+import 'location_name_utils.dart';
+
+// Resolves a location name to lat/lng
+
+// dont touch generation pipeline keeps calling it byte-for-byte
 class GeocodingService {
   GeocodingService._();
   static final GeocodingService instance = GeocodingService._();
 
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: AppConstants.geocodingBaseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 10),
-  ));
+  // Nominatim asks every client to send an identifying User-Agent and to keep
+  // to ~1 request/sec (our pipeline is sequential, so we're well within that)
+  static const String _nominatimBase = 'https://nominatim.openstreetmap.org';
+  static const String _userAgent =
+      'AITourDirector/1.0 (Liquid Galaxy GSoC; tour-director)';
+
+  final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: _nominatimBase,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+      headers: {'User-Agent': _userAgent},
+    ),
+  );
 
   /// Returns `{'lat': ..., 'lng': ...}` or `null` if the lookup fails.
+  ///
+  /// Tries the original name first, then progressively cleaned-up variants
+  /// (parenthetical stripped, etc. — see [locationQueryVariants]) so near-misses
+  /// like `"Old Fort (Purana Qila), Delhi"` still resolve. Stops at the first hit.
   Future<Map<String, double>?> getCoordinates(String locationName) async {
-    final apiKey = dotenv.env['MAPS_KEY'];
-    if (apiKey == null || apiKey.isEmpty) {
-      debugPrint('Geocoding: MAPS_KEY missing or empty — skipping "$locationName"');
+    final variants = locationQueryVariants(locationName);
+    for (final query in variants) {
+      final hit = await _lookup(query);
+      if (hit != null) {
+        if (query != locationName) {
+          debugPrint(
+            'Geocoding: ✓ rescued "$locationName" via cleaned query "$query"',
+          );
+        }
+        return hit;
+      }
+    }
+    debugPrint(
+      'Geocoding: ✗ all ${variants.length} variant(s) failed for "$locationName"',
+    );
+    return null;
+  }
+
+  // One query string through the two free backends: native first (skipped on
+  // web), then the OpenStreetMap Nominatim fallback.
+  Future<Map<String, double>?> _lookup(String query) async {
+    if (!kIsWeb) {
+      final native = await _nativeLookup(query);
+      if (native != null) return native;
+    }
+    return _nominatimLookup(query);
+  }
+
+  Future<Map<String, double>?> _nativeLookup(String locationName) async {
+    debugPrint('Geocoding: → resolving "$locationName" via native geocoder');
+    try {
+      final results = await locationFromAddress(locationName);
+      if (results.isEmpty) return null;
+
+      final first = results.first;
+      debugPrint(
+        'Geocoding: ✓ (native) "$locationName" → '
+        '(${first.latitude}, ${first.longitude})',
+      );
+      return {'lat': first.latitude, 'lng': first.longitude};
+    } on NoResultFoundException {
+      return null;
+    } catch (e) {
+      // MissingPluginException (unsupported platform) / native errors — fall
+      // through to the HTTP backend instead of crashing the pipeline.
+      debugPrint('Geocoding: native lookup failed for "$locationName" — $e');
       return null;
     }
+  }
 
-    debugPrint('Geocoding: → requesting coordinates for "$locationName"');
-
+  Future<Map<String, double>?> _nominatimLookup(String locationName) async {
+    debugPrint('Geocoding: → resolving "$locationName" via OpenStreetMap');
     try {
       final response = await _dio.get(
-        '/json',
-        queryParameters: {'address': locationName, 'key': apiKey},
+        '/search',
+        queryParameters: {'q': locationName, 'format': 'json', 'limit': 1},
       );
 
-      final data = response.data as Map<String, dynamic>;
-      final status = data['status'] as String?;
-
-      if (status != 'OK') {
-        final errMsg = data['error_message'];
-        debugPrint(
-          'Geocoding: ✗ "$locationName" returned status=$status'
-          '${errMsg != null ? ' — $errMsg' : ''}',
-        );
+      final data = response.data;
+      if (data is! List || data.isEmpty) {
+        debugPrint('Geocoding: ✗ "$locationName" — no OpenStreetMap match');
         return null;
       }
 
-      final results = data['results'] as List;
-      if (results.isEmpty) {
-        debugPrint('Geocoding: ✗ "$locationName" status=OK but zero results');
+      final first = data.first as Map<String, dynamic>;
+      final lat = double.tryParse('${first['lat']}');
+      final lng = double.tryParse('${first['lon']}');
+      if (lat == null || lng == null) {
+        debugPrint('Geocoding: ✗ "$locationName" — bad OpenStreetMap payload');
         return null;
       }
 
-      final first = results[0] as Map<String, dynamic>;
-      final location = first['geometry']['location'] as Map<String, dynamic>;
-      final lat = (location['lat'] as num).toDouble();
-      final lng = (location['lng'] as num).toDouble();
-      final formatted = first['formatted_address'] as String?;
-
-      debugPrint(
-        'Geocoding: ✓ "$locationName" → ($lat, $lng)'
-        '${formatted != null ? '  [$formatted]' : ''}',
-      );
-
+      debugPrint('Geocoding: ✓ (osm) "$locationName" → ($lat, $lng)');
       return {'lat': lat, 'lng': lng};
     } on DioException catch (e) {
       debugPrint(
-        'Geocoding: ✗ network error for "$locationName" — '
+        'Geocoding: ✗ OpenStreetMap network error for "$locationName" — '
         '${e.type} ${e.response?.statusCode ?? ''} ${e.message ?? ''}',
       );
       return null;
