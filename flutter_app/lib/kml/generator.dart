@@ -2,11 +2,12 @@ import 'dart:math' as math;
 
 import '../models/location.dart';
 
-/// this is for building the individual KML fragments a cinematic tour
+// this is for building the individual KML fragments a cinematic tour
 
 // pure string builders cause the LG community approach, no SDK, no I/O
 
 // fragments are stitched together by [KmlAssembler] and oordinates are assumed
+
 // non-null here: callers filter out un-geocoded locations first
 class KmlGenerator {
   KmlGenerator._();
@@ -15,12 +16,11 @@ class KmlGenerator {
   static const double lookAtRange = 1200;
   static const double flyDurationSeconds = 4;
 
-  // Orbit tuning for the live (flytoview=) tour. Range is kept close enough to
-  // fill the frame but far enough that the landmark isn't distorted/clipped.
-  static const double orbitRange = 800; // metres from the landmark
-  static const double orbitTilt = 60; // 0 = top-down, 90 = horizon
-  static const int orbitSteps = 6; // viewpoints across the full 360° sweep
-  static const double approachHoldSeconds = 5; // let GE unblur before orbiting
+  static const double orbitRange = 800;
+  static const double orbitTilt = 60;
+  static const int orbitSteps = 5;
+  static const double approachHoldSeconds = 10;
+  static const double orbitTotalSeconds = 5;
 
   // Markers
 
@@ -140,6 +140,7 @@ class KmlGenerator {
         holdSeconds: approachHoldSeconds,
       ),
     ];
+    final perStep = orbitTotalSeconds / orbitSteps;
     for (var i = 1; i <= orbitSteps; i++) {
       views.add(
         CameraView(
@@ -148,16 +149,16 @@ class KmlGenerator {
           tilt: orbitTilt,
           heading: (360 / orbitSteps) * i,
           range: orbitRange,
-          flySeconds: 2,
-          holdSeconds: 1,
+          flySeconds: perStep,
+          holdSeconds: 0,
         ),
       );
     }
     return views;
   }
 
-  /// The single-line `flytoview=<LookAt>…</LookAt>` payload to echo into
-  /// /tmp/query.txt — same shape as the proven flyToPune command.
+  // The single-line `flytoview=<LookAt>…</LookAt>` payload to echo into
+  // /tmp/query.txt — same shape as the proven flyToPune command.
   static String flyToViewQuery(CameraView v) {
     return 'flytoview=<LookAt>'
         '<longitude>${v.lng}</longitude>'

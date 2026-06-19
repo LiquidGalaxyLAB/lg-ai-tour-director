@@ -49,11 +49,22 @@ List<String> locationQueryVariants(String name) {
       .map((s) => s.trim())
       .where((s) => s.isNotEmpty)
       .toList();
+
+  final head = segments.isNotEmpty ? segments.first : base.trim();
+  final tail = segments.length >= 2 ? segments.last : null;
+  final headWords = head.split(RegExp(r'\s+'));
+  for (var drop = 1; drop < headWords.length; drop++) {
+    final shorter = headWords.sublist(drop).join(' ');
+    if (shorter.isEmpty) continue;
+    add(tail != null ? '$shorter, $tail' : shorter);
+  }
+
   if (segments.length >= 3) {
     add('${segments.first}, ${segments.last}');
   }
   if (segments.length >= 2) {
     add(segments.first);
+    add(segments.last);
   }
 
   return variants;

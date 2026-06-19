@@ -28,8 +28,6 @@ class PlacesService {
     ),
   );
 
-  /// Returns `{place_id, formatted_address, types}` (place_id null, types `[]`
-  /// without the billed Places API) or `null` if nothing is found.
   Future<Map<String, dynamic>?> getPlaceDetails(String locationName) async {
     final variants = locationQueryVariants(locationName);
     for (final query in variants) {
@@ -49,10 +47,18 @@ class PlacesService {
     return null;
   }
 
-  /// One query string through the two free backends: native first (skipped on
-  /// web), then the OpenStreetMap Nominatim fallback.
+  // The `geocoding` plugin only ships native implementations for Android and
+  // iOS. On web/Windows/macOS/Linux there's no platform code, so skip native
+  // there (avoids futile calls + log noise) and go straight to Nominatim.
+  static bool get _nativeGeocodingSupported =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  /// One query string through the two free backends: the native (Google/Apple)
+  /// geocoder first where supported, then the OpenStreetMap Nominatim fallback.
   Future<Map<String, dynamic>?> _lookup(String query) async {
-    if (!kIsWeb) {
+    if (_nativeGeocodingSupported) {
       final native = await _nativeLookup(query);
       if (native != null) return native;
     }

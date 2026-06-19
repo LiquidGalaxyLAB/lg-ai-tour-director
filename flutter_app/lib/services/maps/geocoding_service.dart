@@ -50,10 +50,18 @@ class GeocodingService {
     return null;
   }
 
-  // One query string through the two free backends: native first (skipped on
-  // web), then the OpenStreetMap Nominatim fallback.
+  // The `geocoding` plugin only ships native implementations for Android and
+  // iOS. On web/Windows/macOS/Linux there's no platform code, so the call just
+  // throws — don't bother trying it there (avoids futile calls + log noise).
+  static bool get _nativeGeocodingSupported =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  // One query string through the two free backends: the native (Google/Apple)
+  // geocoder first where supported, then the OpenStreetMap Nominatim fallback.
   Future<Map<String, double>?> _lookup(String query) async {
-    if (!kIsWeb) {
+    if (_nativeGeocodingSupported) {
       final native = await _nativeLookup(query);
       if (native != null) return native;
     }
