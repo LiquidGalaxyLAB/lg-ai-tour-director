@@ -15,6 +15,13 @@ class KmlGenerator {
   static const double lookAtRange = 1200;
   static const double flyDurationSeconds = 4;
 
+  // Orbit tuning for the live (flytoview=) tour. Range is kept close enough to
+  // fill the frame but far enough that the landmark isn't distorted/clipped.
+  static const double orbitRange = 800; // metres from the landmark
+  static const double orbitTilt = 60; // 0 = top-down, 90 = horizon
+  static const int orbitSteps = 6; // viewpoints across the full 360° sweep
+  static const double approachHoldSeconds = 5; // let GE unblur before orbiting
+
   // Markers
 
   //numbered `<Placemark>` pin for one stop
@@ -98,11 +105,12 @@ class KmlGenerator {
   // in between — GE animates smoothly to each, giving the same cinematic result.
 
   /// Ordered camera viewpoints for a live-driven tour: a wide opening overview
-  /// framing every stop, then a close cinematic view of each stop in turn.
+  /// framing every stop, then per stop an approach (held long enough for the
+  /// imagery to sharpen) followed by a full 360° orbit around the landmark.
   static List<CameraView> tourCameraViews(List<TourLocation> locations) {
     final center = _centroid(locations);
     final overviewRange = _framingRange(locations, center);
-    return [
+    final views = <CameraView>[
       CameraView(
         lat: center.lat,
         lng: center.lng,
@@ -111,16 +119,41 @@ class KmlGenerator {
         flySeconds: flyDurationSeconds + 1,
         holdSeconds: 2,
       ),
-      for (final l in locations)
-        CameraView(
-          lat: l.latitude!,
-          lng: l.longitude!,
-          tilt: lookAtTilt,
-          range: lookAtRange,
-          flySeconds: flyDurationSeconds,
-          holdSeconds: 4,
-        ),
     ];
+    for (final l in locations) {
+      views.addAll(_orbitViews(l.latitude!, l.longitude!));
+    }
+    return views;
+  }
+
+  /// One landmark beat: fly in and hold for the imagery to unblur, then sweep
+  /// the heading around the point in [orbitSteps] for a smooth orbit.
+  static List<CameraView> _orbitViews(double lat, double lng) {
+    final views = <CameraView>[
+      CameraView(
+        lat: lat,
+        lng: lng,
+        tilt: orbitTilt,
+        heading: 0,
+        range: orbitRange,
+        flySeconds: flyDurationSeconds,
+        holdSeconds: approachHoldSeconds,
+      ),
+    ];
+    for (var i = 1; i <= orbitSteps; i++) {
+      views.add(
+        CameraView(
+          lat: lat,
+          lng: lng,
+          tilt: orbitTilt,
+          heading: (360 / orbitSteps) * i,
+          range: orbitRange,
+          flySeconds: 2,
+          holdSeconds: 1,
+        ),
+      );
+    }
+    return views;
   }
 
   /// The single-line `flytoview=<LookAt>…</LookAt>` payload to echo into
