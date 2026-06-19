@@ -86,7 +86,7 @@ class KmlGenerator {
     final fly = flyTo(
       lat: center.lat,
       lng: center.lng,
-      tilt: 0, // straight-down-ish wide establishing shot
+      tilt: 0,
       range: range,
       durationSeconds: flyDurationSeconds + 1,
       mode: 'bounce',
@@ -94,7 +94,7 @@ class KmlGenerator {
     return '$fly\n${wait(holdSeconds)}';
   }
 
-  // ── Camera maths ────────────────────────────────────────────────────────────
+  // Camera maths
 
   static _LatLng _centroid(List<TourLocation> locations) {
     var lat = 0.0, lng = 0.0;
@@ -105,25 +105,22 @@ class KmlGenerator {
     return _LatLng(lat / locations.length, lng / locations.length);
   }
 
-  /// Camera range (metres) so every stop fits in the opening shot: the distance
-  /// from the centre to the farthest stop, padded, with a sane floor/ceiling.
   static double _framingRange(List<TourLocation> locations, _LatLng center) {
     var maxMetres = 0.0;
     for (final l in locations) {
       final d = _haversine(center.lat, center.lng, l.latitude!, l.longitude!);
       if (d > maxMetres) maxMetres = d;
     }
-    // ×2.2 leaves margin so pins aren't on the very edge of the frame.
     final range = maxMetres * 2.2;
     return range.clamp(2000.0, 8000000.0);
   }
 
-  static double _haversine(
-      double lat1, double lon1, double lat2, double lon2) {
+  static double _haversine(double lat1, double lon1, double lat2, double lon2) {
     const earthRadius = 6371000.0; // metres
     final dLat = _rad(lat2 - lat1);
     final dLon = _rad(lon2 - lon1);
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(_rad(lat1)) *
             math.cos(_rad(lat2)) *
             math.sin(dLon / 2) *
@@ -133,7 +130,6 @@ class KmlGenerator {
 
   static double _rad(double deg) => deg * math.pi / 180;
 
-  /// Minimal XML-escape for names that may contain `&`, `<`, `>`, quotes.
   static String _esc(String s) => s
       .replaceAll('&', '&amp;')
       .replaceAll('<', '&lt;')
