@@ -2,24 +2,22 @@ import 'dart:math' as math;
 
 import '../models/location.dart';
 
-/// Builds the individual KML fragments a cinematic tour is made of — placemark
-/// markers, `<gx:FlyTo>` camera moves and `<gx:Wait>` holds — plus the camera
-/// maths for an opening shot that frames every stop.
-///
-/// Pure string builders (the LG community approach): no SDK, no I/O. The
-/// fragments are stitched together by [KmlAssembler]. Coordinates are assumed
-/// non-null here — callers filter out un-geocoded locations first.
+/// this is for building the individual KML fragments a cinematic tour
+
+// pure string builders cause the LG community approach, no SDK, no I/O
+
+// fragments are stitched together by [KmlAssembler] and oordinates are assumed
+// non-null here: callers filter out un-geocoded locations first
 class KmlGenerator {
   KmlGenerator._();
 
-  /// Cinematic defaults, tuned for a single landmark.
-  static const double lookAtTilt = 60; // 0 = top-down, 90 = horizon
-  static const double lookAtRange = 1200; // metres from the camera to the point
-  static const double flyDurationSeconds = 4; // time spent flying into a scene
+  static const double lookAtTilt = 60;
+  static const double lookAtRange = 1200;
+  static const double flyDurationSeconds = 4;
 
-  // ── Markers ───────────────────────────────────────────────────────────────
+  // Markers
 
-  /// A numbered `<Placemark>` pin for one stop.
+  //numbered `<Placemark>` pin for one stop
   static String placemark(TourLocation loc, int order) {
     return '''
     <Placemark>
@@ -28,7 +26,7 @@ class KmlGenerator {
     </Placemark>''';
   }
 
-  /// All stop markers, in order, as one block.
+  // all stop markers in order as one block
   static String markers(List<TourLocation> locations) {
     final buffer = StringBuffer();
     for (var i = 0; i < locations.length; i++) {
@@ -37,9 +35,8 @@ class KmlGenerator {
     return buffer.toString();
   }
 
-  // ── Camera moves ────────────────────────────────────────────────────────────
+  // Camera movement
 
-  /// A `<gx:FlyTo>` built from a `<LookAt>` — the core cinematic move.
   static String flyTo({
     required double lat,
     required double lng,
@@ -48,7 +45,7 @@ class KmlGenerator {
     double heading = 0,
     double range = lookAtRange,
     double durationSeconds = flyDurationSeconds,
-    String mode = 'smooth', // 'smooth' for the tour body, 'bounce' for the open
+    String mode = 'smooth',
   }) {
     return '''
       <gx:FlyTo>
@@ -92,6 +89,52 @@ class KmlGenerator {
       mode: 'bounce',
     );
     return '$fly\n${wait(holdSeconds)}';
+  }
+
+  // ── Live camera driver (flytoview=) ─────────────────────────────────────────
+  // This rig's Google Earth honours `flytoview=` in /tmp/query.txt (proven by
+  // the working flyToPune) but NOT `playtour=`. So a live tour is driven as an
+  // ordered sequence of these views, one query.txt write per stop, with a hold
+  // in between — GE animates smoothly to each, giving the same cinematic result.
+
+  /// Ordered camera viewpoints for a live-driven tour: a wide opening overview
+  /// framing every stop, then a close cinematic view of each stop in turn.
+  static List<CameraView> tourCameraViews(List<TourLocation> locations) {
+    final center = _centroid(locations);
+    final overviewRange = _framingRange(locations, center);
+    return [
+      CameraView(
+        lat: center.lat,
+        lng: center.lng,
+        tilt: 0,
+        range: overviewRange,
+        flySeconds: flyDurationSeconds + 1,
+        holdSeconds: 2,
+      ),
+      for (final l in locations)
+        CameraView(
+          lat: l.latitude!,
+          lng: l.longitude!,
+          tilt: lookAtTilt,
+          range: lookAtRange,
+          flySeconds: flyDurationSeconds,
+          holdSeconds: 4,
+        ),
+    ];
+  }
+
+  /// The single-line `flytoview=<LookAt>…</LookAt>` payload to echo into
+  /// /tmp/query.txt — same shape as the proven flyToPune command.
+  static String flyToViewQuery(CameraView v) {
+    return 'flytoview=<LookAt>'
+        '<longitude>${v.lng}</longitude>'
+        '<latitude>${v.lat}</latitude>'
+        '<altitude>${v.altitude}</altitude>'
+        '<range>${v.range}</range>'
+        '<tilt>${v.tilt}</tilt>'
+        '<heading>${v.heading}</heading>'
+        '<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>'
+        '</LookAt>';
   }
 
   // Camera maths
@@ -142,4 +185,32 @@ class _LatLng {
   const _LatLng(this.lat, this.lng);
   final double lat;
   final double lng;
+}
+
+// one camera viewpoint in a live driven (`flytoview=`) tour, plus how long to
+// fly into it and hold there before the next stop
+class CameraView {
+  const CameraView({
+    required this.lat,
+    required this.lng,
+    required this.range,
+    required this.flySeconds,
+    required this.holdSeconds,
+    this.altitude = 0,
+    this.tilt = KmlGenerator.lookAtTilt,
+    this.heading = 0,
+  });
+
+  final double lat;
+  final double lng;
+  final double altitude;
+  final double tilt;
+  final double heading;
+  final double range;
+  final double flySeconds;
+  final double holdSeconds;
+
+  // total seconds to wait after issuing this view before the next one
+  Duration get settleDuration =>
+      Duration(milliseconds: ((flySeconds + holdSeconds) * 1000).round());
 }

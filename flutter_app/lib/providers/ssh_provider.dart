@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/constants/app_constants.dart';
 import '../kml/assembler.dart';
+import '../kml/generator.dart';
 import '../lg/lg_service.dart';
 import '../models/lg_connection.dart';
 import '../models/location.dart';
@@ -170,38 +171,56 @@ class SshConnection extends _$SshConnection {
     await LGService.instance.resetRefresh(state.config);
   }
 
-  /// Builds a cinematic `<gx:Tour>` from the geocoded [locations], deploys it to
-  /// the master, and plays it so Google Earth flies through every stop.
+  bool _isFlying = false;
+
+  /// Deploys the geocoded [locations] as pin markers, then flies the rig's
+  /// Google Earth through them as a cinematic tour.
   ///
-  /// Returns the number of stops actually flown (the geocoded ones). Returns 0
-  /// without doing anything if not connected or no location has coordinates.
+  /// The camera is driven via the proven `flytoview=` query.txt hook (the same
+  /// one [flyToPune] uses) — one view per stop with a hold between — because
+  /// this rig's GE build does NOT honour `playtour=`. The `<gx:Tour>` KML is
+  /// still uploaded so the numbered pins are available.
+  ///
+  /// Returns the number of stops flown. Returns 0 without doing anything if not
+  /// connected, no location has coordinates, or a tour is already playing.
   Future<int> flyGeneratedTour(List<TourLocation> locations) async {
     if (!state.isConnected) {
       debugPrint('SSH: flyGeneratedTour skipped — not connected');
+      return 0;
+    }
+    if (_isFlying) {
+      debugPrint('SSH: flyGeneratedTour skipped — a tour is already playing');
       return 0;
     }
 
     final geocoded = locations
         .where((l) => l.latitude != null && l.longitude != null)
         .toList();
-    final kml = KmlAssembler.buildTour(locations: geocoded);
-    if (kml == null) {
+    if (geocoded.isEmpty) {
       debugPrint('SSH: flyGeneratedTour skipped — no geocoded locations');
       return 0;
     }
 
-    // 1. Upload the tour KML + register it as the master's NetworkLink.
-    await LGService.instance.sendKml(kml, fileName: 'tour.kml');
+    _isFlying = true;
+    try {
+      // 1. Upload the pin markers (best-effort; camera move is the main event).
+      final kml = KmlAssembler.buildTour(locations: geocoded);
+      if (kml != null) {
+        await LGService.instance.sendKml(kml, fileName: 'tour.kml');
+      }
 
-    // 2. Give Google Earth a moment to fetch/parse the doc before playing.
-    await Future<void>.delayed(const Duration(seconds: 2));
-
-    // 3. Play the named tour via the LG query.txt hook.
-    await LGService.instance.runCommand(
-      'echo "playtour=${KmlAssembler.defaultTourName}" > /tmp/query.txt',
-    );
-
-    debugPrint('SSH: playing tour with ${geocoded.length} stop(s)');
-    return geocoded.length;
+      // 2. Drive the camera through each view via the proven flytoview= hook.
+      final views = KmlGenerator.tourCameraViews(geocoded);
+      debugPrint('SSH: flying ${geocoded.length} stop(s) via flytoview');
+      for (final view in views) {
+        await LGService.instance.runCommand(
+          'echo "${KmlGenerator.flyToViewQuery(view)}" > /tmp/query.txt',
+        );
+        await Future<void>.delayed(view.settleDuration);
+      }
+      return geocoded.length;
+    } finally {
+      _isFlying = false;
+    }
   }
 }
