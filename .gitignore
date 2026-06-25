@@ -27,15 +27,7 @@ dist/
 .coverage
 .coverage.*
 
-<<<<<<< HEAD
 # folders for reference locally
 /lg-flutter-task2-gsoc2026
 /UIs
 /flutter_app/context
-=======
-/lg-flutter-task2-gsoc2026
-flutter_app/context
-
-UIs
-
->>>>>>> 7f781cc (refactors filed)
