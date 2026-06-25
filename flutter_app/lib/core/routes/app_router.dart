@@ -11,6 +11,7 @@ import '../../screens/profile/help_screen.dart';
 import '../../screens/profile/profile_screen.dart';
 import '../../screens/saved/saved_detail_screen.dart';
 import '../../screens/saved/saved_screen.dart';
+import '../../screens/splash/splash_screen.dart';
 import '../../screens/settings/advanced_lg_controls_screen.dart';
 import '../../screens/settings/language_screen.dart';
 import '../../screens/settings/lg_connection_screen.dart';
@@ -33,6 +34,12 @@ final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
   routes: [
+    // Splash — shown first (full-screen, no bottom nav), then routes to /home.
+    GoRoute(
+      path: '/',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const SplashScreen(),
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           ScaffoldWithNav(navigationShell: navigationShell),
@@ -41,7 +48,7 @@ final GoRouter appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/',
+              path: '/home',
               builder: (context, state) => const HomeScreen(),
               routes: [
                 GoRoute(

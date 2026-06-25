@@ -87,7 +87,7 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
   void _end() {
     _timer?.cancel();
     _tts.stop();
-    context.pushReplacement('/post-tour', extra: widget.args);
+    context.pushReplacement('/home/post-tour', extra: widget.args);
   }
 
   @override

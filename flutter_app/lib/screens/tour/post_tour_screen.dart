@@ -213,7 +213,7 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
 
                 const SizedBox(height: 12),
                 TextButton(
-                  onPressed: () => context.go('/'),
+                  onPressed: () => context.go('/home'),
                   child: const Text('Back to Home'),
                 ),
               ],
