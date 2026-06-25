@@ -67,9 +67,9 @@ dev_dependencies:
 # OS-level splash (shown during Flutter init, before the Dart splash screen).
 # Regenerate platform files with: dart run flutter_native_splash:create
 flutter_native_splash:
-  color: "#1A1A2E"
+  color: "#1A73E8"
   android_12:
-    color: "#1A1A2E"
+    color: "#1A73E8"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
