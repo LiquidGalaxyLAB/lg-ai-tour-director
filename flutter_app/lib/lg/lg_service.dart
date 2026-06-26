@@ -125,9 +125,11 @@ class LGService {
     }
   }
 
-  // clears the info balloon from the right most screen
+  // clears the info balloon from the right most screen and sweeps the rendered
+  // PNGs that accumulated in the web root over the session
   Future<void> clearBalloon() async {
     await sendKmlToSlave(infoScreen, BalloonMaker.emptyBalloon());
+    await _ssh.sendCommand('rm -f /var/www/html/infoballoon_*.png');
   }
 
   Future<void> flyTo(

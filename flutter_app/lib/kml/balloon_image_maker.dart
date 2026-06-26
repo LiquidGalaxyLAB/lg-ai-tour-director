@@ -27,15 +27,19 @@ class BalloonImageMaker {
 
   /// Renders the card to PNG bytes. [imageBytes] is the (already downloaded)
   /// location image; when null/undecodable the image box is omitted and the
-  /// text fills the card.
+  /// text fills the card. [scale] supersamples the bitmap so it stays crisp
+  /// when the ScreenOverlay scales it up to the slave screen height.
   static Future<Uint8List> render({
     required String locationName,
     required String locationSubtitle,
     required String description,
     Uint8List? imageBytes,
+    double scale = 2,
   }) async {
     final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder, const Rect.fromLTWH(0, 0, w, h));
+    final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, w * scale, h * scale));
+    // Draw in logical 420×580 coordinates; the scale just supersamples output.
+    canvas.scale(scale);
 
     // Card background.
     canvas.drawRect(const Rect.fromLTWH(0, 0, w, h), Paint()..color = _bg);
@@ -82,19 +86,27 @@ class BalloonImageMaker {
     canvas.drawRect(Rect.fromLTWH(pad, y, 40, 2), Paint()..color = _accent);
     y += 2 + 12;
 
+    // Footer sits in a reserved zone at the bottom; cap the description so it
+    // can never run into it (ellipsise the overflow).
+    const footerSize = 10.0;
+    const footerZone = footerSize * 1.3 + 12; // text height + bottom gap
+    const descLineHeight = 13 * 1.6;
+    final descMaxLines =
+        ((h - y - footerZone) / descLineHeight).floor().clamp(1, 99);
     final desc = _paragraph(
       description,
       size: 13,
       color: _body,
       maxWidth: contentWidth,
       height: 1.6,
+      maxLines: descMaxLines,
     );
     canvas.drawParagraph(desc, Offset(pad, y));
 
     // Footer pinned to the bottom-left.
     final footer = _paragraph(
       'Powered by Liquid Galaxy',
-      size: 10,
+      size: footerSize,
       color: _footerColor,
       maxWidth: contentWidth,
       maxLines: 1,
@@ -102,7 +114,8 @@ class BalloonImageMaker {
     canvas.drawParagraph(footer, Offset(pad, h - footer.height - 12));
 
     final picture = recorder.endRecording();
-    final rendered = await picture.toImage(w.toInt(), h.toInt());
+    final rendered =
+        await picture.toImage((w * scale).toInt(), (h * scale).toInt());
     final png = await rendered.toByteData(format: ui.ImageByteFormat.png);
     picture.dispose();
     rendered.dispose();
