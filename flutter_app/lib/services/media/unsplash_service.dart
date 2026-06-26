@@ -13,16 +13,45 @@ class UnsplashService {
 
   final Dio _dio = Dio();
 
+  /// Searches Unsplash for [query], trying progressively broader variants so a
+  /// place like "Central Museum, Nagpur" (which returns nothing verbatim) still
+  /// resolves via "Central Museum Nagpur" → "Central Museum".
   Future<String?> fetchPhotoUrl(String query) async {
-    try {
-      // Search API authenticates with the Access Key as client_id (the Secret
-      // Key is only for OAuth user-auth, which this app doesn't use).
-      final key = dotenv.env['UNSPLASH_ACCESS_KEY'] ?? '';
-      if (key.isEmpty) {
-        debugPrint('[UnsplashService] No access key configured');
-        return null;
-      }
+    // Search API authenticates with the Access Key as client_id (the Secret
+    // Key is only for OAuth user-auth, which this app doesn't use).
+    final key = dotenv.env['UNSPLASH_ACCESS_KEY'] ?? '';
+    if (key.isEmpty) {
+      debugPrint('[UnsplashService] No access key configured');
+      return null;
+    }
 
+    for (final variant in _queryVariants(query)) {
+      final url = await _search(variant, key);
+      if (url != null) {
+        debugPrint('[UnsplashService] found ($variant): $url');
+        return url;
+      }
+      debugPrint('[UnsplashService] No results for: $variant');
+    }
+    return null;
+  }
+
+  /// Ordered, de-duplicated search terms: the comma-flattened full name first
+  /// (most specific), then the part before the first comma (broader).
+  List<String> _queryVariants(String name) {
+    final flattened = name
+        .replaceAll(',', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final firstSegment = name.split(',').first.trim();
+    return <String>{
+      if (flattened.isNotEmpty) flattened,
+      if (firstSegment.isNotEmpty) firstSegment,
+    }.toList();
+  }
+
+  Future<String?> _search(String query, String key) async {
+    try {
       final response = await _dio.get(
         _base,
         queryParameters: {
@@ -38,15 +67,10 @@ class UnsplashService {
       );
 
       final results = response.data['results'] as List?;
-      if (results == null || results.isEmpty) {
-        debugPrint('[UnsplashService] No results for: $query');
-        return null;
-      }
+      if (results == null || results.isEmpty) return null;
 
       // 'regular' (≈1080px wide) — full/raw are too large for an overlay.
-      final url = results[0]['urls']?['regular'] as String?;
-      debugPrint('[UnsplashService] found: $url');
-      return url;
+      return results[0]['urls']?['regular'] as String?;
     } catch (e) {
       debugPrint('[UnsplashService] error: $e');
       return null;

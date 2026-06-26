@@ -19,6 +19,9 @@ class WikimediaService {
         'User-Agent':
             'LGAITourDirector/1.0 (GSoC 2026; kabirkhanuja@gmail.com)',
       },
+      // Treat 404 (no such page) as a normal response, not an exception, so a
+      // miss is handled quietly via a null thumbnail instead of a stack trace.
+      validateStatus: (status) => status != null && status < 500,
     ),
   );
 
