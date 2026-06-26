@@ -1,7 +1,11 @@
 // import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'package:dartssh2/dartssh2.dart';
+import 'package:dio/dio.dart';
+import '../kml/balloon_image_maker.dart';
+import '../kml/balloon_maker.dart';
 import '../models/lg_connection.dart';
+import '../models/location.dart';
 import '../models/rig_config.dart';
 import 'ssh_client.dart';
 
@@ -60,6 +64,74 @@ class LGService {
   Future<void> sendKml(String kml, {String fileName = 'upload.kml'}) async {
     debugPrint('LGService: Sending KML file "$fileName"');
     await _ssh.sendKml(kml, fileName: fileName);
+  }
+
+  Future<void> sendKmlToSlave(int screenNumber, String kml) async {
+    debugPrint('LGService: Sending KML to slave screen $screenNumber');
+    await _ssh.sendKMLToSlave(screenNumber, kml);
+  }
+
+  int get infoScreen => _ssh.rightScreen;
+
+  int _balloonSeq = 0;
+  final Dio _balloonDio = Dio();
+
+  /// Renders the info card to a PNG and deploys it as a ScreenOverlay on the
+  /// right-most screen. [imageUrl] / [description] are already resolved by the
+  /// caller's fallback chain (Wikipedia → Unsplash → generation image →
+  /// text-only); an empty [imageUrl] renders a clean text-only card.
+  Future<void> deployBalloon({
+    required TourLocation location,
+    required String imageUrl,
+    required String description,
+  }) async {
+    final imageBytes = imageUrl.isEmpty ? null : await _downloadImage(imageUrl);
+
+    final png = await BalloonImageMaker.render(
+      locationName: location.name,
+      locationSubtitle: location.address ?? '',
+      description: description,
+      imageBytes: imageBytes,
+    );
+
+    // Unique filename per update so Google Earth can't serve a cached image.
+    final fileName = 'infoballoon_${_balloonSeq++}.png';
+    await _ssh.uploadBytes(png, fileName);
+
+    final host = _ssh.host ?? 'lg1';
+    final kml = BalloonMaker.imageOverlay(host: host, fileName: fileName);
+    debugPrint(
+      'LGService: Showing info balloon "${location.name}" on screen '
+      '$infoScreen ($fileName, ${png.length} bytes)',
+    );
+    await sendKmlToSlave(infoScreen, kml);
+  }
+
+  Future<Uint8List?> _downloadImage(String url) async {
+    try {
+      final res = await _balloonDio.get<List<int>>(
+        url,
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: const {
+            'User-Agent':
+                'LGAITourDirector/1.0 (GSoC 2026; kabirkhanuja@gmail.com)',
+          },
+        ),
+      );
+      final data = res.data;
+      return data == null ? null : Uint8List.fromList(data);
+    } catch (e) {
+      debugPrint('LGService: balloon image download failed: $e');
+      return null;
+    }
+  }
+
+  // clears the info balloon from the right most screen and sweeps the rendered
+  // PNGs that accumulated in the web root over the session
+  Future<void> clearBalloon() async {
+    await sendKmlToSlave(infoScreen, BalloonMaker.emptyBalloon());
+    await _ssh.sendCommand('rm -f /var/www/html/infoballoon_*.png');
   }
 
   Future<void> flyTo(

@@ -127,7 +127,7 @@ class _GenerationScreenState extends State<GenerationScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         context.pushReplacement(
-          '/preview',
+          '/home/preview',
           extra: TourFlowArgs(
             title: _titleFromPrompt(),
             prompt: widget.prompt,

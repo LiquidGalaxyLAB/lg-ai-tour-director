@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       return;
     }
-    context.push('/generation', extra: prompt);
+    context.push('/home/generation', extra: prompt);
   }
 
   @override

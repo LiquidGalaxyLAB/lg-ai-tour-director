@@ -21,7 +21,7 @@ class PreviewScreen extends StatelessWidget {
   Future<void> _start(BuildContext context) async {
     final choice = await showFilmDialog(context);
     if (choice == null || !context.mounted) return; // cancelled
-    context.push('/active', extra: args.copyWith(generateFilm: choice));
+    context.push('/home/active', extra: args.copyWith(generateFilm: choice));
   }
 
   /// Deploys the geocoded stops as a cinematic gx:Tour and plays it on the rig.
@@ -85,7 +85,7 @@ class PreviewScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 InkWell(
                   borderRadius: BorderRadius.circular(16),
-                  onTap: () => context.push('/inspection', extra: args),
+                  onTap: () => context.push('/home/inspection', extra: args),
                   child: MapPlaceholder(
                     height: 200,
                     markerCount: locations.length,

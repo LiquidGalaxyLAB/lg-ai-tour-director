@@ -1,59 +1,124 @@
 import 'package:dio/dio.dart';
-import '../../core/constants/app_constants.dart';
+import 'package:flutter/foundation.dart';
 
+import '../../core/constants/app_constants.dart';
+import '../../models/wikimedia_result.dart';
+
+// fetches a cc licensed image + short description per location from the
+// wikimedia rest summary endpoint (`/page/summary/{title}`)
+
+// rest api only cause the deprecated mediawiki `w/api.php` endpoint is not used
 class WikimediaService {
   WikimediaService._();
   static final WikimediaService instance = WikimediaService._();
 
-  final Dio _dio = Dio(BaseOptions(baseUrl: AppConstants.wikimediaBaseUrl));
+  final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: AppConstants.wikimediaBaseUrl,
+      headers: const {
+        'User-Agent':
+            'LGAITourDirector/1.0 (GSoC 2026; kabirkhanuja@gmail.com)',
+      },
+      // Treat 404 (no such page) as a normal response, not an exception, so a
+      // miss is handled quietly via a null thumbnail instead of a stack trace.
+      validateStatus: (status) => status != null && status < 500,
+    ),
+  );
 
-  Future<String?> getImageUrl(String query) async {
-    try {
-      final response = await _dio.get(
-        '/page/summary/\${Uri.encodeComponent(query)}',
-      );
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data['thumbnail'] != null && data['thumbnail']['source'] != null) {
-          return data['thumbnail']['source'] as String;
-        } else if (data['originalimage'] != null &&
-            data['originalimage']['source'] != null) {
-          return data['originalimage']['source'] as String;
-        }
-      }
-    } catch (e) {
-      // If 404 or other errors, try fallback search
-      return await _searchImageUrl(query);
+  /// Looks up [locationName] on Wikipedia. Tries the exact name first, then a
+  /// sanitised variant (drops a trailing ", City" qualifier and noisy suffixes
+  /// like "Tower"/"Experience") that commonly cause exact-match misses.
+  Future<WikimediaResult?> fetchLocationMedia(String locationName) async {
+    final name = locationName.trim();
+    if (name.isEmpty) {
+      debugPrint('[WikimediaService] empty query → null');
+      return null;
     }
-    return null;
+
+    debugPrint('[WikimediaService] trying: "$name"');
+    var result = await _fetchOnce(name);
+
+    if (result == null) {
+      final sanitised = _sanitiseName(name);
+      if (sanitised.isNotEmpty &&
+          sanitised.toLowerCase() != name.toLowerCase()) {
+        debugPrint('[WikimediaService] miss, retrying sanitised: "$sanitised"');
+        result = await _fetchOnce(sanitised);
+      }
+    }
+
+    if (result != null) {
+      debugPrint('[WikimediaService] hit: ${result.imageUrl}');
+    } else {
+      debugPrint('[WikimediaService] miss for "$name" (both attempts)');
+    }
+    return result;
   }
 
-  Future<String?> _searchImageUrl(String query) async {
+  /// One REST lookup. Returns null on 404 / no thumbnail / network error.
+  Future<WikimediaResult?> _fetchOnce(String name) async {
     try {
-      final dioSearch = Dio();
-      final response = await dioSearch.get(
-        'https://en.wikipedia.org/w/api.php',
-        queryParameters: {
-          'action': 'query',
-          'format': 'json',
-          'prop': 'pageimages',
-          'piprop': 'original',
-          'titles': query,
-        },
+      final response = await _dio.get(
+        '/page/summary/${Uri.encodeComponent(name)}',
       );
 
-      if (response.statusCode == 200) {
-        final pages = response.data['query']['pages'] as Map<String, dynamic>;
-        if (pages.isNotEmpty) {
-          final firstPage = pages.values.first;
-          if (firstPage['original'] != null &&
-              firstPage['original']['source'] != null) {
-            return firstPage['original']['source'] as String;
-          }
-        }
-      }
-    } catch (_) {}
-    return null;
+      final data = response.data;
+      final thumb = data is Map ? data['thumbnail'] : null;
+      final source = thumb is Map ? thumb['source'] : null;
+      if (source is! String || source.isEmpty) return null;
+
+      final extract = (data['extract'] is String)
+          ? data['extract'] as String
+          : '';
+      final description = extract.length > 300
+          ? '${extract.substring(0, 300).trimRight()}…'
+          : extract;
+
+      return WikimediaResult(imageUrl: source, description: description);
+    } catch (e) {
+      debugPrint('[WikimediaService] "$name" failed: $e');
+      return null;
+    }
+  }
+
+  /// Strips qualifiers that cause Wikipedia exact-match misses, then re-cases.
+  /// e.g. "Shaniwar Wada, Pune" → "Shaniwar Wada";
+  ///      "Bellagio Conservatory" → "Bellagio".
+  String _sanitiseName(String name) {
+    // Drop a trailing ", City"/", State" qualifier and any "(parenthetical)"
+    // alias (e.g. "Bandra Fort (Castella de Aguada)" → "Bandra Fort").
+    var cleaned = name
+        .split(',')
+        .first
+        .replaceAll(RegExp(r'\([^)]*\)'), ' ')
+        .toLowerCase();
+
+    const remove = [
+      'experience',
+      'observation wheel',
+      'observation deck',
+      'conservatory',
+      'and botanical garden',
+      'tower',
+      'the ',
+      'area ',
+      'district',
+    ];
+    for (final word in remove) {
+      cleaned = cleaned.replaceAll(word, '');
+    }
+
+    // Re-case, collapsing the extra whitespace any removal may have left.
+    return cleaned
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .map((w) => '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
+  }
+
+  Future<String?> getImageUrl(String query) async {
+    final result = await fetchLocationMedia(query);
+    return result?.imageUrl;
   }
 }
