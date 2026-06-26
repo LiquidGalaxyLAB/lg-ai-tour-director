@@ -1,59 +1,65 @@
 import 'package:dio/dio.dart';
-import '../../core/constants/app_constants.dart';
+import 'package:flutter/foundation.dart';
 
+import '../../core/constants/app_constants.dart';
+import '../../models/wikimedia_result.dart';
+
+// fetches a cc licensed image + short description per location from the
+// wikipedia rest summary endpoint (`/page/summary/{title}`)
+
+// rest api only cause the deprecated mediawiki `w/api.php` endpoint is not used
 class WikimediaService {
   WikimediaService._();
   static final WikimediaService instance = WikimediaService._();
 
-  final Dio _dio = Dio(BaseOptions(baseUrl: AppConstants.wikimediaBaseUrl));
+  final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: AppConstants.wikimediaBaseUrl,
+      headers: const {
+        'User-Agent':
+            'LGAITourDirector/1.0 (GSoC 2026; kabirkhanuja@gmail.com)',
+      },
+    ),
+  );
 
-  Future<String?> getImageUrl(String query) async {
+  Future<WikimediaResult?> fetchLocationMedia(String locationName) async {
+    final name = locationName.trim();
+    if (name.isEmpty) {
+      debugPrint('[WikimediaService] empty query → null');
+      return null;
+    }
+
     try {
       final response = await _dio.get(
-        '/page/summary/\${Uri.encodeComponent(query)}',
+        '/page/summary/${Uri.encodeComponent(name)}',
       );
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data['thumbnail'] != null && data['thumbnail']['source'] != null) {
-          return data['thumbnail']['source'] as String;
-        } else if (data['originalimage'] != null &&
-            data['originalimage']['source'] != null) {
-          return data['originalimage']['source'] as String;
-        }
+      final data = response.data;
+      final thumb = data is Map ? data['thumbnail'] : null;
+      final source = thumb is Map ? thumb['source'] : null;
+
+      if (source is! String || source.isEmpty) {
+        debugPrint('[WikimediaService] "$name": no thumbnail → null');
+        return null;
       }
+
+      final extract = (data['extract'] is String)
+          ? data['extract'] as String
+          : '';
+      final description = extract.length > 300
+          ? '${extract.substring(0, 300).trimRight()}…'
+          : extract;
+
+      debugPrint('[WikimediaService] "$name" → $source');
+      return WikimediaResult(imageUrl: source, description: description);
     } catch (e) {
-      // If 404 or other errors, try fallback search
-      return await _searchImageUrl(query);
+      debugPrint('[WikimediaService] "$name" failed: $e → null');
+      return null;
     }
-    return null;
   }
 
-  Future<String?> _searchImageUrl(String query) async {
-    try {
-      final dioSearch = Dio();
-      final response = await dioSearch.get(
-        'https://en.wikipedia.org/w/api.php',
-        queryParameters: {
-          'action': 'query',
-          'format': 'json',
-          'prop': 'pageimages',
-          'piprop': 'original',
-          'titles': query,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final pages = response.data['query']['pages'] as Map<String, dynamic>;
-        if (pages.isNotEmpty) {
-          final firstPage = pages.values.first;
-          if (firstPage['original'] != null &&
-              firstPage['original']['source'] != null) {
-            return firstPage['original']['source'] as String;
-          }
-        }
-      }
-    } catch (_) {}
-    return null;
+  Future<String?> getImageUrl(String query) async {
+    final result = await fetchLocationMedia(query);
+    return result?.imageUrl;
   }
 }
