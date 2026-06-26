@@ -1,14 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/constants/app_constants.dart';
 import '../kml/assembler.dart';
+import '../kml/balloon_maker.dart';
 import '../kml/generator.dart';
 import '../lg/lg_service.dart';
 import '../models/lg_connection.dart';
 import '../models/location.dart';
 import '../models/rig_config.dart';
+import '../services/media/wikimedia_service.dart';
 
 part 'ssh_provider.g.dart';
 
@@ -152,6 +156,26 @@ class SshConnection extends _$SshConnection {
     await LGService.instance.cleanup();
   }
 
+  /// TEMP dev helper : deploys a sample info balloon for Shaniwar Wada to the
+  /// right-most (info) screen, then clears it after 10s. Remove once verified.
+  Future<void> testBalloon() async {
+    final media = await WikimediaService.instance.fetchLocationMedia(
+      'Shaniwar Wada',
+    );
+    final kml = BalloonMaker.infoBalloon(
+      locationName: 'Shaniwar Wada',
+      locationSubtitle: 'Pune, Maharashtra, India',
+      description:
+          'Built in 1732 as the seat of the Peshwas, Shaniwar Wada once '
+          'stood as the political heart of the Maratha Empire.',
+      imageUrl: media?.imageUrl ?? '',
+    );
+    debugPrint('[BalloonMaker] test KML length: ${kml.length}');
+    await LGService.instance.sendKmlToSlave(state.config.infoScreen, kml);
+    await Future<void>.delayed(const Duration(seconds: 10));
+    await LGService.instance.clearBalloon(state.config);
+  }
+
   Future<void> setLogos() async {
     await LGService.instance.setLogos(
       logoPath: AppConstants.logoAssetPath,
@@ -210,17 +234,45 @@ class SshConnection extends _$SshConnection {
       }
 
       // 2. Drive the camera through each view via the proven flytoview= hook.
+      //    View 0 is the framing overview; each landmark then occupies a block
+      //    of (1 approach + orbitSteps orbit) views, so landmark j starts at
+      //    view index 1 + j*(1+orbitSteps). As each landmark's block begins we
+      //    fire its info balloon (fetch + deploy) WITHOUT awaiting, so the
+      //    camera flight never blocks on the network.
       final views = KmlGenerator.tourCameraViews(geocoded);
+      const perLandmark = 1 + KmlGenerator.orbitSteps;
       debugPrint('SSH: flying ${geocoded.length} stop(s) via flytoview');
-      for (final view in views) {
+      for (var i = 0; i < views.length; i++) {
+        if (i > 0 && (i - 1) % perLandmark == 0) {
+          final j = (i - 1) ~/ perLandmark;
+          if (j < geocoded.length) unawaited(_showStopBalloon(geocoded[j]));
+        }
         await LGService.instance.runCommand(
-          'echo "${KmlGenerator.flyToViewQuery(view)}" > /tmp/query.txt',
+          'echo "${KmlGenerator.flyToViewQuery(views[i])}" > /tmp/query.txt',
         );
-        await Future<void>.delayed(view.settleDuration);
+        await Future<void>.delayed(views[i].settleDuration);
       }
+
+      // 3. Tour finished — clear the info balloon from the right-most screen.
+      await LGService.instance.clearBalloon(state.config);
       return geocoded.length;
     } finally {
       _isFlying = false;
+    }
+  }
+
+  Future<void> _showStopBalloon(TourLocation location) async {
+    try {
+      final media = await WikimediaService.instance.fetchLocationMedia(
+        location.name,
+      );
+      await LGService.instance.showLocationBalloon(
+        location: location,
+        media: media,
+        rigConfig: state.config,
+      );
+    } catch (e) {
+      debugPrint('SSH: balloon for "${location.name}" failed: $e');
     }
   }
 }

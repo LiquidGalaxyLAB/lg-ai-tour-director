@@ -149,6 +149,12 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(
+                onPressed: () => run('Test Balloon', notifier.testBalloon),
+                icon: const Icon(Icons.web_asset_rounded),
+                label: const Text('Test Balloon (auto-clears in 10s)'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
                 onPressed: () => run('Clean up', notifier.cleanup),
                 icon: const Icon(Icons.cleaning_services_outlined),
                 label: const Text('Clear KML files'),

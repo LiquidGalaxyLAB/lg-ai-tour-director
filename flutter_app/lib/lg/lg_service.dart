@@ -1,8 +1,11 @@
 // import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'package:dartssh2/dartssh2.dart';
+import '../kml/balloon_maker.dart';
 import '../models/lg_connection.dart';
+import '../models/location.dart';
 import '../models/rig_config.dart';
+import '../models/wikimedia_result.dart';
 import 'ssh_client.dart';
 
 class LGService {
@@ -60,6 +63,31 @@ class LGService {
   Future<void> sendKml(String kml, {String fileName = 'upload.kml'}) async {
     debugPrint('LGService: Sending KML file "$fileName"');
     await _ssh.sendKml(kml, fileName: fileName);
+  }
+
+  /// Writes [kml] to a slave screen's overlay file (slave_N.kml)
+  Future<void> sendKmlToSlave(int screenNumber, String kml) async {
+    debugPrint('LGService: Sending KML to slave screen $screenNumber');
+    await _ssh.sendKMLToSlave(screenNumber, kml);
+  }
+
+  Future<void> showLocationBalloon({
+    required TourLocation location,
+    required WikimediaResult? media,
+    required RigConfig rigConfig,
+  }) async {
+    final kml = BalloonMaker.infoBalloon(
+      locationName: location.name,
+      locationSubtitle: location.address ?? '',
+      description: media?.description ?? location.whySignificant,
+      imageUrl: media?.imageUrl ?? location.imageUrl ?? '',
+    );
+    await sendKmlToSlave(rigConfig.infoScreen, kml);
+  }
+
+  // clears the info balloon from the right most screen
+  Future<void> clearBalloon(RigConfig rigConfig) async {
+    await sendKmlToSlave(rigConfig.infoScreen, BalloonMaker.emptyBalloon());
   }
 
   Future<void> flyTo(
