@@ -90,15 +90,16 @@ class BalloonImageMaker {
     // can never run into it (ellipsise the overflow).
     const footerSize = 10.0;
     const footerZone = footerSize * 1.3 + 12; // text height + bottom gap
-    const descLineHeight = 13 * 1.6;
+    const descSize = 17.0;
+    const descLineHeight = descSize * 1.55;
     final descMaxLines =
         ((h - y - footerZone) / descLineHeight).floor().clamp(1, 99);
     final desc = _paragraph(
       description,
-      size: 13,
+      size: descSize,
       color: _body,
       maxWidth: contentWidth,
-      height: 1.6,
+      height: 1.55,
       maxLines: descMaxLines,
     );
     canvas.drawParagraph(desc, Offset(pad, y));
