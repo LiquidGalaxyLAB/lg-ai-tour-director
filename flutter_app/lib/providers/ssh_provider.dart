@@ -11,6 +11,7 @@ import '../lg/lg_service.dart';
 import '../models/lg_connection.dart';
 import '../models/location.dart';
 import '../models/rig_config.dart';
+import '../services/media/unsplash_service.dart';
 import '../services/media/wikimedia_service.dart';
 
 part 'ssh_provider.g.dart';
@@ -155,25 +156,50 @@ class SshConnection extends _$SshConnection {
     await LGService.instance.cleanup();
   }
 
-  /// TEMP dev helper : renders + deploys a sample info balloon for Shaniwar
-  /// Wada to the right-most (info) screen, then clears it after 10s. Remove
-  /// once verified.
+  /// TEMP dev helper : exercises the full image fallback chain across three
+  /// cases (Wikipedia hit / Unsplash fallback / text-only), logging each
+  /// resolved source, then deploys the historical one to the rig and clears it
+  /// after 10s. Remove once verified.
   Future<void> testBalloon() async {
-    final media = await WikimediaService.instance.fetchLocationMedia(
-      'Shaniwar Wada',
+    final cases = <TourLocation>[
+      const TourLocation(
+        name: 'Shaniwar Wada, Pune', // exact miss → sanitised Wikipedia hit
+        type: 'Fort',
+        whySignificant:
+            'Built in 1732 as the seat of the Peshwas, Shaniwar Wada once '
+            'stood as the political heart of the Maratha Empire.',
+        suggestedDurationSeconds: 15,
+        address: 'Pune, Maharashtra, India',
+      ),
+      const TourLocation(
+        name: 'Las Vegas Strip', // Wikipedia thin → Unsplash fallback
+        type: 'Landmark',
+        whySignificant: 'A vibrant stretch of resorts, casinos and neon.',
+        suggestedDurationSeconds: 15,
+        address: 'Las Vegas, Nevada, USA',
+      ),
+      const TourLocation(
+        name: 'xyznonexistentplace999', // both miss → text-only
+        type: 'Unknown',
+        whySignificant: 'No data available for this test location.',
+        suggestedDurationSeconds: 15,
+      ),
+    ];
+
+    for (final loc in cases) {
+      final media = await _resolveStopMedia(loc);
+      debugPrint('[Balloon][test] "${loc.name}" → '
+          'image: ${media.imageUrl.isEmpty ? '(none)' : media.imageUrl}');
+    }
+
+    // Deploy the historical case to the rig so it can be eyeballed.
+    final demo = cases.first;
+    final media = await _resolveStopMedia(demo);
+    await LGService.instance.deployBalloon(
+      location: demo,
+      imageUrl: media.imageUrl,
+      description: media.description,
     );
-    final location = TourLocation(
-      name: 'Shaniwar Wada',
-      type: 'Fort',
-      whySignificant:
-          'Built in 1732 as the seat of the Peshwas, Shaniwar Wada once '
-          'stood as the political heart of the Maratha Empire.',
-      suggestedDurationSeconds: 15,
-      address: 'Pune, Maharashtra, India',
-      imageUrl: media?.imageUrl,
-    );
-    // media: null so the description uses the custom text above, not the extract.
-    await LGService.instance.showLocationBalloon(location: location, media: null);
     await Future<void>.delayed(const Duration(seconds: 10));
     await LGService.instance.clearBalloon();
   }
@@ -265,15 +291,53 @@ class SshConnection extends _$SshConnection {
 
   Future<void> _showStopBalloon(TourLocation location) async {
     try {
-      final media = await WikimediaService.instance.fetchLocationMedia(
-        location.name,
-      );
-      await LGService.instance.showLocationBalloon(
+      final media = await _resolveStopMedia(location);
+      await LGService.instance.deployBalloon(
         location: location,
-        media: media,
+        imageUrl: media.imageUrl,
+        description: media.description,
       );
     } catch (e) {
       debugPrint('SSH: balloon for "${location.name}" failed: $e');
     }
+  }
+
+  /// Resolves the best image + description for [location] via the fallback
+  /// chain: Wikipedia (with sanitise retry) → Unsplash → the generation-time
+  /// image → text-only. Description prefers Wikipedia's extract, else the AI's
+  /// significance text. Never throws — returns empty strings on total miss.
+  Future<({String imageUrl, String description})> _resolveStopMedia(
+    TourLocation location,
+  ) async {
+    // 1. Wikipedia (exact, then sanitised inside the service).
+    final wiki = await WikimediaService.instance.fetchLocationMedia(
+      location.name,
+    );
+    if (wiki != null && wiki.imageUrl.isNotEmpty) {
+      debugPrint('[Balloon] source: wikipedia for "${location.name}"');
+      return (imageUrl: wiki.imageUrl, description: wiki.description);
+    }
+
+    // No Wikipedia image — fall back to the AI significance text for the body.
+    final description = location.whySignificant;
+
+    // 2. Unsplash.
+    final unsplash = await UnsplashService.instance.fetchPhotoUrl(location.name);
+    if (unsplash != null && unsplash.isNotEmpty) {
+      debugPrint('[Balloon] source: unsplash for "${location.name}"');
+      return (imageUrl: unsplash, description: description);
+    }
+
+    // 3. Image fetched at generation time, if any.
+    final generated = location.imageUrl ?? '';
+    if (generated.isNotEmpty) {
+      debugPrint('[Balloon] source: fallback (generation image) '
+          'for "${location.name}"');
+      return (imageUrl: generated, description: description);
+    }
+
+    // 4. Nothing — text-only card.
+    debugPrint('[Balloon] source: text-only for "${location.name}"');
+    return (imageUrl: '', description: description);
   }
 }

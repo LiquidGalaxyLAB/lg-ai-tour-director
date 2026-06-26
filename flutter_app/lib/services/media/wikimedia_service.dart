@@ -22,6 +22,9 @@ class WikimediaService {
     ),
   );
 
+  /// Looks up [locationName] on Wikipedia. Tries the exact name first, then a
+  /// sanitised variant (drops a trailing ", City" qualifier and noisy suffixes
+  /// like "Tower"/"Experience") that commonly cause exact-match misses.
   Future<WikimediaResult?> fetchLocationMedia(String locationName) async {
     final name = locationName.trim();
     if (name.isEmpty) {
@@ -29,6 +32,28 @@ class WikimediaService {
       return null;
     }
 
+    debugPrint('[WikimediaService] trying: "$name"');
+    var result = await _fetchOnce(name);
+
+    if (result == null) {
+      final sanitised = _sanitiseName(name);
+      if (sanitised.isNotEmpty &&
+          sanitised.toLowerCase() != name.toLowerCase()) {
+        debugPrint('[WikimediaService] miss, retrying sanitised: "$sanitised"');
+        result = await _fetchOnce(sanitised);
+      }
+    }
+
+    if (result != null) {
+      debugPrint('[WikimediaService] hit: ${result.imageUrl}');
+    } else {
+      debugPrint('[WikimediaService] miss for "$name" (both attempts)');
+    }
+    return result;
+  }
+
+  /// One REST lookup. Returns null on 404 / no thumbnail / network error.
+  Future<WikimediaResult?> _fetchOnce(String name) async {
     try {
       final response = await _dio.get(
         '/page/summary/${Uri.encodeComponent(name)}',
@@ -37,11 +62,7 @@ class WikimediaService {
       final data = response.data;
       final thumb = data is Map ? data['thumbnail'] : null;
       final source = thumb is Map ? thumb['source'] : null;
-
-      if (source is! String || source.isEmpty) {
-        debugPrint('[WikimediaService] "$name": no thumbnail → null');
-        return null;
-      }
+      if (source is! String || source.isEmpty) return null;
 
       final extract = (data['extract'] is String)
           ? data['extract'] as String
@@ -50,12 +71,42 @@ class WikimediaService {
           ? '${extract.substring(0, 300).trimRight()}…'
           : extract;
 
-      debugPrint('[WikimediaService] "$name" → $source');
       return WikimediaResult(imageUrl: source, description: description);
     } catch (e) {
-      debugPrint('[WikimediaService] "$name" failed: $e → null');
+      debugPrint('[WikimediaService] "$name" failed: $e');
       return null;
     }
+  }
+
+  /// Strips qualifiers that cause Wikipedia exact-match misses, then re-cases.
+  /// e.g. "Shaniwar Wada, Pune" → "Shaniwar Wada";
+  ///      "Bellagio Conservatory" → "Bellagio".
+  String _sanitiseName(String name) {
+    // Drop a trailing ", City"/", State" qualifier first.
+    var cleaned = name.split(',').first.toLowerCase();
+
+    const remove = [
+      'experience',
+      'observation wheel',
+      'observation deck',
+      'conservatory',
+      'and botanical garden',
+      'tower',
+      'the ',
+      'area ',
+      'district',
+    ];
+    for (final word in remove) {
+      cleaned = cleaned.replaceAll(word, '');
+    }
+
+    // Re-case, collapsing the extra whitespace any removal may have left.
+    return cleaned
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .map((w) => '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
   }
 
   Future<String?> getImageUrl(String query) async {

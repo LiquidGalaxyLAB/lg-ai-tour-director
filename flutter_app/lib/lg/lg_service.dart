@@ -7,7 +7,6 @@ import '../kml/balloon_maker.dart';
 import '../models/lg_connection.dart';
 import '../models/location.dart';
 import '../models/rig_config.dart';
-import '../models/wikimedia_result.dart';
 import 'ssh_client.dart';
 
 class LGService {
@@ -67,7 +66,6 @@ class LGService {
     await _ssh.sendKml(kml, fileName: fileName);
   }
 
-  /// Writes [kml] to a slave screen's overlay file (slave_N.kml)
   Future<void> sendKmlToSlave(int screenNumber, String kml) async {
     debugPrint('LGService: Sending KML to slave screen $screenNumber');
     await _ssh.sendKMLToSlave(screenNumber, kml);
@@ -78,17 +76,21 @@ class LGService {
   int _balloonSeq = 0;
   final Dio _balloonDio = Dio();
 
-  Future<void> showLocationBalloon({
+  /// Renders the info card to a PNG and deploys it as a ScreenOverlay on the
+  /// right-most screen. [imageUrl] / [description] are already resolved by the
+  /// caller's fallback chain (Wikipedia → Unsplash → generation image →
+  /// text-only); an empty [imageUrl] renders a clean text-only card.
+  Future<void> deployBalloon({
     required TourLocation location,
-    required WikimediaResult? media,
+    required String imageUrl,
+    required String description,
   }) async {
-    final imageUrl = media?.imageUrl ?? location.imageUrl ?? '';
     final imageBytes = imageUrl.isEmpty ? null : await _downloadImage(imageUrl);
 
     final png = await BalloonImageMaker.render(
       locationName: location.name,
       locationSubtitle: location.address ?? '',
-      description: media?.description ?? location.whySignificant,
+      description: description,
       imageBytes: imageBytes,
     );
 
