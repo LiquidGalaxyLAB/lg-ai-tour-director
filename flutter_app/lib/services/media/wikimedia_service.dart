@@ -5,7 +5,7 @@ import '../../core/constants/app_constants.dart';
 import '../../models/wikimedia_result.dart';
 
 // fetches a cc licensed image + short description per location from the
-// wikipedia rest summary endpoint (`/page/summary/{title}`)
+// wikimedia rest summary endpoint (`/page/summary/{title}`)
 
 // rest api only cause the deprecated mediawiki `w/api.php` endpoint is not used
 class WikimediaService {
