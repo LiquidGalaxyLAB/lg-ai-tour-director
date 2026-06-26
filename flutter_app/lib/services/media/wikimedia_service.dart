@@ -85,8 +85,13 @@ class WikimediaService {
   /// e.g. "Shaniwar Wada, Pune" → "Shaniwar Wada";
   ///      "Bellagio Conservatory" → "Bellagio".
   String _sanitiseName(String name) {
-    // Drop a trailing ", City"/", State" qualifier first.
-    var cleaned = name.split(',').first.toLowerCase();
+    // Drop a trailing ", City"/", State" qualifier and any "(parenthetical)"
+    // alias (e.g. "Bandra Fort (Castella de Aguada)" → "Bandra Fort").
+    var cleaned = name
+        .split(',')
+        .first
+        .replaceAll(RegExp(r'\([^)]*\)'), ' ')
+        .toLowerCase();
 
     const remove = [
       'experience',

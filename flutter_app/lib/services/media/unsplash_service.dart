@@ -36,18 +36,20 @@ class UnsplashService {
     return null;
   }
 
-  /// Ordered, de-duplicated search terms: the comma-flattened full name first
-  /// (most specific), then the part before the first comma (broader).
+  /// Ordered, de-duplicated search terms, broadening on each step. Strips any
+  /// "(parenthetical)" alias (which Unsplash returns nothing for) and the
+  /// trailing ", City": e.g. "Bandra Fort (Castella de Aguada), Mumbai" →
+  /// ["Bandra Fort Mumbai", "Bandra Fort", …].
   List<String> _queryVariants(String name) {
-    final flattened = name
-        .replaceAll(',', ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    final firstSegment = name.split(',').first.trim();
+    String flatten(String s) =>
+        s.replaceAll(',', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    final noParen = name.replaceAll(RegExp(r'\([^)]*\)'), ' ');
     return <String>{
-      if (flattened.isNotEmpty) flattened,
-      if (firstSegment.isNotEmpty) firstSegment,
-    }.toList();
+      flatten(noParen), // paren-stripped, comma-flattened (most likely to hit)
+      flatten(noParen.split(',').first), // paren-stripped first segment
+      flatten(name), // original, in case the parenthetical mattered
+      flatten(name.split(',').first),
+    }.where((v) => v.isNotEmpty).toList();
   }
 
   Future<String?> _search(String query, String key) async {
