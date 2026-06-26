@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/constants/app_constants.dart';
 import '../kml/assembler.dart';
-import '../kml/balloon_maker.dart';
 import '../kml/generator.dart';
 import '../lg/lg_service.dart';
 import '../models/lg_connection.dart';
@@ -156,24 +155,27 @@ class SshConnection extends _$SshConnection {
     await LGService.instance.cleanup();
   }
 
-  /// TEMP dev helper : deploys a sample info balloon for Shaniwar Wada to the
-  /// right-most (info) screen, then clears it after 10s. Remove once verified.
+  /// TEMP dev helper : renders + deploys a sample info balloon for Shaniwar
+  /// Wada to the right-most (info) screen, then clears it after 10s. Remove
+  /// once verified.
   Future<void> testBalloon() async {
     final media = await WikimediaService.instance.fetchLocationMedia(
       'Shaniwar Wada',
     );
-    final kml = BalloonMaker.infoBalloon(
-      locationName: 'Shaniwar Wada',
-      locationSubtitle: 'Pune, Maharashtra, India',
-      description:
+    final location = TourLocation(
+      name: 'Shaniwar Wada',
+      type: 'Fort',
+      whySignificant:
           'Built in 1732 as the seat of the Peshwas, Shaniwar Wada once '
           'stood as the political heart of the Maratha Empire.',
-      imageUrl: media?.imageUrl ?? '',
+      suggestedDurationSeconds: 15,
+      address: 'Pune, Maharashtra, India',
+      imageUrl: media?.imageUrl,
     );
-    debugPrint('[BalloonMaker] test KML length: ${kml.length}');
-    await LGService.instance.sendKmlToSlave(state.config.infoScreen, kml);
+    // media: null so the description uses the custom text above, not the extract.
+    await LGService.instance.showLocationBalloon(location: location, media: null);
     await Future<void>.delayed(const Duration(seconds: 10));
-    await LGService.instance.clearBalloon(state.config);
+    await LGService.instance.clearBalloon();
   }
 
   Future<void> setLogos() async {
@@ -254,7 +256,7 @@ class SshConnection extends _$SshConnection {
       }
 
       // 3. Tour finished — clear the info balloon from the right-most screen.
-      await LGService.instance.clearBalloon(state.config);
+      await LGService.instance.clearBalloon();
       return geocoded.length;
     } finally {
       _isFlying = false;
@@ -269,7 +271,6 @@ class SshConnection extends _$SshConnection {
       await LGService.instance.showLocationBalloon(
         location: location,
         media: media,
-        rigConfig: state.config,
       );
     } catch (e) {
       debugPrint('SSH: balloon for "${location.name}" failed: $e');

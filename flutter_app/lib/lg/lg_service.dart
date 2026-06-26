@@ -1,6 +1,8 @@
 // import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'package:dartssh2/dartssh2.dart';
+import 'package:dio/dio.dart';
+import '../kml/balloon_image_maker.dart';
 import '../kml/balloon_maker.dart';
 import '../models/lg_connection.dart';
 import '../models/location.dart';
@@ -71,23 +73,61 @@ class LGService {
     await _ssh.sendKMLToSlave(screenNumber, kml);
   }
 
+  int get infoScreen => _ssh.rightScreen;
+
+  int _balloonSeq = 0;
+  final Dio _balloonDio = Dio();
+
   Future<void> showLocationBalloon({
     required TourLocation location,
     required WikimediaResult? media,
-    required RigConfig rigConfig,
   }) async {
-    final kml = BalloonMaker.infoBalloon(
+    final imageUrl = media?.imageUrl ?? location.imageUrl ?? '';
+    final imageBytes = imageUrl.isEmpty ? null : await _downloadImage(imageUrl);
+
+    final png = await BalloonImageMaker.render(
       locationName: location.name,
       locationSubtitle: location.address ?? '',
       description: media?.description ?? location.whySignificant,
-      imageUrl: media?.imageUrl ?? location.imageUrl ?? '',
+      imageBytes: imageBytes,
     );
-    await sendKmlToSlave(rigConfig.infoScreen, kml);
+
+    // Unique filename per update so Google Earth can't serve a cached image.
+    final fileName = 'infoballoon_${_balloonSeq++}.png';
+    await _ssh.uploadBytes(png, fileName);
+
+    final host = _ssh.host ?? 'lg1';
+    final kml = BalloonMaker.imageOverlay(host: host, fileName: fileName);
+    debugPrint(
+      'LGService: Showing info balloon "${location.name}" on screen '
+      '$infoScreen ($fileName, ${png.length} bytes)',
+    );
+    await sendKmlToSlave(infoScreen, kml);
+  }
+
+  Future<Uint8List?> _downloadImage(String url) async {
+    try {
+      final res = await _balloonDio.get<List<int>>(
+        url,
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: const {
+            'User-Agent':
+                'LGAITourDirector/1.0 (GSoC 2026; kabirkhanuja@gmail.com)',
+          },
+        ),
+      );
+      final data = res.data;
+      return data == null ? null : Uint8List.fromList(data);
+    } catch (e) {
+      debugPrint('LGService: balloon image download failed: $e');
+      return null;
+    }
   }
 
   // clears the info balloon from the right most screen
-  Future<void> clearBalloon(RigConfig rigConfig) async {
-    await sendKmlToSlave(rigConfig.infoScreen, BalloonMaker.emptyBalloon());
+  Future<void> clearBalloon() async {
+    await sendKmlToSlave(infoScreen, BalloonMaker.emptyBalloon());
   }
 
   Future<void> flyTo(

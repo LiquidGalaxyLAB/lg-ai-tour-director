@@ -221,6 +221,26 @@ class SSHConnection {
     }
   }
 
+  /// Writes raw [bytes] to `/var/www/html/<remoteFileName>` on the master.
+  /// Used for dynamically generated assets (e.g. the rendered info balloon PNG)
+  /// that don't exist as a bundled asset for [upload].
+  Future<void> uploadBytes(Uint8List bytes, String remoteFileName) async {
+    if (!await isConnected()) return;
+    try {
+      final sftp = await getSftp();
+      final remoteFile = await sftp.open(
+        '/var/www/html/$remoteFileName',
+        mode: SftpFileOpenMode.create |
+            SftpFileOpenMode.write |
+            SftpFileOpenMode.truncate,
+      );
+      await remoteFile.write(Stream.value(bytes).cast<Uint8List>());
+      await remoteFile.close();
+    } catch (e) {
+      debugPrint('Error during bytes upload ($remoteFileName): $e');
+    }
+  }
+
   Future<void> sendKml(
     String kml, {
     List<String> images = const [],
