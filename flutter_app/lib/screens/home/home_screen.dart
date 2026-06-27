@@ -61,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     context.push('/home/generation', extra: prompt);
+    _promptController.clear();
   }
 
   @override
