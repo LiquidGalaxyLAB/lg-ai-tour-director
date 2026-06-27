@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/saved_tour.dart';
 import '../../providers/library_provider.dart';
+import '../../providers/ssh_provider.dart';
 import '../../shared/widgets/map_placeholder.dart';
 
 /// Saved tour detail (mockups 15 & 16): hero, replay, highlights album, route
@@ -19,6 +22,45 @@ class SavedDetailScreen extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$label — coming soon')),
       );
+
+  /// Re-flies a saved tour on the rig: rebuilds + deploys the KML and flies the
+  /// camera through every geocoded stop, with the Wikipedia/Unsplash info
+  /// balloons — the same pipeline as a fresh tour.
+  Future<void> _replayOnLg(
+    BuildContext context,
+    WidgetRef ref,
+    SavedTour tour,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (!ref.read(sshConnectionProvider).isConnected) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Connect to Liquid Galaxy first.')),
+      );
+      return;
+    }
+    final geocoded =
+        tour.locations.where((l) => l.latitude != null).length;
+    if (geocoded == 0) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('This saved tour has no map coordinates to fly.'),
+        ),
+      );
+      return;
+    }
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Replaying tour on Liquid Galaxy…')),
+    );
+    unawaited(
+      ref
+          .read(sshConnectionProvider.notifier)
+          .flyGeneratedTour(tour.locations)
+          .catchError((Object e) {
+        debugPrint('SavedDetail: replay error: $e');
+        return 0;
+      }),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -118,7 +160,7 @@ class SavedDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(
-                onPressed: () => _stub(context, 'Replay on rig'),
+                onPressed: () => _replayOnLg(context, ref, tour),
                 icon: const Icon(Icons.cast),
                 label: const Text('Replay on Liquid Galaxy'),
               ),

@@ -11,6 +11,7 @@ import '../lg/lg_service.dart';
 import '../models/lg_connection.dart';
 import '../models/location.dart';
 import '../models/rig_config.dart';
+import '../services/media/media_cache_service.dart';
 import '../services/media/unsplash_service.dart';
 import '../services/media/wikimedia_service.dart';
 
@@ -188,8 +189,10 @@ class SshConnection extends _$SshConnection {
 
     for (final loc in cases) {
       final media = await _resolveStopMedia(loc);
-      debugPrint('[Balloon][test] "${loc.name}" → '
-          'image: ${media.imageUrl.isEmpty ? '(none)' : media.imageUrl}');
+      debugPrint(
+        '[Balloon][test] "${loc.name}" → '
+        'image: ${media.imageUrl.isEmpty ? '(none)' : media.imageUrl}',
+      );
     }
 
     // Deploy the historical case to the rig so it can be eyeballed.
@@ -302,42 +305,55 @@ class SshConnection extends _$SshConnection {
     }
   }
 
-  /// Resolves the best image + description for [location] via the fallback
-  /// chain: Wikipedia (with sanitise retry) → Unsplash → the generation-time
-  /// image → text-only. Description prefers Wikipedia's extract, else the AI's
-  /// significance text. Never throws — returns empty strings on total miss.
+  /// Resolves the best image + description for [location].
+  ///
+  /// Resolution happens **once** and is then cached persistently by name — so
+  /// replaying a saved tour reuses the stored result with no repeat Wikipedia/
+  /// Unsplash calls. On a cache miss the chain runs: Wikipedia (with sanitise
+  /// retry) → Unsplash → the generation-time image → text-only; description
+  /// prefers Wikipedia's extract, else the AI's significance text. Never throws.
   Future<({String imageUrl, String description})> _resolveStopMedia(
     TourLocation location,
   ) async {
-    // 1. Wikipedia (exact, then sanitised inside the service).
+    // 0. Reuse a previously resolved result (replay = no API calls).
+    final cached = await MediaCacheService.instance.get(location.name);
+    if (cached != null) {
+      debugPrint('[Balloon] source: cache for "${location.name}"');
+      return cached;
+    }
+
+    var imageUrl = '';
+    var description = location.whySignificant;
+    String source;
+
     final wiki = await WikimediaService.instance.fetchLocationMedia(
       location.name,
     );
     if (wiki != null && wiki.imageUrl.isNotEmpty) {
-      debugPrint('[Balloon] source: wikipedia for "${location.name}"');
-      return (imageUrl: wiki.imageUrl, description: wiki.description);
+      imageUrl = wiki.imageUrl;
+      description = wiki.description;
+      source = 'wikipedia';
+    } else {
+      final unsplash = await UnsplashService.instance.fetchPhotoUrl(
+        location.name,
+      );
+      if (unsplash != null && unsplash.isNotEmpty) {
+        imageUrl = unsplash;
+        source = 'unsplash';
+      } else if ((location.imageUrl ?? '').isNotEmpty) {
+        imageUrl = location.imageUrl!;
+        source = 'fallback (generation image)';
+      } else {
+        source = 'text-only';
+      }
     }
 
-    // No Wikipedia image — fall back to the AI significance text for the body.
-    final description = location.whySignificant;
-
-    // 2. Unsplash.
-    final unsplash = await UnsplashService.instance.fetchPhotoUrl(location.name);
-    if (unsplash != null && unsplash.isNotEmpty) {
-      debugPrint('[Balloon] source: unsplash for "${location.name}"');
-      return (imageUrl: unsplash, description: description);
-    }
-
-    // 3. Image fetched at generation time, if any.
-    final generated = location.imageUrl ?? '';
-    if (generated.isNotEmpty) {
-      debugPrint('[Balloon] source: fallback (generation image) '
-          'for "${location.name}"');
-      return (imageUrl: generated, description: description);
-    }
-
-    // 4. Nothing — text-only card.
-    debugPrint('[Balloon] source: text-only for "${location.name}"');
-    return (imageUrl: '', description: description);
+    debugPrint('[Balloon] source: $source for "${location.name}"');
+    await MediaCacheService.instance.put(
+      location.name,
+      imageUrl: imageUrl,
+      description: description,
+    );
+    return (imageUrl: imageUrl, description: description);
   }
 }
