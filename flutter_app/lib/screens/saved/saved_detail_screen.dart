@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../models/location.dart';
 import '../../models/saved_tour.dart';
 import '../../providers/library_provider.dart';
 import '../../providers/ssh_provider.dart';
+import '../../shared/widgets/location_image.dart';
 import '../../shared/widgets/map_placeholder.dart';
 
 /// Saved tour detail (mockups 15 & 16): hero, replay, highlights album, route
@@ -182,7 +184,7 @@ class SavedDetailScreen extends ConsumerWidget {
                   itemCount: tour.locations.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 12),
                   itemBuilder: (_, i) =>
-                      _HighlightCard(index: i + 1, name: tour.locations[i].name),
+                      _HighlightCard(index: i + 1, location: tour.locations[i]),
                 ),
               ),
               const SizedBox(height: 24),
@@ -226,9 +228,9 @@ class SavedDetailScreen extends ConsumerWidget {
 }
 
 class _HighlightCard extends StatelessWidget {
-  const _HighlightCard({required this.index, required this.name});
+  const _HighlightCard({required this.index, required this.location});
   final int index;
-  final String name;
+  final TourLocation location;
 
   @override
   Widget build(BuildContext context) {
@@ -238,21 +240,12 @@ class _HighlightCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 100,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.googleBlueBright, AppColors.googleGreen],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.photo_outlined, color: Colors.white24),
-          ),
+          LocationImage(location: location, height: 100, width: 140),
           const SizedBox(height: 6),
           Text('STOP ${index.toString().padLeft(2, '0')}',
               style: theme.textTheme.labelSmall
                   ?.copyWith(color: theme.colorScheme.primary)),
-          Text(name,
+          Text(location.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.titleSmall
