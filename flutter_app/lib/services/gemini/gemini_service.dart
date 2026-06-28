@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../models/location.dart';
+import 'llm_service.dart';
 import 'prompts.dart';
 
 class GeminiService {
@@ -121,6 +122,15 @@ class GeminiService {
   }
 
   Future<String> _callApi(String promptText) async {
+    // Optional override if a tester opted into a custom OpenRouter model, use
+    // its response. Returns null when disabled / no key / on failure, so we
+    // fall through to the unchanged Gemini chain below.
+    final override = await LLMService.instance.maybeOpenRouter(
+      GeminiPrompts.systemInstruction,
+      promptText,
+    );
+    if (override != null) return override;
+
     // Try the cached working model first, then the rest of the chain.
     final models = <String>[
       ?_workingModel,
@@ -156,9 +166,7 @@ class GeminiService {
         rethrow;
       }
     }
-    throw Exception(
-      'All Gemini models failed. Last error: $lastError',
-    );
+    throw Exception('All Gemini models failed. Last error: $lastError');
   }
 
   /// Single generateContent call against one model. Returns the raw text part.
