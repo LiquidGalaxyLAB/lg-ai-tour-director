@@ -18,27 +18,66 @@ class PreviewScreen extends ConsumerWidget {
   final TourFlowArgs args;
 
   Future<void> _start(BuildContext context, WidgetRef ref) async {
+    if (!ref.read(sshConnectionProvider).isConnected) {
+      await _showConnectDialog(context);
+      return;
+    }
+
     final choice = await showFilmDialog(context);
     if (choice == null || !context.mounted) return; // cancelled
 
-    final ssh = ref.read(sshConnectionProvider);
-    if (ssh.isConnected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Deploying tour to Liquid Galaxy…')),
-      );
-      unawaited(
-        ref
-            .read(sshConnectionProvider.notifier)
-            .flyGeneratedTour(args.locations)
-            .catchError((Object e) {
-              debugPrint('Preview: rig flight error: $e');
-              return 0;
-            }),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Deploying tour to Liquid Galaxy…')),
+    );
+    unawaited(
+      ref
+          .read(sshConnectionProvider.notifier)
+          .flyGeneratedTour(args.locations)
+          .catchError((Object e) {
+            debugPrint('Preview: rig flight error: $e');
+            return 0;
+          }),
+    );
 
     if (!context.mounted) return;
     context.push('/home/active', extra: args.copyWith(generateFilm: choice));
+  }
+
+  Future<void> _showConnectDialog(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.cast_connected_rounded),
+        title: const Text('Connect to Liquid Galaxy'),
+        content: const Text(
+          'Connect to your Liquid Galaxy rig first via LG Connection Settings '
+          'to start the immersive tour.',
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        actions: [
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    context.push('/settings/lg');
+                  },
+                  child: const Text('LG Connection Settings'),
+                ),
+              ),
+              const SizedBox(height: 4),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
