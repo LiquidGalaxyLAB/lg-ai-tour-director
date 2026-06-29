@@ -268,8 +268,9 @@ class _ThankYouHero extends StatefulWidget {
 }
 
 class _ThankYouHeroState extends State<_ThankYouHero>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
+    with TickerProviderStateMixin {
+  late final AnimationController _c; // one-shot entrance
+  late final AnimationController _ribbon; // looping ribbon drift
 
   @override
   void initState() {
@@ -278,11 +279,16 @@ class _ThankYouHeroState extends State<_ThankYouHero>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..forward();
+    _ribbon = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
   }
 
   @override
   void dispose() {
     _c.dispose();
+    _ribbon.dispose();
     super.dispose();
   }
 
@@ -308,46 +314,70 @@ class _ThankYouHeroState extends State<_ThankYouHero>
             offset: Offset(0, (1 - fade) * 12),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
               decoration: BoxDecoration(
                 gradient: gradient,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Column(
-                children: [
-                  Transform.scale(
-                    scale: 0.7 + 0.3 * pop,
-                    child: Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.celebration_rounded,
-                        color: Colors.white,
-                        size: 34,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Stack(
+                  children: [
+                    // Continuously floating party ribbons behind the content.
+                    Positioned.fill(
+                      child: RepaintBoundary(
+                        child: AnimatedBuilder(
+                          animation: _ribbon,
+                          builder: (context, _) => CustomPaint(
+                            painter: _RibbonsPainter(_ribbon.value),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Thank You!',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 28,
+                        horizontal: 20,
+                      ),
+                      child: Column(
+                        children: [
+                          Transform.scale(
+                            scale: 0.7 + 0.3 * pop,
+                            child: Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.18),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.celebration_rounded,
+                                color: Colors.white,
+                                size: 34,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            'Thank You!',
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'We hope you enjoyed the journey across Liquid '
+                            'Galaxy.',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'We hope you enjoyed the journey across Liquid Galaxy.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -355,6 +385,79 @@ class _ThankYouHeroState extends State<_ThankYouHero>
       },
     );
   }
+}
+
+class _RibbonsPainter extends CustomPainter {
+  _RibbonsPainter(this.t);
+
+  final double t;
+
+  static const _palette = <Color>[
+    Color(0xFFEA4335),
+    Color(0xFFFBBC04),
+    Color(0xFF34A853),
+    Color(0xFFFFFFFF),
+    Color(0xFF8AB4F8),
+  ];
+
+  // (relX, speed, length, swayAmp, swayFreq, phase, colourIndex, strokeWidth)
+  static const _ribbons =
+      <(double, double, double, double, double, double, int, double)>[
+        (0.08, 0.90, 64, 9, 2.0, 0.00, 0, 3.5),
+        (0.20, 1.20, 80, 13, 1.6, 0.35, 1, 3.0),
+        (0.33, 1.00, 56, 8, 2.4, 0.70, 2, 4.0),
+        (0.46, 0.80, 72, 12, 1.8, 0.15, 3, 3.0),
+        (0.58, 1.15, 60, 10, 2.1, 0.55, 4, 3.5),
+        (0.70, 0.95, 76, 14, 1.5, 0.85, 0, 3.0),
+        (0.82, 1.05, 52, 9, 2.3, 0.25, 1, 3.5),
+        (0.92, 0.85, 68, 11, 1.7, 0.60, 2, 3.0),
+        (0.27, 1.10, 58, 10, 2.0, 0.45, 3, 3.5),
+      ];
+
+  static double _envelope(double cycle) {
+    const fadeIn = 0.18;
+    const fadeOut = 0.22;
+    if (cycle < fadeIn) return cycle / fadeIn;
+    if (cycle > 1 - fadeOut) return (1 - cycle) / fadeOut;
+    return 1.0;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    for (final (relX, speed, len, amp, freq, phase, ci, width) in _ribbons) {
+      final baseX = relX * size.width;
+      final cycle = (t * speed + phase) % 1.0;
+      final headY = size.height + len - cycle * (size.height + len * 2);
+      final alpha = 0.8 * _envelope(cycle);
+      if (alpha <= 0.01) continue;
+
+      final paint = Paint()
+        ..color = _palette[ci].withValues(alpha: alpha)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = width
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+
+      final path = Path();
+      const segs = 10;
+      for (var i = 0; i <= segs; i++) {
+        final f = i / segs;
+        final y = headY + f * len;
+        final sway =
+            math.sin(
+              f * math.pi * freq * 2 + t * 2 * math.pi * speed + phase * 6,
+            ) *
+            amp;
+        final x = baseX + sway;
+        i == 0 ? path.moveTo(x, y) : path.lineTo(x, y);
+      }
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RibbonsPainter old) => old.t != t;
 }
 
 class _ProducingCard extends StatelessWidget {
