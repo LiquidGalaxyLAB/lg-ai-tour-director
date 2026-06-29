@@ -65,6 +65,17 @@ dev_dependencies:
   riverpod_generator: ^4.0.3
   build_runner: ^2.15.0
   flutter_native_splash: ^2.4.4
+  flutter_launcher_icons: ^0.14.4
+
+# App launcher icon. Regenerate with: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21
+  # Adaptive icon (Android 8+): black backdrop to match the artwork.
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
 
 # OS-level splash (shown during Flutter init, before the Dart splash screen).
 # Regenerate platform files with: dart run flutter_native_splash:create

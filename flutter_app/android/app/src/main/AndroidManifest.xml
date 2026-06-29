@@ -5,7 +5,7 @@
     <!-- Voice prompt input (mic button, wired later) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
-        android:label="flutter_app"
+        android:label="Tour Director"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
