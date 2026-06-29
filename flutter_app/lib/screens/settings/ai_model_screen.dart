@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/gemini/llm_service.dart'; // pref keys
+import '../../services/llm/llm_exception.dart';
 import '../../services/llm/open_router_service.dart';
 
 /// AI Configuration (Settings → AI Configuration). Testers set their own model
@@ -64,7 +66,7 @@ class _AiModelScreenState extends State<AiModelScreen> {
     await prefs.setString(LLMService.prefModel, _model);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Saved — tours will be generated with $_model.')),
+      SnackBar(content: Text('Saved. Tours will be generated with $_model.')),
     );
   }
 
@@ -78,18 +80,18 @@ class _AiModelScreenState extends State<AiModelScreen> {
       return;
     }
     setState(() => _testing = true);
-    final ok = await OpenRouterService(apiKey: key, model: _model).testConnection();
+    String message;
+    try {
+      await OpenRouterService(apiKey: key, model: _model).testConnection();
+      message = 'Connected — $_model responded.';
+    } on LlmException catch (e) {
+      message = e.message;
+    } catch (e) {
+      message = 'Connection failed: $e';
+    }
     if (!mounted) return;
     setState(() => _testing = false);
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          ok
-              ? 'Connected — $_model responded.'
-              : 'No response — check the API key and model ID.',
-        ),
-      ),
-    );
+    messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -115,7 +117,20 @@ class _AiModelScreenState extends State<AiModelScreen> {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => context.push('/help/openrouter-setup'),
+                      icon: const Icon(Icons.menu_book_outlined, size: 18),
+                      label: const Text('Setup guide'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
                   // API key.
                   TextField(

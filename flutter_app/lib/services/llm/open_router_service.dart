@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import 'llm_exception.dart';
 import 'open_router_prompts.dart';
 
 /// Calls any model on OpenRouter (openrouter.ai) via the OpenAI-compatible
@@ -19,8 +20,8 @@ class OpenRouterService {
   final Dio _dio = Dio();
 
   /// Generic completion — system + user prompt in, raw assistant text out.
-  /// Returns null on any error (caller decides how to surface it).
-  Future<String?> generate({
+  /// Throws an [LlmException] (with a user-facing reason) on any failure.
+  Future<String> generate({
     required String systemPrompt,
     required String userPrompt,
   }) async {
@@ -50,40 +51,44 @@ class OpenRouterService {
           'temperature': 0.7,
         },
       );
-      return response.data['choices']?[0]?['message']?['content'] as String?;
+      final content =
+          response.data['choices']?[0]?['message']?['content'] as String?;
+      if (content == null || content.trim().isEmpty) {
+        throw LlmException(
+          'The model returned an empty response. Try a different model.',
+          isSetupIssue: true,
+        );
+      }
+      debugPrint('[OpenRouter] raw response:\n$content');
+      return content;
     } on DioException catch (e) {
       debugPrint('[OpenRouter] error: ${e.response?.data ?? e.message}');
-      return null;
-    } catch (e) {
-      debugPrint('[OpenRouter] error: $e');
-      return null;
+      throw LlmException.fromDio(e);
     }
   }
 
   /// Creative Director — extract 4-6 locations from a travel prompt (raw JSON).
-  Future<String?> extractLocations(String travelPrompt) => generate(
+  Future<String> extractLocations(String travelPrompt) => generate(
         systemPrompt: OpenRouterPrompts.creativeDirectorSystem,
         userPrompt: travelPrompt,
       );
 
   /// Writer — narration for a single location (raw JSON).
-  Future<String?> generateNarration(String locationJson) => generate(
+  Future<String> generateNarration(String locationJson) => generate(
         systemPrompt: OpenRouterPrompts.writerSystem,
         userPrompt: 'Generate narration for: $locationJson',
       );
 
   /// Fallback — alternative name for a location that failed geocoding.
-  Future<String?> suggestFallbackLocation(String failedName) => generate(
+  Future<String> suggestFallbackLocation(String failedName) => generate(
         systemPrompt: OpenRouterPrompts.fallbackLocationSystem,
         userPrompt: 'Original failed location: $failedName',
       );
 
-  /// Used by the settings screen's "Test Connection" button.
-  Future<bool> testConnection() async {
-    final result = await generate(
-      systemPrompt: 'Reply with exactly: OK',
-      userPrompt: 'test',
-    );
-    return result != null && result.trim().contains('OK');
-  }
+  /// Used by the settings screen's "Test Connection" button. Completes on a
+  /// successful round-trip; throws an [LlmException] with the reason otherwise.
+  Future<void> testConnection() => generate(
+        systemPrompt: 'Reply with exactly: OK',
+        userPrompt: 'test',
+      );
 }

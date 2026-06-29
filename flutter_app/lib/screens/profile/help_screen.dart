@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 /// Help & Support (mockups 24 & 25). "Recording Tours" guide is reframed as
 /// "Generating AI Films" per the locked decision.
@@ -36,7 +37,29 @@ class HelpScreen extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          // Featured: AI model setup (real, navigable guide).
+          Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: theme.colorScheme.primary,
+                child: const Icon(Icons.smart_toy_outlined, color: Colors.white),
+              ),
+              title: Text('AI Model Setup (OpenRouter)',
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              subtitle: const Text(
+                'Create an API key, pick a model, and connect it to the app.',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/help/openrouter-setup'),
+            ),
+          ),
           Text('QUICK GUIDES',
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.primary,
