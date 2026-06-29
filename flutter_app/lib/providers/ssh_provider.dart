@@ -11,8 +11,7 @@ import '../lg/lg_service.dart';
 import '../models/lg_connection.dart';
 import '../models/location.dart';
 import '../models/rig_config.dart';
-import '../services/media/unsplash_service.dart';
-import '../services/media/wikimedia_service.dart';
+import '../services/media/location_media_resolver.dart';
 
 part 'ssh_provider.g.dart';
 
@@ -188,8 +187,10 @@ class SshConnection extends _$SshConnection {
 
     for (final loc in cases) {
       final media = await _resolveStopMedia(loc);
-      debugPrint('[Balloon][test] "${loc.name}" → '
-          'image: ${media.imageUrl.isEmpty ? '(none)' : media.imageUrl}');
+      debugPrint(
+        '[Balloon][test] "${loc.name}" → '
+        'image: ${media.imageUrl.isEmpty ? '(none)' : media.imageUrl}',
+      );
     }
 
     // Deploy the historical case to the rig so it can be eyeballed.
@@ -302,42 +303,7 @@ class SshConnection extends _$SshConnection {
     }
   }
 
-  /// Resolves the best image + description for [location] via the fallback
-  /// chain: Wikipedia (with sanitise retry) → Unsplash → the generation-time
-  /// image → text-only. Description prefers Wikipedia's extract, else the AI's
-  /// significance text. Never throws — returns empty strings on total miss.
   Future<({String imageUrl, String description})> _resolveStopMedia(
     TourLocation location,
-  ) async {
-    // 1. Wikipedia (exact, then sanitised inside the service).
-    final wiki = await WikimediaService.instance.fetchLocationMedia(
-      location.name,
-    );
-    if (wiki != null && wiki.imageUrl.isNotEmpty) {
-      debugPrint('[Balloon] source: wikipedia for "${location.name}"');
-      return (imageUrl: wiki.imageUrl, description: wiki.description);
-    }
-
-    // No Wikipedia image — fall back to the AI significance text for the body.
-    final description = location.whySignificant;
-
-    // 2. Unsplash.
-    final unsplash = await UnsplashService.instance.fetchPhotoUrl(location.name);
-    if (unsplash != null && unsplash.isNotEmpty) {
-      debugPrint('[Balloon] source: unsplash for "${location.name}"');
-      return (imageUrl: unsplash, description: description);
-    }
-
-    // 3. Image fetched at generation time, if any.
-    final generated = location.imageUrl ?? '';
-    if (generated.isNotEmpty) {
-      debugPrint('[Balloon] source: fallback (generation image) '
-          'for "${location.name}"');
-      return (imageUrl: generated, description: description);
-    }
-
-    // 4. Nothing — text-only card.
-    debugPrint('[Balloon] source: text-only for "${location.name}"');
-    return (imageUrl: '', description: description);
-  }
+  ) => LocationMediaResolver.instance.resolve(location);
 }

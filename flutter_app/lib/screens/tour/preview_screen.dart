@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,59 +12,37 @@ import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/film_dialog.dart';
 import '../../shared/widgets/map_placeholder.dart';
 
-/// Preview / "Your tour is ready" (mockups 4 & 7): map with numbered stops,
-/// the ordered location cards, and Start Immersive Tour. Tapping Start asks the
-/// film opt-in question before launching.
-class PreviewScreen extends StatelessWidget {
+class PreviewScreen extends ConsumerWidget {
   const PreviewScreen({super.key, required this.args});
 
   final TourFlowArgs args;
 
-  Future<void> _start(BuildContext context) async {
+  Future<void> _start(BuildContext context, WidgetRef ref) async {
     final choice = await showFilmDialog(context);
     if (choice == null || !context.mounted) return; // cancelled
+
+    final ssh = ref.read(sshConnectionProvider);
+    if (ssh.isConnected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Deploying tour to Liquid Galaxy…')),
+      );
+      unawaited(
+        ref
+            .read(sshConnectionProvider.notifier)
+            .flyGeneratedTour(args.locations)
+            .catchError((Object e) {
+              debugPrint('Preview: rig flight error: $e');
+              return 0;
+            }),
+      );
+    }
+
+    if (!context.mounted) return;
     context.push('/home/active', extra: args.copyWith(generateFilm: choice));
   }
 
-  /// Deploys the geocoded stops as a cinematic gx:Tour and plays it on the rig.
-  /// Independent of the on-device "Start Immersive Tour" companion flow.
-  Future<void> _flyOnLg(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final ssh = ref.read(sshConnectionProvider);
-
-    if (!ssh.isConnected) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Connect to Liquid Galaxy first.')),
-      );
-      return;
-    }
-
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Deploying tour to Liquid Galaxy…')),
-    );
-
-    try {
-      final stops = await ref
-          .read(sshConnectionProvider.notifier)
-          .flyGeneratedTour(args.locations);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            stops > 0
-                ? 'Flying $stops stop(s) on Liquid Galaxy.'
-                : 'No geocoded stops to fly.',
-          ),
-        ),
-      );
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Could not play tour: $e')),
-      );
-    }
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final locations = args.locations;
 
@@ -74,7 +54,10 @@ class PreviewScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               children: [
-                Text('Your tour is ready', style: theme.textTheme.headlineSmall),
+                Text(
+                  'Your tour is ready',
+                  style: theme.textTheme.headlineSmall,
+                ),
                 const SizedBox(height: 4),
                 Text(
                   'Preview the journey before launching it on Liquid Galaxy.',
@@ -96,8 +79,7 @@ class PreviewScreen extends StatelessWidget {
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
@@ -109,20 +91,9 @@ class PreviewScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 FilledButton.icon(
-                  onPressed: () => _start(context),
+                  onPressed: () => _start(context, ref),
                   icon: const Icon(Icons.rocket_launch_rounded, size: 20),
                   label: const Text('Start Immersive Tour'),
-                ),
-                const SizedBox(height: 8),
-                Consumer(
-                  builder: (context, ref, _) => OutlinedButton.icon(
-                    onPressed: () => _flyOnLg(context, ref),
-                    icon: const Icon(Icons.travel_explore_rounded, size: 20),
-                    label: const Text('Fly on Liquid Galaxy'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                    ),
-                  ),
                 ),
                 const SizedBox(height: 8),
                 TextButton(

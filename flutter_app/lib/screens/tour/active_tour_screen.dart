@@ -5,8 +5,10 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../models/location.dart';
 import '../../models/tour_flow.dart';
 import '../../shared/widgets/app_header.dart';
+import '../../shared/widgets/location_image.dart';
 import '../../shared/widgets/map_placeholder.dart';
 
 /// Active immersive tour (mockups 8 & 9): current scene + narration subtitles,
@@ -32,10 +34,12 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
   bool _paused = false;
 
   // Demo pacing: cap the per-scene dwell so the walkthrough progresses.
-  double get _sceneDuration =>
-      widget.args.locations[_scene].suggestedDurationSeconds
-          .clamp(6, 14)
-          .toDouble();
+  double get _sceneDuration => widget
+      .args
+      .locations[_scene]
+      .suggestedDurationSeconds
+      .clamp(6, 14)
+      .toDouble();
 
   @override
   void initState() {
@@ -114,7 +118,7 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
               children: [
                 _SceneDots(total: total, current: _scene),
                 const SizedBox(height: 16),
-                _SceneCard(name: loc.name, locality: loc.type),
+                _SceneCard(location: loc),
                 const SizedBox(height: 16),
                 _SubtitleCard(text: loc.whySignificant, progress: progress),
                 const SizedBox(height: 16),
@@ -153,9 +157,11 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: _togglePause,
-                        icon: Icon(_paused
-                            ? Icons.play_arrow_rounded
-                            : Icons.pause_rounded),
+                        icon: Icon(
+                          _paused
+                              ? Icons.play_arrow_rounded
+                              : Icons.pause_rounded,
+                        ),
                         label: Text(_paused ? 'Resume' : 'Pause Tour'),
                       ),
                     ),
@@ -236,30 +242,28 @@ class _SceneDots extends StatelessWidget {
 }
 
 class _SceneCard extends StatelessWidget {
-  const _SceneCard({required this.name, required this.locality});
-  final String name;
-  final String locality;
+  const _SceneCard({required this.location});
+  final TourLocation location;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
-      child: Container(
+      child: SizedBox(
         height: 170,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.googleBlue, AppColors.googleBlueBright],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
         child: Stack(
+          fit: StackFit.expand,
           children: [
-            const Positioned(
-              right: 12,
-              top: 12,
-              child: Icon(Icons.photo_camera_back_outlined,
-                  color: Colors.white24, size: 40),
+            LocationImage(location: location, borderRadius: 16),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.black54],
+                  stops: [0.45, 1.0],
+                ),
+              ),
             ),
             Positioned(
               left: 16,
@@ -270,26 +274,38 @@ class _SceneCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text('CURRENT SCENE',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            letterSpacing: 1)),
+                    child: const Text(
+                      'CURRENT SCENE',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        letterSpacing: 1,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 6),
-                  Text(name,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700)),
-                  Text(locality,
-                      style: const TextStyle(color: Colors.white70)),
+                  Text(
+                    location.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    location.type,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
                 ],
               ),
             ),
@@ -320,9 +336,14 @@ class _SubtitleCard extends StatelessWidget {
             children: [
               Icon(Icons.subtitles_outlined, color: Colors.white, size: 16),
               SizedBox(width: 6),
-              Text('NARRATION SUBTITLES',
-                  style: TextStyle(
-                      color: Colors.white, fontSize: 11, letterSpacing: 1)),
+              Text(
+                'NARRATION SUBTITLES',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  letterSpacing: 1,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -352,7 +373,11 @@ class _SubtitleCard extends StatelessWidget {
 }
 
 class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.icon, required this.title, required this.rows});
+  const _InfoCard({
+    required this.icon,
+    required this.title,
+    required this.rows,
+  });
   final IconData icon;
   final String title;
   final List<(String, String)> rows;
@@ -374,11 +399,13 @@ class _InfoCard extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: theme.colorScheme.primary),
               const SizedBox(width: 6),
-              Text(title,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                  )),
+              Text(
+                title,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -388,14 +415,18 @@ class _InfoCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(k,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      )),
-                  Text(v,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      )),
+                  Text(
+                    k,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    v,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
             ),

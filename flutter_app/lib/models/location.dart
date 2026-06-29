@@ -55,6 +55,11 @@ class TourLocation {
       whySignificant: json['why_significant'] as String? ?? '',
       suggestedDurationSeconds:
           (json['suggested_duration_seconds'] as num?)?.toInt() ?? 15,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      placeId: json['place_id'] as String?,
+      address: json['address'] as String?,
+      imageUrl: json['image_url'] as String?,
     );
   }
 
@@ -63,6 +68,11 @@ class TourLocation {
     'type': type,
     'why_significant': whySignificant,
     'suggested_duration_seconds': suggestedDurationSeconds,
+    if (latitude != null) 'latitude': latitude,
+    if (longitude != null) 'longitude': longitude,
+    if (placeId != null) 'place_id': placeId,
+    if (address != null) 'address': address,
+    if (imageUrl != null) 'image_url': imageUrl,
   };
 
   @override

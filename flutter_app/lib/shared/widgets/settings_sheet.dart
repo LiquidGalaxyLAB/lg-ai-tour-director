@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../providers/theme_provider.dart';
 
-/// Opens the Settings modal sheet (mockup screen 17) from the header gear.
 Future<void> showSettingsSheet(BuildContext context) {
   return showModalBottomSheet(
     context: context,
@@ -18,10 +17,10 @@ class _SettingsSheet extends ConsumerWidget {
   const _SettingsSheet();
 
   static String _themeLabel(ThemeMode mode) => switch (mode) {
-        ThemeMode.system => 'System',
-        ThemeMode.light => 'Light',
-        ThemeMode.dark => 'Dark',
-      };
+    ThemeMode.system => 'System',
+    ThemeMode.light => 'Light',
+    ThemeMode.dark => 'Dark',
+  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -76,6 +75,12 @@ class _SettingsSheet extends ConsumerWidget {
               onTap: () => go('/settings/advanced'),
             ),
             _SettingsRow(
+              icon: Icons.smart_toy_outlined,
+              title: 'AI Model Settings',
+              subtitle: 'Use Gemini or your own model (OpenRouter)',
+              onTap: () => go('/settings/ai'),
+            ),
+            _SettingsRow(
               icon: Icons.movie_filter_outlined,
               title: 'Tour Preferences',
               subtitle: 'Narration and film settings',
@@ -123,7 +128,9 @@ class _SettingsRow extends StatelessWidget {
       leading: Icon(icon, color: theme.colorScheme.primary),
       title: Text(
         title,
-        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
       ),
       subtitle: subtitle == null ? null : Text(subtitle!),
       trailing: trailing == null

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/app_header.dart';
@@ -16,6 +18,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _promptController = TextEditingController();
+
+  // On-device speech recognition (speech_to_text) for the mic button.
+  final SpeechToText _speech = SpeechToText();
+  bool _speechReady = false;
+  bool _listening = false;
 
   static const _suggestion = 'Lost empires of Rajasthan';
 
@@ -47,7 +54,63 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _initSpeech();
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      _speechReady = await _speech.initialize(
+        onStatus: (status) {
+          if (mounted) setState(() => _listening = status == 'listening');
+        },
+        onError: (_) {
+          if (mounted) setState(() => _listening = false);
+        },
+      );
+    } catch (_) {
+      _speechReady = false;
+    }
+  }
+
+  /// Toggles dictation into the prompt box. Requests mic permission on first
+  /// use (handled by the plugin) and streams partial results live.
+  Future<void> _toggleListen() async {
+    if (_speech.isListening) {
+      await _speech.stop();
+      return;
+    }
+    if (!_speechReady) {
+      _speechReady = await _speech.initialize();
+      if (!_speechReady) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Speech recognition is unavailable on this device.'),
+          ),
+        );
+        return;
+      }
+    }
+    await _speech.listen(
+      onResult: _onSpeechResult,
+      listenOptions: SpeechListenOptions(partialResults: true),
+    );
+  }
+
+  void _onSpeechResult(SpeechRecognitionResult result) {
+    final words = result.recognizedWords;
+    // Replace the box with the recognised text and keep the caret at the end.
+    _promptController.value = TextEditingValue(
+      text: words,
+      selection: TextSelection.collapsed(offset: words.length),
+    );
+  }
+
+  @override
   void dispose() {
+    _speech.cancel();
     _promptController.dispose();
     super.dispose();
   }
@@ -61,6 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     context.push('/home/generation', extra: prompt);
+    _promptController.clear();
   }
 
   @override
@@ -87,14 +151,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 _PromptCard(
                   controller: _promptController,
                   suggestion: _suggestion,
+                  isListening: _listening,
                   onSuggestionTap: () {
                     _promptController.text = _suggestion;
                   },
-                  onMic: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Voice input coming soon')),
-                    );
-                  },
+                  onMic: _toggleListen,
                 ),
                 const SizedBox(height: 28),
                 Text(
@@ -139,12 +200,14 @@ class _PromptCard extends StatelessWidget {
   const _PromptCard({
     required this.controller,
     required this.suggestion,
+    required this.isListening,
     required this.onSuggestionTap,
     required this.onMic,
   });
 
   final TextEditingController controller;
   final String suggestion;
+  final bool isListening;
   final VoidCallback onSuggestionTap;
   final VoidCallback onMic;
 
@@ -179,8 +242,11 @@ class _PromptCard extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.mic_none_rounded),
-                color: theme.colorScheme.primary,
+                icon: Icon(isListening ? Icons.mic : Icons.mic_none_rounded),
+                color: isListening
+                    ? AppColors.googleRed
+                    : theme.colorScheme.primary,
+                tooltip: isListening ? 'Stop' : 'Speak your prompt',
                 onPressed: onMic,
               ),
             ],
