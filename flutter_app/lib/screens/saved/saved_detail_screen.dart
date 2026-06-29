@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../kml/assembler.dart';
 import '../../models/location.dart';
 import '../../models/saved_tour.dart';
 import '../../providers/library_provider.dart';
@@ -20,14 +24,51 @@ class SavedDetailScreen extends ConsumerWidget {
 
   final SavedTour tour;
 
-  void _stub(BuildContext context, String label) =>
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$label — coming soon')),
-      );
+  void _stub(BuildContext context, String label) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text('$label — coming soon')));
 
-  /// Re-flies a saved tour on the rig: rebuilds + deploys the KML and flies the
-  /// camera through every geocoded stop, with the Wikipedia/Unsplash info
-  /// balloons — the same pipeline as a fresh tour.
+  Future<void> _exportKml(BuildContext context, SavedTour tour) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final kml = KmlAssembler.buildTour(locations: tour.locations);
+    if (kml == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This tour has no map coordinates yet, so there is no KML to share.',
+          ),
+        ),
+      );
+      return;
+    }
+    try {
+      final safe = tour.title
+          .replaceAll(RegExp(r'[^A-Za-z0-9 _-]'), '')
+          .trim()
+          .replaceAll(' ', '_');
+      final fileName = '${safe.isEmpty ? 'tour' : safe}.kml';
+      final file = File('${(await getTemporaryDirectory()).path}/$fileName');
+      await file.writeAsString(kml);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [
+            XFile(
+              file.path,
+              mimeType: 'application/vnd.google-earth.kml+xml',
+              name: fileName,
+            ),
+          ],
+          subject: tour.title,
+          text: 'Liquid Galaxy tour: ${tour.title}',
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not export KML: $e')),
+      );
+    }
+  }
+
   Future<void> _replayOnLg(
     BuildContext context,
     WidgetRef ref,
@@ -40,8 +81,7 @@ class SavedDetailScreen extends ConsumerWidget {
       );
       return;
     }
-    final geocoded =
-        tour.locations.where((l) => l.latitude != null).length;
+    final geocoded = tour.locations.where((l) => l.latitude != null).length;
     if (geocoded == 0) {
       messenger.showSnackBar(
         const SnackBar(
@@ -58,9 +98,9 @@ class SavedDetailScreen extends ConsumerWidget {
           .read(sshConnectionProvider.notifier)
           .flyGeneratedTour(tour.locations)
           .catchError((Object e) {
-        debugPrint('SavedDetail: replay error: $e');
-        return 0;
-      }),
+            debugPrint('SavedDetail: replay error: $e');
+            return 0;
+          }),
     );
   }
 
@@ -70,8 +110,10 @@ class SavedDetailScreen extends ConsumerWidget {
     // Reflect live favourite/state from the library; fall back to the passed-in
     // tour (e.g. sample data that isn't in the store).
     final tours = ref.watch(savedToursProvider).value ?? const <SavedTour>[];
-    final tour = tours.firstWhere((t) => t.id == this.tour.id,
-        orElse: () => this.tour);
+    final tour = tours.firstWhere(
+      (t) => t.id == this.tour.id,
+      orElse: () => this.tour,
+    );
 
     return Scaffold(
       body: CustomScrollView(
@@ -82,15 +124,16 @@ class SavedDetailScreen extends ConsumerWidget {
             foregroundColor: Colors.white,
             actions: [
               IconButton(
-                onPressed: () =>
-                    ref.read(savedToursProvider.notifier).toggleFavourite(tour.id),
+                onPressed: () => ref
+                    .read(savedToursProvider.notifier)
+                    .toggleFavourite(tour.id),
                 icon: Icon(
                   tour.isFavourite ? Icons.favorite : Icons.favorite_border,
                   color: Colors.white,
                 ),
               ),
               IconButton(
-                onPressed: () => _stub(context, 'Share'),
+                onPressed: () => _exportKml(context, tour),
                 icon: const Icon(Icons.share),
               ),
             ],
@@ -113,36 +156,54 @@ class SavedDetailScreen extends ConsumerWidget {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text('HISTORICAL',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  letterSpacing: 1)),
+                          child: const Text(
+                            'HISTORICAL',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              letterSpacing: 1,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 8),
-                        Text(tour.title,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700)),
+                        Text(
+                          tour.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         Row(
                           children: [
-                            const Icon(Icons.schedule,
-                                color: Colors.white70, size: 14),
+                            const Icon(
+                              Icons.schedule,
+                              color: Colors.white70,
+                              size: 14,
+                            ),
                             const SizedBox(width: 4),
-                            Text('${tour.durationMin} min',
-                                style: const TextStyle(color: Colors.white70)),
+                            Text(
+                              '${tour.durationMin} min',
+                              style: const TextStyle(color: Colors.white70),
+                            ),
                             const SizedBox(width: 12),
-                            const Icon(Icons.straighten,
-                                color: Colors.white70, size: 14),
+                            const Icon(
+                              Icons.straighten,
+                              color: Colors.white70,
+                              size: 14,
+                            ),
                             const SizedBox(width: 4),
-                            Text('${tour.distanceKm} km',
-                                style: const TextStyle(color: Colors.white70)),
+                            Text(
+                              '${tour.distanceKm} km',
+                              style: const TextStyle(color: Colors.white70),
+                            ),
                           ],
                         ),
                       ],
@@ -154,72 +215,82 @@ class SavedDetailScreen extends ConsumerWidget {
           ),
           SliverPadding(
             padding: const EdgeInsets.all(20),
-            sliver: SliverList.list(children: [
-              FilledButton.icon(
-                onPressed: () => _stub(context, 'Virtual replay'),
-                icon: const Icon(Icons.play_circle_outline),
-                label: const Text('Start Virtual Replay'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () => _replayOnLg(context, ref, tour),
-                icon: const Icon(Icons.cast),
-                label: const Text('Replay on Liquid Galaxy'),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Highlights Album', style: theme.textTheme.titleMedium),
-                  Text('View All (${tour.stopCount})',
-                      style: theme.textTheme.labelLarge
-                          ?.copyWith(color: theme.colorScheme.primary)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 150,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: tour.locations.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 12),
-                  itemBuilder: (_, i) =>
-                      _HighlightCard(index: i + 1, location: tour.locations[i]),
+            sliver: SliverList.list(
+              children: [
+                FilledButton.icon(
+                  onPressed: () => _stub(context, 'Virtual replay'),
+                  icon: const Icon(Icons.play_circle_outline),
+                  label: const Text('Start Virtual Replay'),
                 ),
-              ),
-              const SizedBox(height: 24),
-              Text('Route Path', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              MapPlaceholder(height: 180, markerCount: tour.stopCount),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _Action(
-                    icon: Icons.share,
-                    label: 'Share',
-                    onTap: () => _stub(context, 'Share'),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => _replayOnLg(context, ref, tour),
+                  icon: const Icon(Icons.cast),
+                  label: const Text('Replay on Liquid Galaxy'),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Highlights Album',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    Text(
+                      'View All (${tour.stopCount})',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 150,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: tour.locations.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemBuilder: (_, i) => _HighlightCard(
+                      index: i + 1,
+                      location: tour.locations[i],
+                    ),
                   ),
-                  _Action(
-                    icon: Icons.download,
-                    label: 'Export KML',
-                    onTap: () => _stub(context, 'Export KML'),
-                  ),
-                  _Action(
-                    icon: Icons.delete_outline,
-                    label: 'Remove',
-                    color: theme.colorScheme.error,
-                    onTap: () {
-                      ref.read(savedToursProvider.notifier).remove(tour.id);
-                      context.pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Removed from library')),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ]),
+                ),
+                const SizedBox(height: 24),
+                Text('Route Path', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 12),
+                MapPlaceholder(height: 180, markerCount: tour.stopCount),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _Action(
+                      icon: Icons.share,
+                      label: 'Share',
+                      onTap: () => _exportKml(context, tour),
+                    ),
+                    _Action(
+                      icon: Icons.download,
+                      label: 'Export KML',
+                      onTap: () => _exportKml(context, tour),
+                    ),
+                    _Action(
+                      icon: Icons.delete_outline,
+                      label: 'Remove',
+                      color: theme.colorScheme.error,
+                      onTap: () {
+                        ref.read(savedToursProvider.notifier).remove(tour.id);
+                        context.pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Removed from library')),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -242,14 +313,20 @@ class _HighlightCard extends StatelessWidget {
         children: [
           LocationImage(location: location, height: 100, width: 140),
           const SizedBox(height: 6),
-          Text('STOP ${index.toString().padLeft(2, '0')}',
-              style: theme.textTheme.labelSmall
-                  ?.copyWith(color: theme.colorScheme.primary)),
-          Text(location.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w600)),
+          Text(
+            'STOP ${index.toString().padLeft(2, '0')}',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.primary,
+            ),
+          ),
+          Text(
+            location.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
