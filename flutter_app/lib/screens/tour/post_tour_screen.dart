@@ -3,7 +3,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -29,6 +31,7 @@ class PostTourScreen extends ConsumerStatefulWidget {
 
 class _PostTourScreenState extends ConsumerState<PostTourScreen> {
   Timer? _timer;
+  final FlutterTts _tts = FlutterTts();
   double _filmProgress = 0;
   bool _saved = false;
   final String _tourId = const Uuid().v4();
@@ -41,6 +44,7 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
     super.initState();
     // Every completed tour is recorded in the Tours history.
     WidgetsBinding.instance.addPostFrameCallback((_) => _recordHistory());
+    _sayThankYou();
     if (_film) {
       // Simulate Veo producing the film in the background (~6s).
       _timer = Timer.periodic(const Duration(milliseconds: 300), (t) {
@@ -50,9 +54,26 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
     }
   }
 
+  /// Hardcoded closing narration (not from the LLM). Respects the Voice
+  /// Narration preference so it stays consistent with the tour.
+  Future<void> _sayThankYou() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!(prefs.getBool('pref_voice_narration') ?? true)) return;
+      await _tts.stop();
+      await _tts.speak(
+        'Thank you for exploring with Tour Director. '
+        'We hope you enjoyed the journey.',
+      );
+    } catch (_) {
+      // TTS is best-effort; ignore failures (e.g. no engine on web).
+    }
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
+    _tts.stop();
     super.dispose();
   }
 
@@ -77,7 +98,8 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
     const r = 6371.0;
     final dLat = (a2 - a1) * math.pi / 180;
     final dLon = (o2 - o1) * math.pi / 180;
-    final h = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final h =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(a1 * math.pi / 180) *
             math.cos(a2 * math.pi / 180) *
             math.sin(dLon / 2) *
@@ -86,14 +108,18 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
   }
 
   int _durationMin() {
-    final secs = widget.args.locations
-        .fold<int>(0, (s, l) => s + l.suggestedDurationSeconds);
+    final secs = widget.args.locations.fold<int>(
+      0,
+      (s, l) => s + l.suggestedDurationSeconds,
+    );
     return (secs / 60).ceil().clamp(1, 999);
   }
 
   void _recordHistory() {
     final args = widget.args;
-    ref.read(tourHistoryProvider.notifier).add(
+    ref
+        .read(tourHistoryProvider.notifier)
+        .add(
           TourHistoryEntry(
             id: _tourId,
             title: args.title,
@@ -113,7 +139,9 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
         .map((l) => l.imageUrl)
         .whereType<String>()
         .toList();
-    await ref.read(savedToursProvider.notifier).save(
+    await ref
+        .read(savedToursProvider.notifier)
+        .save(
           SavedTour(
             id: _tourId, // same id as the history entry → promotes it
             title: args.title,
@@ -128,14 +156,14 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
         );
     if (!mounted) return;
     setState(() => _saved = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tour saved to your library')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Tour saved to your library')));
   }
 
-  void _stub(String label) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$label — coming soon')),
-      );
+  void _stub(String label) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text('$label — coming soon')));
 
   @override
   Widget build(BuildContext context) {
@@ -149,6 +177,8 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               children: [
+                const _ThankYouHero(),
+                const SizedBox(height: 20),
                 Text(widget.args.title, style: theme.textTheme.headlineSmall),
                 const SizedBox(height: 4),
                 Text(
@@ -164,7 +194,10 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
                 if (_film && _filmReady)
                   _VideoPlayerCard(onPlay: () => _stub('Video playback'))
                 else
-                  const MapPlaceholder(height: 200, label: 'Recap · drag to explore'),
+                  const MapPlaceholder(
+                    height: 200,
+                    label: 'Recap · drag to explore',
+                  ),
 
                 if (_film && !_filmReady) ...[
                   const SizedBox(height: 16),
@@ -174,9 +207,9 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
                 const SizedBox(height: 20),
                 FilledButton.icon(
                   onPressed: _saved ? null : _saveKml,
-                  icon: Icon(_saved
-                      ? Icons.check_rounded
-                      : Icons.bookmark_add_outlined),
+                  icon: Icon(
+                    _saved ? Icons.check_rounded : Icons.bookmark_add_outlined,
+                  ),
                   label: Text(_saved ? 'Saved to Library' : 'Save Tour (KML)'),
                 ),
                 Padding(
@@ -193,11 +226,13 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
 
                 if (_film && _filmReady) ...[
                   const SizedBox(height: 12),
-                  Text('SHARE RECORDING',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        letterSpacing: 1,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      )),
+                  Text(
+                    'SHARE RECORDING',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      letterSpacing: 1,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   _ShareRow(onTap: _stub),
                   const SizedBox(height: 16),
@@ -221,6 +256,103 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ThankYouHero extends StatefulWidget {
+  const _ThankYouHero();
+
+  @override
+  State<_ThankYouHero> createState() => _ThankYouHeroState();
+}
+
+class _ThankYouHeroState extends State<_ThankYouHero>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        AppColors.googleBlue,
+        Color.lerp(AppColors.googleBlue, Colors.black, 0.35)!,
+      ],
+    );
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        final fade = Curves.easeOut.transform(_c.value);
+        final pop = Curves.easeOutBack.transform(_c.value);
+        return Opacity(
+          opacity: fade,
+          child: Transform.translate(
+            offset: Offset(0, (1 - fade) * 12),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+              decoration: BoxDecoration(
+                gradient: gradient,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                children: [
+                  Transform.scale(
+                    scale: 0.7 + 0.3 * pop,
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.celebration_rounded,
+                        color: Colors.white,
+                        size: 34,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Thank You!',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'We hope you enjoyed the journey across Liquid Galaxy.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -250,14 +382,19 @@ class _ProducingCard extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
               const SizedBox(width: 10),
-              Text('Producing the film…',
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                'Producing the film…',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const Spacer(),
-              Text('${(progress * 100).round()}%',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.primary,
-                  )),
+              Text(
+                '${(progress * 100).round()}%',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -297,11 +434,7 @@ class _VideoPlayerCard extends StatelessWidget {
                 icon: const Icon(Icons.play_circle_fill, color: Colors.white),
               ),
             ),
-            const Positioned(
-              left: 12,
-              bottom: 12,
-              child: _Pill(text: '02:38'),
-            ),
+            const Positioned(left: 12, bottom: 12, child: _Pill(text: '02:38')),
             const Positioned(
               right: 12,
               bottom: 12,
@@ -326,8 +459,10 @@ class _Pill extends StatelessWidget {
         color: Colors.black54,
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(text,
-          style: const TextStyle(color: Colors.white, fontSize: 12)),
+      child: Text(
+        text,
+        style: const TextStyle(color: Colors.white, fontSize: 12),
+      ),
     );
   }
 }
