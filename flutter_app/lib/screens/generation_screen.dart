@@ -1,15 +1,20 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/location.dart';
 import '../models/tour_flow.dart';
-import '../services/gemini/gemini_service.dart';
+import '../services/gemini/llm_service.dart'; // pref keys (Gemini stays dormant)
+import '../services/llm/open_router_service.dart';
 import '../services/maps/geocoding_service.dart';
 import '../services/maps/places_service.dart';
-import '../services/media/wikimedia_service.dart';
+import '../services/media/location_media_resolver.dart';
 // ignore: unused_import
 import '../services/validation/auditor_service.dart'; // kept for re-enabling auditing later
 import '../shared/widgets/app_header.dart';
+import '../utils/json_parser.dart';
 
 class GenerationScreen extends StatefulWidget {
   final String prompt;
@@ -23,7 +28,7 @@ class GenerationScreen extends StatefulWidget {
 class _GenerationScreenState extends State<GenerationScreen> {
   List<TourLocation>? _locations;
   String? _error;
-  String _statusMessage = 'Gemini is crafting your tour...';
+  String _statusMessage = 'Your AI model is crafting your tour...';
   bool _navigated = false;
 
   @override
@@ -32,15 +37,48 @@ class _GenerationScreenState extends State<GenerationScreen> {
     _generateTour();
   }
 
-  // ── Working pipeline — unchanged. Do not edit without care. ───────────────
+  /// Calls the configured OpenRouter model and parses its (possibly chatty)
+  /// JSON into locations. Gemini is intentionally not called here — it stays
+  /// dormant but intact in [GeminiService].
+  Future<List<TourLocation>> _extractLocations(String prompt) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = prefs.getString(LLMService.prefApiKey) ?? '';
+    final model = prefs.getString(LLMService.prefModel) ?? LLMService.defaultModel;
+
+    if (key.isEmpty) {
+      throw Exception(
+        'AI not configured. Go to Settings → AI Configuration to add your '
+        'OpenRouter API key.',
+      );
+    }
+
+    final raw =
+        await OpenRouterService(apiKey: key, model: model).extractLocations(prompt);
+    final jsonStr = JsonParser.extractJson(raw);
+    if (jsonStr == null) {
+      throw Exception('The AI model returned an unreadable response. Try again.');
+    }
+
+    final decoded = jsonDecode(jsonStr);
+    if (decoded is! List) {
+      throw Exception('The AI model did not return a list of locations.');
+    }
+    return decoded
+        .whereType<Map<String, dynamic>>()
+        .map(TourLocation.fromJson)
+        .toList();
+  }
+
+  // ── Working pipeline. Location extraction routes through OpenRouter; the
+  // enrichment (geocoding → places → Wikimedia) below is unchanged. ──────────
   Future<void> _generateTour() async {
     try {
       if (mounted) {
-        setState(() => _statusMessage = 'Extracting locations via Gemini...');
+        setState(
+          () => _statusMessage = 'Extracting locations via your AI model...',
+        );
       }
-      final initialLocations = await GeminiService.instance.extractLocations(
-        widget.prompt,
-      );
+      final initialLocations = await _extractLocations(widget.prompt);
 
       if (mounted) {
         setState(
@@ -67,7 +105,10 @@ class _GenerationScreenState extends State<GenerationScreen> {
         final placeDetails = coords != null
             ? await PlacesService.instance.getPlaceDetails(loc.name)
             : null;
-        final imageUrl = await WikimediaService.instance.getImageUrl(loc.name);
+        // Full media chain (Wikipedia → Unsplash → text-only), cached by name
+        // so the rig balloon and in-app images reuse it with no repeat calls.
+        final media = await LocationMediaResolver.instance.resolve(loc);
+        final imageUrl = media.imageUrl.isEmpty ? null : media.imageUrl;
 
         enrichedLocations.add(loc.copyWith(
           latitude: coords?['lat'],
@@ -84,7 +125,7 @@ class _GenerationScreenState extends State<GenerationScreen> {
       final validLocations = enrichedLocations;
 
       if (validLocations.isEmpty) {
-        throw Exception('No locations returned from Gemini.');
+        throw Exception('No locations returned from the AI model.');
       }
 
       if (mounted) {
