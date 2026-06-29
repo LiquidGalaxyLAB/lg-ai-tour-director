@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../kml/generator.dart';
 import '../../models/location.dart';
 import '../../models/tour_flow.dart';
 import '../../shared/widgets/app_header.dart';
@@ -35,13 +36,14 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
   bool _paused = false;
   bool _voiceNarration = true;
 
-  // Demo pacing: cap the per-scene dwell so the walkthrough progresses.
-  double get _sceneDuration => widget
-      .args
-      .locations[_scene]
-      .suggestedDurationSeconds
-      .clamp(6, 14)
-      .toDouble();
+  static const double _sceneDuration =
+      KmlGenerator.flyDurationSeconds +
+      KmlGenerator.approachHoldSeconds +
+      KmlGenerator.orbitTotalSeconds;
+
+  Duration get _overviewDelay => Duration(
+    milliseconds: ((KmlGenerator.flyDurationSeconds + 3) * 1000).round(),
+  );
 
   @override
   void initState() {
@@ -53,6 +55,8 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
     final prefs = await SharedPreferences.getInstance();
     _voiceNarration = prefs.getBool('pref_voice_narration') ?? true;
     if (!mounted) return;
+    await Future<void>.delayed(_overviewDelay);
+    if (!mounted || _paused) return;
     _startScene();
     _startTimer();
   }
@@ -96,6 +100,7 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
       _tts.stop();
     } else {
       _startScene();
+      _startTimer();
     }
   }
 
