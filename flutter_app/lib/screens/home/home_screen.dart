@@ -5,6 +5,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/app_header.dart';
+import '../../shared/widgets/quick_tips_sheet.dart';
 
 /// Home tab (mockups 1/2): prompt entry + mic, a "Try" suggestion, the
 /// Quick Launch grid, and the Generate Tour CTA. The connection dot and gear
@@ -145,6 +146,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Describe your dream journey',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ActionChip(
+                    avatar: Icon(
+                      Icons.tips_and_updates_outlined,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
+                    label: const Text('Before you start'),
+                    onPressed: () => showQuickTipsSheet(context),
                   ),
                 ),
                 const SizedBox(height: 16),
