@@ -103,6 +103,10 @@ class ProfileScreen extends ConsumerWidget {
                       Text('Tour Director',
                           style: theme.textTheme.titleSmall
                               ?.copyWith(color: theme.colorScheme.primary)),
+                      Text('Made by Kabir Khanuja',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          )),
                       Text('Powered by Liquid Galaxy',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
