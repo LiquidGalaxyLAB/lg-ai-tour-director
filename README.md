@@ -1,3 +1,5 @@
+this is the submitted version for mid term 2026 before the reviews hence v1
+
 ## LG AI Tour Director 
 
 <img width="3375" height="3375" alt="image" src="https://github.com/user-attachments/assets/a9676877-a9b9-4f1c-a345-fc00a6142e27" />
