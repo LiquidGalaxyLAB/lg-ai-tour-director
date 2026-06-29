@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -59,6 +60,74 @@ class AboutScreen extends StatelessWidget {
                 'we aim to bridge the gap between static maps and dynamic '
                 'exploration, encouraging curiosity about remote landscapes and '
                 'urban environments alike.',
+          ),
+          const SizedBox(height: 16),
+          const _CreditsCard(),
+        ],
+      ),
+    );
+  }
+}
+
+class _CreditsCard extends StatelessWidget {
+  const _CreditsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Credits',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Made by Kabir Khanuja, under the guidance of mentors '
+            'Andreu Ibáñez, Yash Raj Bharti and Vedant Singh.',
+            style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () {
+              Clipboard.setData(
+                const ClipboardData(text: 'https://github.com/KabirKhanuja'),
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Link copied: github.com/KabirKhanuja'),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.link_rounded,
+                      size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'github.com/KabirKhanuja',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),

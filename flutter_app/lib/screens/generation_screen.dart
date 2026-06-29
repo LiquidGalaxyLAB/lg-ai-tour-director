@@ -1,15 +1,21 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/location.dart';
 import '../models/tour_flow.dart';
-import '../services/gemini/gemini_service.dart';
+import '../services/gemini/llm_service.dart';
+import '../services/llm/llm_exception.dart';
+import '../services/llm/open_router_service.dart';
 import '../services/maps/geocoding_service.dart';
 import '../services/maps/places_service.dart';
-import '../services/media/wikimedia_service.dart';
+import '../services/media/location_media_resolver.dart';
 // ignore: unused_import
 import '../services/validation/auditor_service.dart'; // kept for re-enabling auditing later
 import '../shared/widgets/app_header.dart';
+import '../utils/json_parser.dart';
 
 class GenerationScreen extends StatefulWidget {
   final String prompt;
@@ -23,7 +29,9 @@ class GenerationScreen extends StatefulWidget {
 class _GenerationScreenState extends State<GenerationScreen> {
   List<TourLocation>? _locations;
   String? _error;
-  String _statusMessage = 'Gemini is crafting your tour...';
+  bool _setupIssue =
+      false; // error is fixable in AI Configuration → offer guide
+  String _statusMessage = 'Your AI model is crafting your tour...';
   bool _navigated = false;
 
   @override
@@ -32,15 +40,66 @@ class _GenerationScreenState extends State<GenerationScreen> {
     _generateTour();
   }
 
-  // ── Working pipeline — unchanged. Do not edit without care. ───────────────
+  /// Calls the configured OpenRouter model and parses its (possibly chatty)
+  /// JSON into locations. Gemini is intentionally not called here — it stays
+  /// dormant but intact in [GeminiService].
+  Future<List<TourLocation>> _extractLocations(String prompt) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = prefs.getString(LLMService.prefApiKey) ?? '';
+    final model =
+        prefs.getString(LLMService.prefModel) ?? LLMService.defaultModel;
+
+    if (key.isEmpty) {
+      throw LlmException(
+        'AI not configured. Add your OpenRouter API key in '
+        'Settings → AI Configuration.',
+        isSetupIssue: true,
+      );
+    }
+
+    debugPrint(
+      'Generation: extracting locations via OpenRouter ($model) for "$prompt"',
+    );
+
+    final raw = await OpenRouterService(
+      apiKey: key,
+      model: model,
+    ).extractLocations(prompt);
+
+    final jsonStr = JsonParser.extractJson(raw);
+    List<dynamic>? decoded;
+    if (jsonStr != null) {
+      try {
+        final parsed = jsonDecode(jsonStr);
+        if (parsed is List) decoded = parsed;
+      } catch (_) {}
+    }
+    if (decoded == null) {
+      throw LlmException(
+        "The AI model returned a response we couldn't read (it may not output "
+        'clean JSON). Try a model like deepseek/deepseek-chat.',
+        isSetupIssue: true,
+      );
+    }
+    final locations = decoded
+        .whereType<Map<String, dynamic>>()
+        .map(TourLocation.fromJson)
+        .toList();
+    debugPrint(
+      'Generation: parsed ${locations.length} locations: '
+      '${locations.map((l) => l.name).join(', ')}',
+    );
+    return locations;
+  }
+
   Future<void> _generateTour() async {
     try {
       if (mounted) {
-        setState(() => _statusMessage = 'Extracting locations via Gemini...');
+        setState(
+          () => _statusMessage = 'Extracting locations via your AI model...',
+        );
       }
-      final initialLocations = await GeminiService.instance.extractLocations(
-        widget.prompt,
-      );
+      final initialLocations = await _extractLocations(widget.prompt);
 
       if (mounted) {
         setState(
@@ -51,8 +110,7 @@ class _GenerationScreenState extends State<GenerationScreen> {
 
       final enrichedLocations = <TourLocation>[];
       for (var loc in initialLocations) {
-        final coords =
-            await GeocodingService.instance.getCoordinates(loc.name);
+        final coords = await GeocodingService.instance.getCoordinates(loc.name);
 
         // No Gemini alternative-name fallback for now (saves API credits).
         // If geocoding fails, keep the location but log that it has no coords.
@@ -67,15 +125,20 @@ class _GenerationScreenState extends State<GenerationScreen> {
         final placeDetails = coords != null
             ? await PlacesService.instance.getPlaceDetails(loc.name)
             : null;
-        final imageUrl = await WikimediaService.instance.getImageUrl(loc.name);
+        // Full media chain (Wikipedia → Unsplash → text-only), cached by name
+        // so the rig balloon and in-app images reuse it with no repeat calls.
+        final media = await LocationMediaResolver.instance.resolve(loc);
+        final imageUrl = media.imageUrl.isEmpty ? null : media.imageUrl;
 
-        enrichedLocations.add(loc.copyWith(
-          latitude: coords?['lat'],
-          longitude: coords?['lng'],
-          placeId: placeDetails?['place_id'] as String?,
-          address: placeDetails?['formatted_address'] as String?,
-          imageUrl: imageUrl,
-        ));
+        enrichedLocations.add(
+          loc.copyWith(
+            latitude: coords?['lat'],
+            longitude: coords?['lng'],
+            placeId: placeDetails?['place_id'] as String?,
+            address: placeDetails?['formatted_address'] as String?,
+            imageUrl: imageUrl,
+          ),
+        );
       }
 
       // TODO: Auditing temporarily skipped — geocoding is unreliable right now.
@@ -84,7 +147,7 @@ class _GenerationScreenState extends State<GenerationScreen> {
       final validLocations = enrichedLocations;
 
       if (validLocations.isEmpty) {
-        throw Exception('No locations returned from Gemini.');
+        throw Exception('No locations returned from the AI model.');
       }
 
       if (mounted) {
@@ -95,7 +158,8 @@ class _GenerationScreenState extends State<GenerationScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = e is LlmException ? e.message : e.toString();
+          _setupIssue = e is LlmException && e.isSetupIssue;
         });
       }
     }
@@ -145,16 +209,23 @@ class _GenerationScreenState extends State<GenerationScreen> {
             child: _error != null
                 ? _ErrorView(
                     error: _error!,
+                    showSetupGuide: _setupIssue,
                     onRetry: () {
-                      setState(() => _error = null);
+                      setState(() {
+                        _error = null;
+                        _setupIssue = false;
+                      });
                       _generateTour();
                     },
+                    onSetupGuide: () => context.push('/help/openrouter-setup'),
                   )
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
                     children: [
-                      Text('Generating your immersive tour',
-                          style: theme.textTheme.headlineSmall),
+                      Text(
+                        'Generating your immersive tour',
+                        style: theme.textTheme.headlineSmall,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         _statusMessage,
@@ -169,8 +240,10 @@ class _GenerationScreenState extends State<GenerationScreen> {
                           color: theme.colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text('"${widget.prompt}"',
-                            style: theme.textTheme.bodyMedium),
+                        child: Text(
+                          '"${widget.prompt}"',
+                          style: theme.textTheme.bodyMedium,
+                        ),
                       ),
                       const SizedBox(height: 24),
                       LinearProgressIndicator(
@@ -179,10 +252,26 @@ class _GenerationScreenState extends State<GenerationScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       const SizedBox(height: 20),
-                      _Step(label: 'Selecting meaningful landmarks', done: _step > 1, active: _step == 1),
-                      _Step(label: 'Fetching geographic coordinates', done: _step > 2, active: _step == 2),
-                      _Step(label: 'Constructing immersive tour', done: _step > 2, active: _step == 2),
-                      _Step(label: 'Preparing map preview', done: _step >= 4, active: false),
+                      _Step(
+                        label: 'Selecting meaningful landmarks',
+                        done: _step > 1,
+                        active: _step == 1,
+                      ),
+                      _Step(
+                        label: 'Fetching geographic coordinates',
+                        done: _step > 2,
+                        active: _step == 2,
+                      ),
+                      _Step(
+                        label: 'Constructing immersive tour',
+                        done: _step > 2,
+                        active: _step == 2,
+                      ),
+                      _Step(
+                        label: 'Preparing map preview',
+                        done: _step >= 4,
+                        active: false,
+                      ),
                     ],
                   ),
           ),
@@ -203,7 +292,11 @@ class _Step extends StatelessWidget {
     final theme = Theme.of(context);
     final Widget leading;
     if (done) {
-      leading = Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 22);
+      leading = Icon(
+        Icons.check_circle,
+        color: theme.colorScheme.primary,
+        size: 22,
+      );
     } else if (active) {
       leading = const SizedBox(
         width: 18,
@@ -211,8 +304,11 @@ class _Step extends StatelessWidget {
         child: CircularProgressIndicator(strokeWidth: 2),
       );
     } else {
-      leading = Icon(Icons.radio_button_unchecked,
-          color: theme.colorScheme.outline, size: 22);
+      leading = Icon(
+        Icons.radio_button_unchecked,
+        color: theme.colorScheme.outline,
+        size: 22,
+      );
     }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -236,9 +332,17 @@ class _Step extends StatelessWidget {
 }
 
 class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.error, required this.onRetry});
+  const _ErrorView({
+    required this.error,
+    required this.onRetry,
+    this.showSetupGuide = false,
+    this.onSetupGuide,
+  });
+
   final String error;
   final VoidCallback onRetry;
+  final bool showSetupGuide;
+  final VoidCallback? onSetupGuide;
 
   @override
   Widget build(BuildContext context) {
@@ -252,12 +356,21 @@ class _ErrorView extends StatelessWidget {
             Icon(Icons.error_outline, color: theme.colorScheme.error, size: 64),
             const SizedBox(height: 16),
             Text(
-              'Error generating tour:\n$error',
+              error,
               textAlign: TextAlign.center,
               style: TextStyle(color: theme.colorScheme.error),
             ),
             const SizedBox(height: 24),
-            FilledButton(onPressed: onRetry, child: const Text('Retry')),
+            if (showSetupGuide && onSetupGuide != null) ...[
+              FilledButton.icon(
+                onPressed: onSetupGuide,
+                icon: const Icon(Icons.menu_book_outlined),
+                label: const Text('Open Setup Guide'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
+            ] else
+              FilledButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         ),
       ),

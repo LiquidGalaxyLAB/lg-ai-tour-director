@@ -82,6 +82,7 @@ class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
                     subtitle: 'Display synchronized subtitles during narration.',
                     value: _showSubtitles,
                     onChanged: (v) => setState(() => _showSubtitles = v),
+                    comingSoon: true,
                   ),
                   const Divider(),
                   _ToggleTile(
@@ -90,6 +91,7 @@ class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
                         'Offer to create a shareable AI film of the tour (via Veo).',
                     value: _generateFilm,
                     onChanged: (v) => setState(() => _generateFilm = v),
+                    comingSoon: true,
                   ),
                   const Divider(),
                   _DropdownTile(
@@ -98,6 +100,7 @@ class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
                     value: _voice,
                     items: _voices,
                     onChanged: (v) => setState(() => _voice = v!),
+                    comingSoon: true,
                   ),
                   const SizedBox(height: 16),
                   _DropdownTile(
@@ -106,6 +109,7 @@ class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
                     value: _language,
                     items: _languages,
                     onChanged: (v) => setState(() => _language = v!),
+                    comingSoon: true,
                   ),
                 ],
               ),
@@ -130,23 +134,63 @@ class _ToggleTile extends StatelessWidget {
     required this.subtitle,
     required this.value,
     required this.onChanged,
+    this.comingSoon = false,
   });
 
   final String title;
   final String subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
+  final bool comingSoon;
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      title: _TitleWithBadge(title: title, comingSoon: comingSoon),
+      subtitle: Text(subtitle),
+      value: value,
+      // Disabled until the feature is wired.
+      onChanged: comingSoon ? null : onChanged,
+    );
+  }
+}
+
+/// Title row with an optional "Coming soon" pill for not-yet-wired settings.
+class _TitleWithBadge extends StatelessWidget {
+  const _TitleWithBadge({required this.title, required this.comingSoon});
+  final String title;
+  final bool comingSoon;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(title,
-          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle),
-      value: value,
-      onChanged: onChanged,
+    return Row(
+      children: [
+        Flexible(
+          child: Text(
+            title,
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+        if (comingSoon) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              'Coming soon',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -158,6 +202,7 @@ class _DropdownTile extends StatelessWidget {
     required this.value,
     required this.items,
     required this.onChanged,
+    this.comingSoon = false,
   });
 
   final String title;
@@ -165,6 +210,7 @@ class _DropdownTile extends StatelessWidget {
   final String value;
   final List<String> items;
   final ValueChanged<String?> onChanged;
+  final bool comingSoon;
 
   @override
   Widget build(BuildContext context) {
@@ -172,8 +218,7 @@ class _DropdownTile extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+        _TitleWithBadge(title: title, comingSoon: comingSoon),
         Text(subtitle,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -184,7 +229,8 @@ class _DropdownTile extends StatelessWidget {
           items: [
             for (final i in items) DropdownMenuItem(value: i, child: Text(i)),
           ],
-          onChanged: onChanged,
+          // Disabled until the feature is wired.
+          onChanged: comingSoon ? null : onChanged,
         ),
       ],
     );

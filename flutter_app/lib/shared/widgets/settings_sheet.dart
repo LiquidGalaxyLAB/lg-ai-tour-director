@@ -76,8 +76,8 @@ class _SettingsSheet extends ConsumerWidget {
             ),
             _SettingsRow(
               icon: Icons.smart_toy_outlined,
-              title: 'AI Model Settings',
-              subtitle: 'Use Gemini or your own model (OpenRouter)',
+              title: 'AI Configuration',
+              subtitle: 'Configure your AI model via OpenRouter',
               onTap: () => go('/settings/ai'),
             ),
             _SettingsRow(

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../models/location.dart';
@@ -32,6 +33,7 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
   int _scene = 0;
   double _elapsed = 0;
   bool _paused = false;
+  bool _voiceNarration = true;
 
   // Demo pacing: cap the per-scene dwell so the walkthrough progresses.
   double get _sceneDuration => widget
@@ -44,6 +46,13 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
   @override
   void initState() {
     super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    final prefs = await SharedPreferences.getInstance();
+    _voiceNarration = prefs.getBool('pref_voice_narration') ?? true;
+    if (!mounted) return;
     _startScene();
     _startTimer();
   }
@@ -58,6 +67,8 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
   }
 
   Future<void> _startScene() async {
+    // Respect the Voice Narration preference — skip TTS entirely when off.
+    if (!_voiceNarration) return;
     final loc = widget.args.locations[_scene];
     try {
       await _tts.stop();

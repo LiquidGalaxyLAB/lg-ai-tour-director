@@ -7,6 +7,7 @@ import '../../models/saved_tour.dart';
 import '../../providers/library_provider.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/location_image.dart';
 
 /// Saved tab (mockups 13/14): the library of tours the user persisted (with
 /// KML). Persisted via [savedToursProvider]. Filters Offline/Curated and the
@@ -34,8 +35,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tours = ref.watch(savedToursProvider).value ?? const <SavedTour>[];
-    final locationCount =
-        tours.fold<int>(0, (sum, t) => sum + t.stopCount);
+    final locationCount = tours.fold<int>(0, (sum, t) => sum + t.stopCount);
 
     return Scaffold(
       body: Column(
@@ -46,7 +46,10 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
               children: [
                 Center(
-                  child: Text('Saved Tours', style: theme.textTheme.headlineMedium),
+                  child: Text(
+                    'Saved Tours',
+                    style: theme.textTheme.headlineMedium,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Center(
@@ -119,14 +122,13 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                     message:
                         'Save a tour after it finishes to keep it here for replay.',
                   )
-                else
-                  ...[
-                    for (final t in tours)
-                      _SavedCard(
-                        tour: t,
-                        onTap: () => context.push('/saved/detail', extra: t),
-                      ),
-                  ],
+                else ...[
+                  for (final t in tours)
+                    _SavedCard(
+                      tour: t,
+                      onTap: () => context.push('/saved/detail', extra: t),
+                    ),
+                ],
               ],
             ),
           ),
@@ -156,9 +158,12 @@ class _StatBox extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: theme.colorScheme.primary),
           const SizedBox(width: 8),
-          Text(label,
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -183,7 +188,11 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({required this.label, required this.icon, required this.color});
+  const _CategoryTile({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
   final String label;
   final IconData icon;
   final Color color;
@@ -201,9 +210,12 @@ class _CategoryTile extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 22),
           const SizedBox(width: 10),
-          Text(label,
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -222,80 +234,100 @@ class _SavedCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              Container(
-                height: 150,
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppColors.googleBlueBright, AppColors.googleBlue],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: const Icon(Icons.photo_outlined,
-                    color: Colors.white24, size: 48),
-              ),
-              Positioned(
-                left: 12,
-                top: 12,
-                child: _Badge(label: '${tour.stopCount} Stops'),
-              ),
-              Positioned(
-                right: 12,
-                top: 12,
-                child: CircleAvatar(
-                  backgroundColor: Colors.white,
-                  radius: 16,
-                  child: Icon(
-                    tour.isFavourite ? Icons.favorite : Icons.favorite_border,
-                    color: AppColors.googleRed,
-                    size: 18,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(tour.title,
-                          style: theme.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700)),
-                      Text(
-                        'Saved tour',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                // Real thumbnail of the first stop (Wikipedia→Unsplash, cached);
+                // LocationImage shows its own placeholder while loading / if none
+                if (tour.locations.isNotEmpty)
+                  LocationImage(
+                    location: tour.locations.first,
+                    height: 150,
+                    width: double.infinity,
+                    borderRadius:
+                        0, // outer Container already clips the corners
+                  )
+                else
+                  Container(
+                    height: 150,
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.googleBlueBright,
+                          AppColors.googleBlue,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
+                    ),
+                    child: const Icon(
+                      Icons.photo_outlined,
+                      color: Colors.white24,
+                      size: 48,
+                    ),
                   ),
+                Positioned(
+                  left: 12,
+                  top: 12,
+                  child: _Badge(label: '${tour.stopCount} Stops'),
                 ),
-                IconButton.filledTonal(
-                  onPressed: onTap,
-                  icon: const Icon(Icons.play_arrow_rounded),
+                Positioned(
+                  right: 12,
+                  top: 12,
+                  child: CircleAvatar(
+                    backgroundColor: Colors.white,
+                    radius: 16,
+                    child: Icon(
+                      tour.isFavourite ? Icons.favorite : Icons.favorite_border,
+                      color: AppColors.googleRed,
+                      size: 18,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tour.title,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          'Saved tour',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton.filledTonal(
+                    onPressed: onTap,
+                    icon: const Icon(Icons.play_arrow_rounded),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -313,8 +345,10 @@ class _Badge extends StatelessWidget {
         color: Colors.black.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(label,
-          style: const TextStyle(color: Colors.white, fontSize: 12)),
+      child: Text(
+        label,
+        style: const TextStyle(color: Colors.white, fontSize: 12),
+      ),
     );
   }
 }
