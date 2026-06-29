@@ -4,6 +4,7 @@ plan-proposal/
 .env
 .env.local
 .env.*.local
+.env.with.gemini
 
 # editor related
 .DS_Store
