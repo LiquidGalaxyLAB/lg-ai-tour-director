@@ -76,18 +76,17 @@ class HelpScreen extends StatelessWidget {
           'Google Earth to restart, then try again.',
     ),
     (
-      'AI film not available',
-      '- Tour generation needs an **OpenRouter API key** in **Settings → AI '
-          'Configuration**.\n'
-          '- Check that your key is valid with **Test Connection**.\n'
-          '- Make sure your model has **available credits**. The free model '
-          '**meta-llama/llama-3.1-8b-instruct:free** works without credits.\n'
+      'Tour generation fails',
+      '- Set up an **AI model** in **Settings → AI Configuration**: a base URL, '
+          'API key and model ID (or a local model).\n'
+          '- Check that it works with **Test Connection**.\n'
+          '- For a cloud provider, make sure your account has **available '
+          'credit or quota**. A free or local model avoids credit limits.\n'
           '- If it fails mid tour, tap **retry**, or try a **simpler prompt** '
           'with fewer locations.',
     ),
   ];
 
-  /// Opens a scrollable bottom sheet with the full text of a quick guide.
   void _showGuide(BuildContext context, String title, String body) {
     showModalBottomSheet<void>(
       context: context,
@@ -145,7 +144,6 @@ class HelpScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          // Featured: AI model setup (real, navigable guide).
           Container(
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
@@ -161,16 +159,16 @@ class HelpScreen extends StatelessWidget {
                 ),
               ),
               title: Text(
-                'AI Model Setup (OpenRouter)',
+                'AI Model Setup',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               subtitle: const Text(
-                'Create an API key, pick a model, and connect it to the app.',
+                'Connect any OpenAI-compatible model: cloud or local.',
               ),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/help/openrouter-setup'),
+              onTap: () => context.push('/help/ai-setup'),
             ),
           ),
           Text(

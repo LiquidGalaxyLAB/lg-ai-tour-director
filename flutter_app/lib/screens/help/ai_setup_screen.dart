@@ -2,63 +2,83 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
-class OpenRouterSetupScreen extends StatelessWidget {
-  const OpenRouterSetupScreen({super.key});
+class AiSetupScreen extends StatelessWidget {
+  const AiSetupScreen({super.key});
 
   static const _steps = <(String, String)>[
     (
-      'Create an OpenRouter account',
-      'Go to openrouter.ai and sign up (Google, GitHub or email). It is free '
-          'to create an account.',
+      'Pick a provider',
+      'Tour Director works with almost any AI provider. Use a cloud provider '
+          'such as OpenRouter, Groq or Together.ai, or run a model locally with '
+          'Ollama or LM Studio.',
     ),
     (
-      'Create an API key',
-      'Open openrouter.ai/keys → "Create Key" → copy the key (it starts with '
-          '"sk-or-"). Keep it private and treat it like a password.',
+      'Get an API key (cloud only)',
+      'Create an account with your chosen provider and generate an API key from '
+          'its dashboard. Keep it private, like a password. Local models such as '
+          'Ollama and LM Studio need no key, so you leave the key field empty.',
     ),
     (
-      'Credits or a free model',
-      'Some models cost a few cents per run. To test for free, use the model '
-          'meta-llama/llama-3.1-8b-instruct:free. For paid models (DeepSeek, '
-          'GPT, Claude) add a small amount of credit on openrouter.ai.',
+      'Find your base URL',
+      'This is the provider endpoint, for example https://openrouter.ai/api/v1, '
+          'https://api.groq.com/openai/v1, or http://localhost:11434/v1 for a '
+          'local Ollama server. The app adds /chat/completions for you.',
     ),
     (
-      'Pick a model ID',
-      'Browse openrouter.ai/models and copy the EXACT model ID, including the '
-          'provider prefix e.g. "deepseek/deepseek-chat", "openai/gpt-4o-mini". '
-          'A bare name like "gemini-2.0-flash" will fail.',
+      'Copy the exact model ID',
+      'Use the exact model identifier your provider expects, including any '
+          'prefix, for example deepseek/deepseek-chat, openai/gpt-4o-mini, or '
+          'llama3 for a local model. A wrong ID fails with a model not found '
+          'error.',
     ),
     (
       'Enter it in the app',
-      'Settings → AI Configuration → paste your API key and model ID → tap '
-          'Test Connection → Save. You are ready to generate tours.',
+      'Open Settings then AI Configuration. Tap a quick preset to auto fill all '
+          'three fields, adjust the key and model, then tap Test Connection and '
+          'Save. You are ready to generate tours.',
     ),
+  ];
+
+  static const _examples = <(String, String)>[
+    ('OpenRouter (cloud)', 'https://openrouter.ai/api/v1'),
+    ('Groq (cloud)', 'https://api.groq.com/openai/v1'),
+    ('Together.ai (cloud)', 'https://api.together.xyz/v1'),
+    ('Ollama (local)', 'http://localhost:11434/v1'),
+    ('LM Studio (local)', 'http://localhost:1234/v1'),
   ];
 
   static const _errors = <(String, String)>[
     (
-      'Invalid or missing API key (401)',
-      'The key is wrong or empty. Re-copy it from openrouter.ai/keys and make '
-          'sure there are no extra spaces.',
+      'Invalid or missing API key (401 or 403)',
+      'The key is wrong or empty. Re-copy it from your provider dashboard and '
+          'check for extra spaces. Local models can leave the key empty.',
     ),
     (
-      'Model not found (404 / 400)',
-      'The model ID is wrong. Copy the exact slug from openrouter.ai/models, that is, '
-          'it must include the provider, e.g. "deepseek/deepseek-chat".',
+      'Model not found (400 or 404)',
+      'The model ID is wrong for this provider. Copy the exact model identifier '
+          'from your provider, including any prefix.',
     ),
     (
-      'Out of credits (402)',
-      'Add credits on OpenRouter, or switch to the free model '
-          'meta-llama/llama-3.1-8b-instruct:free.',
+      'Out of credits or quota (402)',
+      'Your provider account has run out of credit or quota. Add credit, switch '
+          'to a free or local model, and try again.',
     ),
-    ('Timed out / no internet', 'Check your network connection and try again.'),
+    (
+      'Rate limited (429)',
+      'Your provider is throttling requests. Wait a moment and try again.',
+    ),
+    (
+      'Timed out or no internet',
+      'Check your network connection. For a local model, make sure the local '
+          'server is running and reachable from this device.',
+    ),
   ];
 
-  void _copy(BuildContext context, String url) {
-    Clipboard.setData(ClipboardData(text: 'https://$url'));
+  void _copy(BuildContext context, String text) {
+    Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('Link copied: $url')));
+    ).showSnackBar(SnackBar(content: Text('Copied: $text')));
   }
 
   @override
@@ -73,9 +93,10 @@ class OpenRouterSetupScreen extends StatelessWidget {
             Text('Set up your AI model', style: theme.textTheme.titleLarge),
             const SizedBox(height: 6),
             Text(
-              'Tour Director generates tours through OpenRouter. Just need one API key '
-              'giving you access to DeepSeek, GPT, Claude, Llama and 300+ models. '
-              'Follow these steps once.',
+              'Tour Director generates tours with an AI model of your choice. '
+              'Point it at any OpenAI-compatible endpoint: a cloud provider like '
+              'OpenRouter, Groq or Together.ai, or a local model with Ollama or '
+              'LM Studio. Set it up once.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -87,21 +108,19 @@ class OpenRouterSetupScreen extends StatelessWidget {
 
             const SizedBox(height: 12),
             Text(
-              'QUICK LINKS',
+              'EXAMPLE BASE URLS',
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.primary,
                 letterSpacing: 1,
               ),
             ),
             const SizedBox(height: 8),
-            _LinkRow(
-              url: 'openrouter.ai/keys',
-              onTap: () => _copy(context, 'openrouter.ai/keys'),
-            ),
-            _LinkRow(
-              url: 'openrouter.ai/models',
-              onTap: () => _copy(context, 'openrouter.ai/models'),
-            ),
+            for (final (label, url) in _examples)
+              _EndpointRow(
+                label: label,
+                url: url,
+                onTap: () => _copy(context, url),
+              ),
 
             const SizedBox(height: 20),
             Text(
@@ -195,8 +214,13 @@ class _StepTile extends StatelessWidget {
   }
 }
 
-class _LinkRow extends StatelessWidget {
-  const _LinkRow({required this.url, required this.onTap});
+class _EndpointRow extends StatelessWidget {
+  const _EndpointRow({
+    required this.label,
+    required this.url,
+    required this.onTap,
+  });
+  final String label;
   final String url;
   final VoidCallback onTap;
 
@@ -209,14 +233,24 @@ class _LinkRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            Icon(Icons.link, size: 18, color: theme.colorScheme.primary),
+            Icon(
+              Icons.dns_outlined,
+              size: 18,
+              color: theme.colorScheme.primary,
+            ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                url,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: theme.textTheme.bodySmall),
+                  Text(
+                    url,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
               ),
             ),
             Icon(

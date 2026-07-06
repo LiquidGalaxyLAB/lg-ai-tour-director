@@ -1,49 +1,79 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../llm/open_router_service.dart';
+import '../llm/llm_client.dart';
 
-/// LLM router. **OpenRouter is currently the only active path** — Gemini stays
-/// fully intact and wired (see [GeminiService]) but is not invoked from the UI.
-///
-/// This class lives under services/gemini/ only because [GeminiService] imports
-/// it for its internal [maybeOpenRouter] hook (and GeminiService must not be
-/// touched). The active OpenRouter implementation lives in services/llm/.
 class LLMService {
   LLMService._();
   static final LLMService instance = LLMService._();
 
-  // SharedPreferences keys (shared with the AI Configuration screen).
-  static const String prefUseOpenRouter = 'useOpenRouter';
-  static const String prefApiKey = 'openRouterApiKey';
-  static const String prefModel = 'openRouterModel';
+  static const String prefBaseUrl = 'llmBaseUrl';
+  static const String prefApiKey = 'llmApiKey';
+  static const String prefModel = 'llmModel';
 
+  static const String defaultBaseUrl = 'https://openrouter.ai/api/v1';
   static const String defaultModel = 'deepseek/deepseek-chat';
 
-  /// Active router: routes generation to the configured OpenRouter model.
-  /// Returns null when no key is set — the caller then shows an
-  /// "AI not configured" message.
+  static const String _oldApiKey = 'openRouterApiKey';
+  static const String _oldModel = 'openRouterModel';
+  static const String _oldUseOpenRouter = 'useOpenRouter';
+
+  static Future<void> migrateLegacyKeys() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasNew =
+        prefs.containsKey(prefBaseUrl) ||
+        prefs.containsKey(prefApiKey) ||
+        prefs.containsKey(prefModel);
+    final hasOld =
+        prefs.containsKey(_oldApiKey) ||
+        prefs.containsKey(_oldModel) ||
+        prefs.containsKey(_oldUseOpenRouter);
+    if (hasNew || !hasOld) return;
+
+    debugPrint('[LLMService] migrating legacy OpenRouter keys → generic keys');
+    final oldKey = prefs.getString(_oldApiKey);
+    final oldModel = prefs.getString(_oldModel);
+    if (oldKey != null) await prefs.setString(prefApiKey, oldKey);
+    if (oldModel != null) await prefs.setString(prefModel, oldModel);
+    await prefs.setString(prefBaseUrl, defaultBaseUrl);
+
+    await prefs.remove(_oldApiKey);
+    await prefs.remove(_oldModel);
+    await prefs.remove(_oldUseOpenRouter);
+  }
+
+  static Future<bool> isConfigured() async {
+    final prefs = await SharedPreferences.getInstance();
+    final baseUrl = (prefs.getString(prefBaseUrl) ?? defaultBaseUrl).trim();
+    final key = (prefs.getString(prefApiKey) ?? '').trim();
+    final model = (prefs.getString(prefModel) ?? defaultModel).trim();
+    if (baseUrl.isEmpty || model.isEmpty) return false;
+    final isLocal =
+        baseUrl.contains('localhost') || baseUrl.contains('127.0.0.1');
+    return isLocal || key.isNotEmpty;
+  }
+
   Future<String?> generate(String systemPrompt, String userPrompt) async {
     final prefs = await SharedPreferences.getInstance();
+    final baseUrl = prefs.getString(prefBaseUrl) ?? defaultBaseUrl;
     final key = prefs.getString(prefApiKey) ?? '';
     final model = prefs.getString(prefModel) ?? defaultModel;
 
-    if (key.isEmpty) {
-      debugPrint('[LLMService] No OpenRouter key configured');
+    if (baseUrl.trim().isEmpty) {
+      debugPrint('[LLMService] No LLM endpoint configured');
       return null;
     }
 
-    debugPrint('[LLMService] routing to: openrouter ($model)');
-    return OpenRouterService(apiKey: key, model: model)
-        .generate(systemPrompt: systemPrompt, userPrompt: userPrompt);
+    debugPrint('[LLMService] routing to: $baseUrl ($model)');
+    return LLMClient(
+      baseUrl: baseUrl,
+      apiKey: key,
+      model: model,
+    ).generate(systemPrompt: systemPrompt, userPrompt: userPrompt);
   }
 
-  /// Dormant Gemini hook. [GeminiService] calls this internally; returning null
-  /// makes it fall through to its own (fully intact) Gemini logic. Gemini is
-  /// simply not invoked from the UI right now.
-  ///
-  /// To re-enable Gemini routing later, restore the original opt-in logic here
-  /// (read [prefUseOpenRouter] and return OpenRouter text only when enabled).
-  Future<String?> maybeOpenRouter(String systemPrompt, String userPrompt) async =>
-      null;
+  Future<String?> maybeOpenRouter(
+    String systemPrompt,
+    String userPrompt,
+  ) async => null;
 }

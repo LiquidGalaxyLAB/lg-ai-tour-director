@@ -35,27 +35,28 @@ class LlmException implements Exception {
       case 401:
       case 403:
         return LlmException(
-          'Invalid or missing API key. Open the setup guide to create an '
-          'OpenRouter key and paste it correctly in AI Configuration.',
+          'Invalid or missing API key. Re-copy the key from your AI provider '
+          'and paste it correctly in AI Configuration. Local models can leave '
+          'the key empty.',
           isSetupIssue: true,
         );
       case 402:
         return LlmException(
-          'Your OpenRouter account is out of credits. Add credits, or use a '
-          'free model like meta-llama/llama-3.1-8b-instruct:free.',
+          'Your AI provider account is out of credits or quota. Add credit, or '
+          'switch to a free or local model, then try again.',
           isSetupIssue: true,
         );
       case 400:
       case 404:
         return LlmException(
           'Model not found or invalid model ID${apiMsg != null ? ' ($apiMsg)' : ''}. '
-          'Copy the exact ID from openrouter.ai/models (e.g. '
-          'deepseek/deepseek-chat).',
+          'Enter the exact model ID your provider expects in AI Configuration '
+          '(e.g. deepseek/deepseek-chat, openai/gpt-4o-mini, or llama3).',
           isSetupIssue: true,
         );
       case 429:
         return LlmException(
-          'Rate limited by OpenRouter. Wait a moment and try again.',
+          'Rate limit reached on your AI provider. Wait a moment and try again.',
         );
       default:
         return LlmException(

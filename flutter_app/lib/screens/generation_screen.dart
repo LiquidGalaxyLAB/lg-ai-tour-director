@@ -7,8 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/location.dart';
 import '../models/tour_flow.dart';
 import '../services/gemini/llm_service.dart';
+import '../services/llm/llm_client.dart';
 import '../services/llm/llm_exception.dart';
-import '../services/llm/open_router_service.dart';
 import '../services/maps/geocoding_service.dart';
 import '../services/maps/places_service.dart';
 import '../services/media/location_media_resolver.dart';
@@ -40,28 +40,28 @@ class _GenerationScreenState extends State<GenerationScreen> {
     _generateTour();
   }
 
-  /// Calls the configured OpenRouter model and parses its (possibly chatty)
-  /// JSON into locations. Gemini is intentionally not called here — it stays
-  /// dormant but intact in [GeminiService].
   Future<List<TourLocation>> _extractLocations(String prompt) async {
     final prefs = await SharedPreferences.getInstance();
+    final baseUrl =
+        prefs.getString(LLMService.prefBaseUrl) ?? LLMService.defaultBaseUrl;
     final key = prefs.getString(LLMService.prefApiKey) ?? '';
     final model =
         prefs.getString(LLMService.prefModel) ?? LLMService.defaultModel;
 
-    if (key.isEmpty) {
+    if (baseUrl.trim().isEmpty) {
       throw LlmException(
-        'AI not configured. Add your OpenRouter API key in '
+        'AI not configured. Set your model endpoint in '
         'Settings → AI Configuration.',
         isSetupIssue: true,
       );
     }
 
     debugPrint(
-      'Generation: extracting locations via OpenRouter ($model) for "$prompt"',
+      'Generation: extracting locations via $baseUrl ($model) for "$prompt"',
     );
 
-    final raw = await OpenRouterService(
+    final raw = await LLMClient(
+      baseUrl: baseUrl,
       apiKey: key,
       model: model,
     ).extractLocations(prompt);
@@ -217,7 +217,7 @@ class _GenerationScreenState extends State<GenerationScreen> {
                       });
                       _generateTour();
                     },
-                    onSetupGuide: () => context.push('/help/openrouter-setup'),
+                    onSetupGuide: () => context.push('/help/ai-setup'),
                   )
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),

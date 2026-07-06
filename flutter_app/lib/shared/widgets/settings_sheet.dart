@@ -77,7 +77,7 @@ class _SettingsSheet extends ConsumerWidget {
             _SettingsRow(
               icon: Icons.smart_toy_outlined,
               title: 'AI Configuration',
-              subtitle: 'Configure your AI model via OpenRouter',
+              subtitle: 'Connect any AI model, cloud or local',
               onTap: () => go('/settings/ai'),
             ),
             _SettingsRow(

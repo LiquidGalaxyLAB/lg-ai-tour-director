@@ -4,12 +4,10 @@ import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../services/gemini/llm_service.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/quick_tips_sheet.dart';
 
-/// Home tab (mockups 1/2): prompt entry + mic, a "Try" suggestion, the
-/// Quick Launch grid, and the Generate Tour CTA. The connection dot and gear
-/// live in [AppHeader].
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -116,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _generate([String? preset]) {
+  Future<void> _generate([String? preset]) async {
     final prompt = (preset ?? _promptController.text).trim();
     if (prompt.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -124,8 +122,53 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       return;
     }
+    // Gate on AI setup so testers get a clear prompt instead of a mid-tour
+    // failure when no model / key is configured.
+    if (!await LLMService.isConfigured()) {
+      if (!mounted) return;
+      _showSetupRequiredDialog();
+      return;
+    }
+    if (!mounted) return;
     context.push('/home/generation', extra: prompt);
     _promptController.clear();
+  }
+
+  void _showSetupRequiredDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.smart_toy_outlined),
+        title: const Text('Set up your AI model first'),
+        content: const Text(
+          'Tour Director needs an AI model to generate tours. Add your API key '
+          'and model ID in AI Configuration, or point it at a local model. '
+          'You only need to do this once.',
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        actions: [
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    context.push('/settings/ai');
+                  },
+                  child: const Text('Set up AI model'),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
