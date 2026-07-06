@@ -28,6 +28,7 @@ class GenerationScreen extends StatefulWidget {
 
 class _GenerationScreenState extends State<GenerationScreen> {
   List<TourLocation>? _locations;
+  String? _tourTitle; // short title the model chose for the whole tour
   String? _error;
   bool _setupIssue =
       false; // error is fixable in AI Configuration → offer guide
@@ -67,21 +68,31 @@ class _GenerationScreenState extends State<GenerationScreen> {
     ).extractLocations(prompt);
 
     final jsonStr = JsonParser.extractJson(raw);
-    List<dynamic>? decoded;
+
+    List<dynamic>? list;
     if (jsonStr != null) {
       try {
         final parsed = jsonDecode(jsonStr);
-        if (parsed is List) decoded = parsed;
+        if (parsed is List) {
+          list = parsed;
+        } else if (parsed is Map) {
+          final locs = parsed['locations'];
+          if (locs is List) list = locs;
+          final title = parsed['tour_title'];
+          if (title is String && title.trim().isNotEmpty) {
+            _tourTitle = title.trim();
+          }
+        }
       } catch (_) {}
     }
-    if (decoded == null) {
+    if (list == null) {
       throw LlmException(
         "The AI model returned a response we couldn't read (it may not output "
         'clean JSON). Try a model like deepseek/deepseek-chat.',
         isSetupIssue: true,
       );
     }
-    final locations = decoded
+    final locations = list
         .whereType<Map<String, dynamic>>()
         .map(TourLocation.fromJson)
         .toList();
@@ -175,6 +186,10 @@ class _GenerationScreenState extends State<GenerationScreen> {
   }
 
   String _titleFromPrompt() {
+    final title = _tourTitle?.trim() ?? '';
+    if (title.isNotEmpty) {
+      return title.length > 40 ? '${title.substring(0, 40)}…' : title;
+    }
     final p = widget.prompt.trim();
     if (p.isEmpty) return 'Custom Tour';
     final first = p[0].toUpperCase() + p.substring(1);

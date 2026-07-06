@@ -25,33 +25,41 @@ class LocationImage extends StatefulWidget {
 }
 
 class _LocationImageState extends State<LocationImage> {
-  late Future<({String imageUrl, String description})> _future;
+  late Future<String> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = LocationMediaResolver.instance.resolve(widget.location);
+    _future = _resolveUrl();
   }
 
   @override
   void didUpdateWidget(LocationImage old) {
     super.didUpdateWidget(old);
-    if (old.location.name != widget.location.name) {
-      _future = LocationMediaResolver.instance.resolve(widget.location);
+    if (old.location.name != widget.location.name ||
+        old.location.imageUrl != widget.location.imageUrl) {
+      _future = _resolveUrl();
     }
+  }
+
+  Future<String> _resolveUrl() async {
+    final direct = widget.location.imageUrl;
+    if (direct != null && direct.isNotEmpty) return direct;
+    final media = await LocationMediaResolver.instance.resolve(widget.location);
+    return media.imageUrl;
   }
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(widget.borderRadius),
-      child: FutureBuilder<({String imageUrl, String description})>(
+      child: FutureBuilder<String>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return _placeholder(loading: true);
           }
-          final url = snap.data?.imageUrl ?? '';
+          final url = snap.data ?? '';
           if (url.isEmpty) return _placeholder();
           return Image.network(
             url,

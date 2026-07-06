@@ -32,20 +32,32 @@ Match the vibe. If they want fun and modern, do NOT default to museums and
 monuments just because those are the most famous. If they want history, do not
 return nightclubs. When the vibe is unclear, give a balanced, crowd-pleasing mix.
 
-STEP 2 — Select 4 to 6 REAL locations in the requested area that fit the
+STEP 2 — Name the tour. Write a short, catchy title (2 to 5 words) that captures
+the theme and mood, so it fits on a card. It must NOT be the user's full prompt.
+Examples: prompt "fun places for single men to visit in las vegas" -> "Vegas
+Nights Out"; prompt "let's see the seven wonders of the world" -> "Seven World
+Wonders"; prompt "historical places in pune" -> "Historic Pune".
+
+STEP 3 — Select 4 to 6 REAL locations in the requested area that fit the
 inferred intent, are geographically distinct, and are recognisable landmarks
 (they render well when the rig flies to them in Google Earth).
 
-Return ONLY a valid JSON array. No explanation. No markdown. No fences.
-Each object must have exactly these fields:
+Return ONLY a valid JSON object. No explanation. No markdown. No fences.
+Exactly this shape:
 {
-  "name": "exact searchable location name, including its city and country",
-  "type": "historical|natural|cultural|architectural|religious|entertainment|nightlife|adventure|culinary|scenic",
-  "why_significant": "one sentence on why this fits what the user is looking for",
-  "suggested_duration_seconds": 25
+  "tour_title": "short 2 to 5 word name for the whole tour",
+  "locations": [
+    {
+      "name": "exact searchable location name, including its city and country",
+      "type": "historical|natural|cultural|architectural|religious|entertainment|nightlife|adventure|culinary|scenic",
+      "why_significant": "one sentence on why this fits what the user is looking for",
+      "suggested_duration_seconds": 25
+    }
+  ]
 }
 
 Rules:
+- "tour_title" is 2 to 5 words, reflects the vibe, and is NOT a full sentence
 - Return 4 to 6 locations
 - Prioritise FIT with the user's inferred intent over generic fame
 - Locations must be geographically distinct (not all on the same block)
