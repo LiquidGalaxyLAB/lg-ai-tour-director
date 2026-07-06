@@ -36,13 +36,20 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
   bool _paused = false;
   bool _voiceNarration = true;
 
+  static const double _rigStartupBufferSeconds = 2.0; // sendKml upload lead
+  static const double _rigPerSceneBufferSeconds = 0.6; // ~6 flytoview echoes
+
   static const double _sceneDuration =
       KmlGenerator.flyDurationSeconds +
       KmlGenerator.approachHoldSeconds +
-      KmlGenerator.orbitTotalSeconds;
+      KmlGenerator.orbitTotalSeconds +
+      _rigPerSceneBufferSeconds;
 
   Duration get _overviewDelay => Duration(
-    milliseconds: ((KmlGenerator.flyDurationSeconds + 3) * 1000).round(),
+    milliseconds:
+        ((KmlGenerator.flyDurationSeconds + 3 + _rigStartupBufferSeconds) *
+                1000)
+            .round(),
   );
 
   @override
