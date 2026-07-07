@@ -78,6 +78,18 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
     }
   }
 
+  Future<void> _disconnect() async {
+    FocusScope.of(context).unfocus();
+    final messenger = ScaffoldMessenger.of(context);
+    await ref.read(sshConnectionProvider.notifier).disconnect();
+    if (!mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Disconnected from Liquid Galaxy')),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     final sshState = ref.watch(sshConnectionProvider);
@@ -197,6 +209,19 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
+                if (sshState.isConnected) ...[
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _disconnect,
+                    icon: const Icon(Icons.link_off),
+                    label: const Text('Disconnect'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                      foregroundColor: Theme.of(context).colorScheme.onError,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [

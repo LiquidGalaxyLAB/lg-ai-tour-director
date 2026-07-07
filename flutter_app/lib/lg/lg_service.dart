@@ -20,6 +20,11 @@ class LGService {
 
   Future<bool> connect(LGConnection connection) async {
     try {
+      _ssh.client?.close();
+    } catch (_) {}
+    _ssh.client = null;
+
+    try {
       debugPrint(
         'LGService: Connecting to ${connection.host}. isWeb = $kIsWeb',
       );
@@ -47,6 +52,10 @@ class LGService {
       );
       return true;
     } catch (e, st) {
+      try {
+        _ssh.client?.close();
+      } catch (_) {}
+      _ssh.client = null;
       debugPrint('LGService: Connection failed error: $e');
       debugPrint('LGService: Stack trace: $st');
       return false;
