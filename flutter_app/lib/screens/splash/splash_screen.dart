@@ -111,7 +111,10 @@ class _SplashScreenState extends State<SplashScreen>
                     opacity: intro.clamp(0.0, 1.0),
                     child: Transform.translate(
                       offset: Offset(0, bob),
-                      child: Transform.scale(scale: 0.82 + 0.18 * intro, child: child),
+                      child: Transform.scale(
+                        scale: 0.82 + 0.18 * intro,
+                        child: child,
+                      ),
                     ),
                   );
                 },
@@ -136,12 +139,12 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              // "Liquid Galaxy" lockup (transparent background).
+
               _staggered(
                 start: 0.4,
                 end: 0.85,
                 child: Image.asset(
-                  'assets/logos/lg-logo-for-app-without-bg.png',
+                  'assets/logos/lg-logo-splash.png',
                   width: 160,
                   fit: BoxFit.contain,
                 ),
