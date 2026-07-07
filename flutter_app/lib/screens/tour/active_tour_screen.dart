@@ -5,9 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../lg/lg_service.dart';
 import '../../models/location.dart';
 import '../../models/tour_flow.dart';
+import '../../providers/ssh_provider.dart';
 import '../../providers/tour_state_provider.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/location_image.dart';
@@ -80,10 +80,9 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
     await _tts.stop();
     ref.read(tourStateProvider.notifier).finish();
     try {
-      await LGService.instance.cleanup();
-      await LGService.instance.clearBalloon();
+      await ref.read(sshConnectionProvider.notifier).stopTour();
     } catch (e) {
-      debugPrint('ActiveTour: LG cleanup on End Tour failed: $e');
+      debugPrint('ActiveTour: LG stop on End Tour failed: $e');
     }
     if (!mounted) return;
     context.pushReplacement('/home/post-tour', extra: widget.args);

@@ -5,9 +5,11 @@ import 'balloon_image_maker.dart';
 class BalloonMaker {
   BalloonMaker._();
 
+  static const double _displayScale = 0.85;
+
   static String imageOverlay({required String host, required String fileName}) {
-    final cardW = BalloonImageMaker.w.toInt();
-    final cardH = BalloonImageMaker.h.toInt();
+    final cardW = (BalloonImageMaker.w * _displayScale).round();
+    final cardH = (BalloonImageMaker.h * _displayScale).round();
     final kml =
         '''<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
