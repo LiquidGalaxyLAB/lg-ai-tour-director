@@ -311,15 +311,11 @@ class SshConnection extends _$SshConnection {
     }
   }
 
-  /// Stops an in-progress generated tour: signals the flight loop to break (so
-  /// the rig stops moving), then clears the rig — blanks the info balloon and
-  /// runs [cleanup] (removes the tour KML + clears kmls.txt so Google Earth has
-  /// nothing left to show). Best-effort; safe to call when nothing is flying.
   Future<void> stopTour() async {
     _stopRequested = true;
     try {
-      await LGService.instance.clearBalloon();
       await LGService.instance.cleanup();
+      await LGService.instance.clearBalloon();
     } catch (e) {
       debugPrint('SSH: stopTour cleanup failed: $e');
     }
