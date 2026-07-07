@@ -6,10 +6,10 @@ import 'package:flutter/painting.dart';
 class BalloonImageMaker {
   BalloonImageMaker._();
 
-  static const double w = 420;
-  static const double h = 580;
-  static const double imageH = h * 0.45; // 261
-  static const double pad = 16;
+  static const double w = 380;
+  static const double h = 500;
+  static const double imageH = 200;
+  static const double pad = 14;
 
   static const Color _bg = Color(0xFF1A1A2E);
   static const Color _title = Color(0xFFFFFFFF);
@@ -18,10 +18,6 @@ class BalloonImageMaker {
   static const Color _body = Color(0xFFBDC1C6);
   static const Color _footerColor = Color(0xFF5F6368);
 
-  /// Renders the card to PNG bytes. [imageBytes] is the (already downloaded)
-  /// location image; when null/undecodable the image box is omitted and the
-  /// text fills the card. [scale] supersamples the bitmap so it stays crisp
-  /// when the ScreenOverlay scales it up to the slave screen height.
   static Future<Uint8List> render({
     required String locationName,
     required String locationSubtitle,
@@ -31,7 +27,7 @@ class BalloonImageMaker {
   }) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, w * scale, h * scale));
-    // Draw in logical 420×580 coordinates; the scale just supersamples output.
+    // Draw in logical w×h coordinates; the scale just supersamples output.
     canvas.scale(scale);
 
     // Card background.

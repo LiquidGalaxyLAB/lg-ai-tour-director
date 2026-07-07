@@ -1,12 +1,13 @@
 import 'package:flutter/foundation.dart';
 
+import 'balloon_image_maker.dart';
+
 class BalloonMaker {
   BalloonMaker._();
 
-  static const double widthFraction = 0.8;
-  static const double heightFraction = 0.6;
-
   static String imageOverlay({required String host, required String fileName}) {
+    final cardW = BalloonImageMaker.w.toInt();
+    final cardH = BalloonImageMaker.h.toInt();
     final kml =
         '''<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -17,7 +18,7 @@ class BalloonMaker {
       <overlayXY x="0.5" y="0.5" xunits="fraction" yunits="fraction"/>
       <screenXY x="0.5" y="0.5" xunits="fraction" yunits="fraction"/>
       <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
-      <size x="$widthFraction" y="$heightFraction" xunits="fraction" yunits="fraction"/>
+      <size x="$cardW" y="$cardH" xunits="pixels" yunits="pixels"/>
     </ScreenOverlay>
   </Document>
 </kml>''';
@@ -25,9 +26,6 @@ class BalloonMaker {
     return kml;
   }
 
-  /// Valid KML that clears/hides the balloon (used between locations and on
-  /// tour end). An empty `<Document>` blanks the slave overlay without a parse
-  /// error — never return an empty string here, Google Earth would throw.
   static String emptyBalloon() {
     const kml =
         '<?xml version="1.0" encoding="UTF-8"?>'
