@@ -101,6 +101,8 @@ class SshConnection extends _$SshConnection {
       if (ok) {
         await _persist(connection);
         state = state.copyWith(status: SshStatus.connected, errorMessage: null);
+
+        unawaited(_sendLogoOnConnect());
         return true;
       }
       state = state.copyWith(
@@ -119,6 +121,11 @@ class SshConnection extends _$SshConnection {
   }
 
   Future<void> disconnect() async {
+    try {
+      await LGService.instance.clearLogos();
+    } catch (e) {
+      debugPrint('SSH: clearLogos on disconnect failed: $e');
+    }
     await LGService.instance.disconnect();
     state = state.copyWith(status: SshStatus.disconnected, errorMessage: null);
   }
@@ -203,6 +210,14 @@ class SshConnection extends _$SshConnection {
     );
     await Future<void>.delayed(const Duration(seconds: 10));
     await LGService.instance.clearBalloon();
+  }
+
+  Future<void> _sendLogoOnConnect() async {
+    try {
+      await setLogos();
+    } catch (e) {
+      debugPrint('SSH: auto logo on connect failed: $e');
+    }
   }
 
   Future<void> setLogos() async {
