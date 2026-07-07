@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../providers/tour_state_provider.dart';
 import '../../services/gemini/llm_service.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/quick_tips_sheet.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _promptController = TextEditingController();
 
   // On-device speech recognition (speech_to_text) for the mic button.
@@ -247,8 +249,113 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+
+          _ReturnToTourBanner(
+            info: ref.watch(
+              tourStateProvider.select(
+                (s) => (
+                  running: s.isRunning,
+                  progress: s.progress,
+                  percent: s.percent,
+                ),
+              ),
+            ),
+            onTap: () {
+              final args = ref.read(tourStateProvider).args;
+              if (args != null) context.push('/home/active', extra: args);
+            },
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _ReturnToTourBanner extends StatelessWidget {
+  const _ReturnToTourBanner({required this.info, required this.onTap});
+
+  final ({bool running, double progress, int percent}) info;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final track = Color.lerp(AppColors.googleGreen, Colors.black, 0.28)!;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      alignment: Alignment.bottomCenter,
+      child: !info.running
+          ? const SizedBox(width: double.infinity)
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: Material(
+                color: AppColors.googleGreen,
+                elevation: 3,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: onTap,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 12, 12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '${info.percent}%',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: info.progress,
+                            minHeight: 4,
+                            backgroundColor: track,
+                            valueColor: const AlwaysStoppedAnimation(
+                              Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Text(
+                              'return to tour',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: Colors.white24,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.replay_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }
