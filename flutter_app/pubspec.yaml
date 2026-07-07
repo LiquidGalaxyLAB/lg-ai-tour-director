@@ -78,13 +78,14 @@ flutter_launcher_icons:
   adaptive_icon_foreground: "assets/icon/app_icon.png"
 
 # OS-level splash (shown during Flutter init, before the Dart splash screen).
+# Solid colour ONLY — no image — so the LG logo isn't drawn twice (native then
+# Dart), which caused a "logo flashes and disappears" flicker at handoff. The
+# logo now appears just once, animating in on the Dart splash over the same blue.
 # Regenerate platform files with: dart run flutter_native_splash:create
 flutter_native_splash:
   color: "#1A73E8"
-  image: assets/logos/lg-logo-splash.png
   android_12:
     color: "#1A73E8"
-    image: assets/logos/lg-logo-splash.png
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
