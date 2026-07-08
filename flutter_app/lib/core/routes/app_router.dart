@@ -5,7 +5,7 @@ import '../../models/saved_tour.dart';
 import '../../models/tour_flow.dart';
 import '../../screens/dev/theme_preview_screen.dart';
 import '../../screens/generation_screen.dart';
-import '../../screens/help/openrouter_setup_screen.dart';
+import '../../screens/help/ai_setup_screen.dart';
 import '../../screens/home/home_screen.dart';
 import '../../screens/profile/about_screen.dart';
 import '../../screens/profile/help_screen.dart';
@@ -147,9 +147,9 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const AiModelScreen(),
     ),
     GoRoute(
-      path: '/help/openrouter-setup',
+      path: '/help/ai-setup',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const OpenRouterSetupScreen(),
+      builder: (context, state) => const AiSetupScreen(),
     ),
     GoRoute(
       path: '/settings/preferences',

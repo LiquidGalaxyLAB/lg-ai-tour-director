@@ -42,9 +42,9 @@ class _QuickTipsSheet extends StatelessWidget {
     (
       Icons.smart_toy_outlined,
       'Set up your AI model',
-      'For tour generation, add a valid OpenRouter API key and model ID in '
-          'Settings → AI Configuration, then Test Connection. See the AI Setup '
-          'Guide in Help & Support.',
+      'For tour generation, open Settings → AI Configuration and set a base '
+          'URL, API key and model ID (or point it at a local model), then Test '
+          'Connection. See the AI Setup Guide in Help & Support.',
     ),
     (
       Icons.rocket_launch_rounded,

@@ -7,8 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/location.dart';
 import '../models/tour_flow.dart';
 import '../services/gemini/llm_service.dart';
+import '../services/llm/llm_client.dart';
 import '../services/llm/llm_exception.dart';
-import '../services/llm/open_router_service.dart';
 import '../services/maps/geocoding_service.dart';
 import '../services/maps/places_service.dart';
 import '../services/media/location_media_resolver.dart';
@@ -28,6 +28,7 @@ class GenerationScreen extends StatefulWidget {
 
 class _GenerationScreenState extends State<GenerationScreen> {
   List<TourLocation>? _locations;
+  String? _tourTitle; // short title the model chose for the whole tour
   String? _error;
   bool _setupIssue =
       false; // error is fixable in AI Configuration → offer guide
@@ -40,48 +41,58 @@ class _GenerationScreenState extends State<GenerationScreen> {
     _generateTour();
   }
 
-  /// Calls the configured OpenRouter model and parses its (possibly chatty)
-  /// JSON into locations. Gemini is intentionally not called here — it stays
-  /// dormant but intact in [GeminiService].
   Future<List<TourLocation>> _extractLocations(String prompt) async {
     final prefs = await SharedPreferences.getInstance();
+    final baseUrl =
+        prefs.getString(LLMService.prefBaseUrl) ?? LLMService.defaultBaseUrl;
     final key = prefs.getString(LLMService.prefApiKey) ?? '';
     final model =
         prefs.getString(LLMService.prefModel) ?? LLMService.defaultModel;
 
-    if (key.isEmpty) {
+    if (baseUrl.trim().isEmpty) {
       throw LlmException(
-        'AI not configured. Add your OpenRouter API key in '
+        'AI not configured. Set your model endpoint in '
         'Settings → AI Configuration.',
         isSetupIssue: true,
       );
     }
 
     debugPrint(
-      'Generation: extracting locations via OpenRouter ($model) for "$prompt"',
+      'Generation: extracting locations via $baseUrl ($model) for "$prompt"',
     );
 
-    final raw = await OpenRouterService(
+    final raw = await LLMClient(
+      baseUrl: baseUrl,
       apiKey: key,
       model: model,
     ).extractLocations(prompt);
 
     final jsonStr = JsonParser.extractJson(raw);
-    List<dynamic>? decoded;
+
+    List<dynamic>? list;
     if (jsonStr != null) {
       try {
         final parsed = jsonDecode(jsonStr);
-        if (parsed is List) decoded = parsed;
+        if (parsed is List) {
+          list = parsed;
+        } else if (parsed is Map) {
+          final locs = parsed['locations'];
+          if (locs is List) list = locs;
+          final title = parsed['tour_title'];
+          if (title is String && title.trim().isNotEmpty) {
+            _tourTitle = title.trim();
+          }
+        }
       } catch (_) {}
     }
-    if (decoded == null) {
+    if (list == null) {
       throw LlmException(
         "The AI model returned a response we couldn't read (it may not output "
         'clean JSON). Try a model like deepseek/deepseek-chat.',
         isSetupIssue: true,
       );
     }
-    final locations = decoded
+    final locations = list
         .whereType<Map<String, dynamic>>()
         .map(TourLocation.fromJson)
         .toList();
@@ -175,6 +186,10 @@ class _GenerationScreenState extends State<GenerationScreen> {
   }
 
   String _titleFromPrompt() {
+    final title = _tourTitle?.trim() ?? '';
+    if (title.isNotEmpty) {
+      return title.length > 40 ? '${title.substring(0, 40)}…' : title;
+    }
     final p = widget.prompt.trim();
     if (p.isEmpty) return 'Custom Tour';
     final first = p[0].toUpperCase() + p.substring(1);
@@ -217,7 +232,7 @@ class _GenerationScreenState extends State<GenerationScreen> {
                       });
                       _generateTour();
                     },
-                    onSetupGuide: () => context.push('/help/openrouter-setup'),
+                    onSetupGuide: () => context.push('/help/ai-setup'),
                   )
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),

@@ -28,6 +28,18 @@ class SavedDetailScreen extends ConsumerWidget {
     context,
   ).showSnackBar(SnackBar(content: Text('$label — coming soon')));
 
+  static String _category(SavedTour tour) {
+    final counts = <String, int>{};
+    for (final loc in tour.locations) {
+      final t = loc.type.trim();
+      if (t.isEmpty || t.toLowerCase() == 'unknown') continue;
+      counts[t] = (counts[t] ?? 0) + 1;
+    }
+    if (counts.isEmpty) return 'TOUR';
+    final top = counts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
+    return top.toUpperCase();
+  }
+
   Future<void> _exportKml(BuildContext context, SavedTour tour) async {
     final messenger = ScaffoldMessenger.of(context);
     final kml = KmlAssembler.buildTour(locations: tour.locations);
@@ -163,9 +175,9 @@ class SavedDetailScreen extends ConsumerWidget {
                             color: Colors.white.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            'HISTORICAL',
-                            style: TextStyle(
+                          child: Text(
+                            _category(tour),
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 10,
                               letterSpacing: 1,
@@ -175,12 +187,28 @@ class SavedDetailScreen extends ConsumerWidget {
                         const SizedBox(height: 8),
                         Text(
                           tour.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
+                        if (tour.prompt.trim().isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Prompt: ${tour.prompt.trim()}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 4),
                         Row(
                           children: [
                             const Icon(

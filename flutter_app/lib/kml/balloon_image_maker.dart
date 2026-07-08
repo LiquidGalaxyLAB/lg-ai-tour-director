@@ -3,20 +3,13 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
 
-/// Rasterises the info balloon to a PNG with `dart:ui` (no widget tree / no
-/// BuildContext — safe to call from the service layer).
-///
-/// Google Earth's `ScreenOverlay` icon must be an IMAGE, not HTML, so the card
-/// is drawn here at exactly 420×580 and deployed like the logo overlay. The
-/// design mirrors the original HTML spec: dark card, a 420×240 cover-cropped
-/// image, title / subtitle / accent divider / description, and a footer.
 class BalloonImageMaker {
   BalloonImageMaker._();
 
-  static const double w = 420;
-  static const double h = 580;
-  static const double imageH = 240;
-  static const double pad = 16;
+  static const double w = 380;
+  static const double h = 500;
+  static const double imageH = 200;
+  static const double pad = 14;
 
   static const Color _bg = Color(0xFF1A1A2E);
   static const Color _title = Color(0xFFFFFFFF);
@@ -25,10 +18,6 @@ class BalloonImageMaker {
   static const Color _body = Color(0xFFBDC1C6);
   static const Color _footerColor = Color(0xFF5F6368);
 
-  /// Renders the card to PNG bytes. [imageBytes] is the (already downloaded)
-  /// location image; when null/undecodable the image box is omitted and the
-  /// text fills the card. [scale] supersamples the bitmap so it stays crisp
-  /// when the ScreenOverlay scales it up to the slave screen height.
   static Future<Uint8List> render({
     required String locationName,
     required String locationSubtitle,
@@ -38,7 +27,7 @@ class BalloonImageMaker {
   }) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, w * scale, h * scale));
-    // Draw in logical 420×580 coordinates; the scale just supersamples output.
+    // Draw in logical w×h coordinates; the scale just supersamples output.
     canvas.scale(scale);
 
     // Card background.
@@ -92,8 +81,10 @@ class BalloonImageMaker {
     const footerZone = footerSize * 1.3 + 12; // text height + bottom gap
     const descSize = 17.0;
     const descLineHeight = descSize * 1.55;
-    final descMaxLines =
-        ((h - y - footerZone) / descLineHeight).floor().clamp(1, 99);
+    final descMaxLines = ((h - y - footerZone) / descLineHeight).floor().clamp(
+      1,
+      99,
+    );
     final desc = _paragraph(
       description,
       size: descSize,
@@ -115,8 +106,10 @@ class BalloonImageMaker {
     canvas.drawParagraph(footer, Offset(pad, h - footer.height - 12));
 
     final picture = recorder.endRecording();
-    final rendered =
-        await picture.toImage((w * scale).toInt(), (h * scale).toInt());
+    final rendered = await picture.toImage(
+      (w * scale).toInt(),
+      (h * scale).toInt(),
+    );
     final png = await rendered.toByteData(format: ui.ImageByteFormat.png);
     picture.dispose();
     rendered.dispose();
@@ -143,19 +136,21 @@ class BalloonImageMaker {
     double height = 1.3,
     int? maxLines,
   }) {
-    final builder = ui.ParagraphBuilder(
-      ui.ParagraphStyle(
-        textAlign: TextAlign.left,
-        fontSize: size,
-        fontWeight: weight,
-        height: height,
-        maxLines: maxLines,
-        ellipsis: maxLines != null ? '…' : null,
-      ),
-    )
-      ..pushStyle(ui.TextStyle(color: color, fontSize: size, fontWeight: weight))
-      ..addText(text);
-    return builder.build()
-      ..layout(ui.ParagraphConstraints(width: maxWidth));
+    final builder =
+        ui.ParagraphBuilder(
+            ui.ParagraphStyle(
+              textAlign: TextAlign.left,
+              fontSize: size,
+              fontWeight: weight,
+              height: height,
+              maxLines: maxLines,
+              ellipsis: maxLines != null ? '…' : null,
+            ),
+          )
+          ..pushStyle(
+            ui.TextStyle(color: color, fontSize: size, fontWeight: weight),
+          )
+          ..addText(text);
+    return builder.build()..layout(ui.ParagraphConstraints(width: maxWidth));
   }
 }

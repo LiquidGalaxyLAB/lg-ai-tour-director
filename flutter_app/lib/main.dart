@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/routes/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/theme_provider.dart';
+import 'services/gemini/llm_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,6 +15,8 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('[main] .env not loaded: $e');
   }
+
+  await LLMService.migrateLegacyKeys();
 
   runApp(const ProviderScope(child: AITourDirectorApp()));
 }

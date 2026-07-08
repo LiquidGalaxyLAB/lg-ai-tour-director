@@ -1,49 +1,33 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../kml/generator.dart';
 import '../../models/location.dart';
 import '../../models/tour_flow.dart';
+import '../../providers/ssh_provider.dart';
+import '../../providers/tour_state_provider.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/location_image.dart';
 import '../../shared/widgets/map_placeholder.dart';
 
-/// Active immersive tour (mockups 8 & 9): current scene + narration subtitles,
-/// scene dots, LookAt/Orbit readouts, a synced map, and Pause/Skip/End.
-///
-/// This is the on-device companion view; deploying KML to the rig is the KML
-/// engine's job (not yet wired), so here scenes advance on a timer and narration
-/// is spoken best-effort via TTS.
-class ActiveTourScreen extends StatefulWidget {
+class ActiveTourScreen extends ConsumerStatefulWidget {
   const ActiveTourScreen({super.key, required this.args});
 
   final TourFlowArgs args;
 
   @override
-  State<ActiveTourScreen> createState() => _ActiveTourScreenState();
+  ConsumerState<ActiveTourScreen> createState() => _ActiveTourScreenState();
 }
 
-class _ActiveTourScreenState extends State<ActiveTourScreen> {
+class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
   final FlutterTts _tts = FlutterTts();
-  Timer? _timer;
-  int _scene = 0;
-  double _elapsed = 0;
-  bool _paused = false;
   bool _voiceNarration = true;
 
-  static const double _sceneDuration =
-      KmlGenerator.flyDurationSeconds +
-      KmlGenerator.approachHoldSeconds +
-      KmlGenerator.orbitTotalSeconds;
-
-  Duration get _overviewDelay => Duration(
-    milliseconds: ((KmlGenerator.flyDurationSeconds + 3) * 1000).round(),
-  );
+  int _spokenIndex = -1;
+  bool _ending = false;
 
   @override
   void initState() {
@@ -55,64 +39,57 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
     final prefs = await SharedPreferences.getInstance();
     _voiceNarration = prefs.getBool('pref_voice_narration') ?? true;
     if (!mounted) return;
-    await Future<void>.delayed(_overviewDelay);
-    if (!mounted || _paused) return;
-    _startScene();
-    _startTimer();
+
+    final notifier = ref.read(tourStateProvider.notifier);
+    final tour = ref.read(tourStateProvider);
+    final resuming =
+        tour.isRunning && tour.totalLocations == widget.args.locations.length;
+    if (resuming) {
+      _spokenIndex = tour.currentIndex;
+      _speak(tour.currentIndex);
+    } else {
+      _spokenIndex = 0;
+      notifier.start(widget.args);
+      await Future<void>.delayed(TourStateNotifier.overviewDelay);
+      if (!mounted) return;
+      if (ref.read(tourStateProvider).currentIndex == 0) _speak(0);
+    }
   }
 
-  void _startTimer() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(milliseconds: 250), (_) {
-      if (_paused) return;
-      setState(() => _elapsed += 0.25);
-      if (_elapsed >= _sceneDuration) _next();
-    });
-  }
-
-  Future<void> _startScene() async {
-    // Respect the Voice Narration preference — skip TTS entirely when off.
+  /// Speaks the narration for [index]. Best-effort — ignores TTS failures.
+  Future<void> _speak(int index) async {
     if (!_voiceNarration) return;
-    final loc = widget.args.locations[_scene];
+    if (index < 0 || index >= widget.args.locations.length) return;
     try {
       await _tts.stop();
-      await _tts.speak(loc.whySignificant);
-    } catch (_) {
-      // TTS is best-effort; ignore failures (e.g. no engine on web).
-    }
+      await _tts.speak(widget.args.locations[index].whySignificant);
+    } catch (_) {}
   }
 
-  void _next() {
-    if (_scene >= widget.args.locations.length - 1) {
-      _end();
-      return;
-    }
-    setState(() {
-      _scene++;
-      _elapsed = 0;
-    });
-    _startScene();
-  }
-
-  void _togglePause() {
-    setState(() => _paused = !_paused);
-    if (_paused) {
-      _tts.stop();
-    } else {
-      _startScene();
-      _startTimer();
-    }
-  }
-
-  void _end() {
-    _timer?.cancel();
+  void _complete() {
+    if (_ending) return;
+    _ending = true;
     _tts.stop();
+    ref.read(tourStateProvider.notifier).finish();
+    context.pushReplacement('/home/post-tour', extra: widget.args);
+  }
+
+  Future<void> _end() async {
+    if (_ending) return;
+    _ending = true;
+    await _tts.stop();
+    ref.read(tourStateProvider.notifier).finish();
+    try {
+      await ref.read(sshConnectionProvider.notifier).stopTour();
+    } catch (e) {
+      debugPrint('ActiveTour: LG stop on End Tour failed: $e');
+    }
+    if (!mounted) return;
     context.pushReplacement('/home/post-tour', extra: widget.args);
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
     _tts.stop();
     super.dispose();
   }
@@ -120,91 +97,147 @@ class _ActiveTourScreenState extends State<ActiveTourScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final loc = widget.args.locations[_scene];
     final total = widget.args.locations.length;
-    final progress = (_elapsed / _sceneDuration).clamp(0.0, 1.0);
 
-    return Scaffold(
-      body: Column(
-        children: [
-          const SafeArea(bottom: false, child: AppHeader()),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              children: [
-                _SceneDots(total: total, current: _scene),
-                const SizedBox(height: 16),
-                _SceneCard(location: loc),
-                const SizedBox(height: 16),
-                _SubtitleCard(text: loc.whySignificant, progress: progress),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _InfoCard(
-                        icon: Icons.center_focus_strong,
-                        title: 'LOOKAT TARGET',
-                        rows: const [
-                          ('RANGE', '600m'),
-                          ('TILT', '60°'),
-                          ('HEADING', '0°'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _InfoCard(
-                        icon: Icons.threesixty,
-                        title: 'CAMERA ORBIT',
-                        rows: const [
-                          ('RADIUS', '250m'),
-                          ('ALTITUDE', '400m'),
-                          ('TILT', '65°'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const MapPlaceholder(height: 160, synced: true),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _togglePause,
-                        icon: Icon(
-                          _paused
-                              ? Icons.play_arrow_rounded
-                              : Icons.pause_rounded,
+    final view = ref.watch(
+      tourStateProvider.select(
+        (s) => (index: s.currentIndex, status: s.status),
+      ),
+    );
+    final sceneIndex = view.index.clamp(0, total - 1);
+    final loc = widget.args.locations[sceneIndex];
+
+    ref.listen<TourState>(tourStateProvider, (prev, next) {
+      if (next.status == TourStatus.ended) {
+        _complete();
+        return;
+      }
+      if (next.isRunning && next.currentIndex != _spokenIndex) {
+        _spokenIndex = next.currentIndex;
+        _speak(next.currentIndex);
+      }
+    });
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+
+        context.go('/home');
+      },
+      child: Scaffold(
+        body: Column(
+          children: [
+            const SafeArea(bottom: false, child: AppHeader()),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                children: [
+                  _SceneDots(total: total, current: sceneIndex),
+                  const SizedBox(height: 16),
+                  _SceneCard(location: loc),
+                  const SizedBox(height: 16),
+                  _SubtitleCard(text: loc.whySignificant),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _InfoCard(
+                          icon: Icons.center_focus_strong,
+                          title: 'LOOKAT TARGET',
+                          rows: const [
+                            ('RANGE', '600m'),
+                            ('TILT', '60°'),
+                            ('HEADING', '0°'),
+                          ],
                         ),
-                        label: Text(_paused ? 'Resume' : 'Pause Tour'),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _next,
-                        icon: const Icon(Icons.skip_next_rounded),
-                        label: const Text('Skip Scene'),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _InfoCard(
+                          icon: Icons.threesixty,
+                          title: 'CAMERA ORBIT',
+                          rows: const [
+                            ('RADIUS', '250m'),
+                            ('ALTITUDE', '400m'),
+                            ('TILT', '65°'),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: _end,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.error,
+                    ],
                   ),
-                  icon: const Icon(Icons.stop_circle_outlined),
-                  label: const Text('End Tour'),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  const MapPlaceholder(height: 160, synced: true),
+                  const SizedBox(height: 16),
+                  const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _ComingSoonAction(
+                          icon: Icons.pause_rounded,
+                          label: 'Pause Tour',
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: _ComingSoonAction(
+                          icon: Icons.skip_next_rounded,
+                          label: 'Skip Scene',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _end,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: theme.colorScheme.error,
+                    ),
+                    icon: const Icon(Icons.stop_circle_outlined),
+                    label: const Text('End Tour'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ComingSoonAction extends StatelessWidget {
+  const _ComingSoonAction({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Opacity(
+          opacity: 0.4,
+          child: IgnorePointer(
+            child: OutlinedButton.icon(
+              onPressed: null,
+              icon: Icon(icon),
+              label: Text(label),
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Coming Soon',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -332,13 +365,15 @@ class _SceneCard extends StatelessWidget {
   }
 }
 
-class _SubtitleCard extends StatelessWidget {
-  const _SubtitleCard({required this.text, required this.progress});
+class _SubtitleCard extends ConsumerWidget {
+  const _SubtitleCard({required this.text});
   final String text;
-  final double progress;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progress = ref.watch(
+      tourStateProvider.select((s) => s.sceneProgress),
+    );
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(

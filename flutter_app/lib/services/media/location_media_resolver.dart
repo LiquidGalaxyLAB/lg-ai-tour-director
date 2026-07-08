@@ -32,15 +32,17 @@ class LocationMediaResolver {
     var description = location.whySignificant; // body falls back to AI text
     String source;
 
-    final wiki =
-        await WikimediaService.instance.fetchLocationMedia(location.name);
+    final wiki = await WikimediaService.instance.fetchLocationMedia(
+      location.name,
+    );
     if (wiki != null && wiki.imageUrl.isNotEmpty) {
       imageUrl = wiki.imageUrl;
       description = wiki.description;
       source = 'wikipedia';
     } else {
-      final unsplash =
-          await UnsplashService.instance.fetchPhotoUrl(location.name);
+      final unsplash = await UnsplashService.instance.fetchPhotoUrl(
+        location.name,
+      );
       if (unsplash != null && unsplash.isNotEmpty) {
         imageUrl = unsplash;
         source = 'unsplash';
@@ -48,7 +50,16 @@ class LocationMediaResolver {
         imageUrl = location.imageUrl!;
         source = 'fallback (generation image)';
       } else {
-        source = 'text-only';
+        final themed = _themedQuery(location);
+        final themedUrl = themed == null
+            ? null
+            : await UnsplashService.instance.fetchPhotoUrl(themed);
+        if (themedUrl != null && themedUrl.isNotEmpty) {
+          imageUrl = themedUrl;
+          source = 'unsplash (themed: $themed)';
+        } else {
+          source = 'text-only';
+        }
       }
     }
 
@@ -59,5 +70,23 @@ class LocationMediaResolver {
       description: description,
     );
     return (imageUrl: imageUrl, description: description);
+  }
+
+  String? _themedQuery(TourLocation location) {
+    final segments = location.name
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    final city = segments.length >= 2 ? segments[segments.length - 2] : null;
+    final type = location.type.trim();
+    final usableType = type.isEmpty || type.toLowerCase() == 'unknown'
+        ? ''
+        : type;
+    final query = [
+      usableType,
+      city ?? '',
+    ].where((s) => s.isNotEmpty).join(' ').trim();
+    return query.isEmpty ? null : query;
   }
 }

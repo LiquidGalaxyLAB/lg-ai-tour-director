@@ -101,6 +101,8 @@ class SshConnection extends _$SshConnection {
       if (ok) {
         await _persist(connection);
         state = state.copyWith(status: SshStatus.connected, errorMessage: null);
+
+        unawaited(_sendLogoOnConnect());
         return true;
       }
       state = state.copyWith(
@@ -119,6 +121,11 @@ class SshConnection extends _$SshConnection {
   }
 
   Future<void> disconnect() async {
+    try {
+      await LGService.instance.clearLogos();
+    } catch (e) {
+      debugPrint('SSH: clearLogos on disconnect failed: $e');
+    }
     await LGService.instance.disconnect();
     state = state.copyWith(status: SshStatus.disconnected, errorMessage: null);
   }
@@ -205,6 +212,14 @@ class SshConnection extends _$SshConnection {
     await LGService.instance.clearBalloon();
   }
 
+  Future<void> _sendLogoOnConnect() async {
+    try {
+      await setLogos();
+    } catch (e) {
+      debugPrint('SSH: auto logo on connect failed: $e');
+    }
+  }
+
   Future<void> setLogos() async {
     await LGService.instance.setLogos(
       logoPath: AppConstants.logoAssetPath,
@@ -225,17 +240,8 @@ class SshConnection extends _$SshConnection {
   }
 
   bool _isFlying = false;
+  bool _stopRequested = false;
 
-  /// Deploys the geocoded [locations] as pin markers, then flies the rig's
-  /// Google Earth through them as a cinematic tour.
-  ///
-  /// The camera is driven via the proven `flytoview=` query.txt hook (the same
-  /// one [flyToPune] uses) — one view per stop with a hold between — because
-  /// this rig's GE build does NOT honour `playtour=`. The `<gx:Tour>` KML is
-  /// still uploaded so the numbered pins are available.
-  ///
-  /// Returns the number of stops flown. Returns 0 without doing anything if not
-  /// connected, no location has coordinates, or a tour is already playing.
   Future<int> flyGeneratedTour(List<TourLocation> locations) async {
     if (!state.isConnected) {
       debugPrint('SSH: flyGeneratedTour skipped — not connected');
@@ -255,6 +261,7 @@ class SshConnection extends _$SshConnection {
     }
 
     _isFlying = true;
+    _stopRequested = false; // fresh run — clear any stale End-Tour request
     try {
       // 1. Upload the pin markers (best-effort; camera move is the main event).
       final kml = KmlAssembler.buildTour(locations: geocoded);
@@ -272,6 +279,7 @@ class SshConnection extends _$SshConnection {
       const perLandmark = 1 + KmlGenerator.orbitSteps;
       debugPrint('SSH: flying ${geocoded.length} stop(s) via flytoview');
       for (var i = 0; i < views.length; i++) {
+        if (_stopRequested) break; // End Tour pressed → stop moving the rig
         if (i > 0 && (i - 1) % perLandmark == 0) {
           final j = (i - 1) ~/ perLandmark;
           if (j < geocoded.length) unawaited(_showStopBalloon(geocoded[j]));
@@ -279,14 +287,37 @@ class SshConnection extends _$SshConnection {
         await LGService.instance.runCommand(
           'echo "${KmlGenerator.flyToViewQuery(views[i])}" > /tmp/query.txt',
         );
-        await Future<void>.delayed(views[i].settleDuration);
+        await _interruptibleDelay(views[i].settleDuration);
       }
 
-      // 3. Tour finished — clear the info balloon from the right-most screen.
-      await LGService.instance.clearBalloon();
+      // 3. Tour finished naturally — clear the info balloon. If it was stopped,
+      //    stopTour() already cleared the rig, so don't double up.
+      if (!_stopRequested) await LGService.instance.clearBalloon();
       return geocoded.length;
     } finally {
       _isFlying = false;
+    }
+  }
+
+  Future<void> _interruptibleDelay(Duration total) async {
+    const step = Duration(milliseconds: 200);
+    var elapsed = Duration.zero;
+    while (elapsed < total) {
+      if (_stopRequested) return;
+      final remaining = total - elapsed;
+      final chunk = remaining < step ? remaining : step;
+      await Future<void>.delayed(chunk);
+      elapsed += chunk;
+    }
+  }
+
+  Future<void> stopTour() async {
+    _stopRequested = true;
+    try {
+      await LGService.instance.cleanup();
+      await LGService.instance.clearBalloon();
+    } catch (e) {
+      debugPrint('SSH: stopTour cleanup failed: $e');
     }
   }
 

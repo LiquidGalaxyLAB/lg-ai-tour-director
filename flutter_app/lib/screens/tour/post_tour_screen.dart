@@ -180,6 +180,16 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
                 const _ThankYouHero(),
                 const SizedBox(height: 20),
                 Text(widget.args.title, style: theme.textTheme.headlineSmall),
+                if (widget.args.prompt.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Prompt: ${widget.args.prompt.trim()}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Text(
                   _film && !_filmReady
