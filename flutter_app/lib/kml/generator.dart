@@ -18,16 +18,11 @@ class KmlGenerator {
 
   static const double orbitRange = 800;
   static const double orbitTilt = 60;
-  // 8 segments of 45° = a full 360° circle. The sweep emits headings
-  // 45,90,…,360 (frame at 360° closes the loop back to the 0° arrival), so the
-  // whole orbit is 9 keyframes: the arrival at heading 0 + these 8.
-  static const int orbitSteps = 8;
   static const double approachHoldSeconds = 10;
-  // ~2s per 45° step. GE animates each `flytoview=` at its own built-in speed;
-  // if the next heading is written before GE finishes the current swing it gets
-  // interrupted and the orbit under-rotates (the old 5×72°/1s bug). 2s per 45°
-  // gives GE time to complete each segment, so the full circle actually closes.
-  static const double orbitTotalSeconds = 16;
+
+  static const int orbitSteps = 72;
+  static const double orbitStepSeconds = 0.12;
+  static const double orbitTotalSeconds = orbitSteps * orbitStepSeconds; // 8.64
 
   // Markers
 
@@ -148,11 +143,6 @@ class KmlGenerator {
     ];
   }
 
-  /// The 360° heading sweep around a fixed point: [orbitSteps] frames advancing
-  /// the heading by 360/[orbitSteps]° each (45° for 8 steps) — 45,90,…,360 — the
-  /// last frame closing the circle back to the starting heading. Only the
-  /// heading changes; [lat]/[lng]/[range]/[altitude]/tilt stay constant so the
-  /// camera holds a fixed radius. Reused by the tour and the dev orbit test.
   static List<CameraView> orbitSweep(
     double lat,
     double lng, {
