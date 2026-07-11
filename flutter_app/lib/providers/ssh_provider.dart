@@ -158,18 +158,50 @@ class SshConnection extends _$SshConnection {
     await LGService.instance.flyTo(18.5195, 73.8553, tilt: 45);
   }
 
+  Future<void> testOrbit() async {
+    const lat = 18.5195, lng = 73.8553; // Shaniwar Wada, Pune
+    const range = 600.0, altitude = 500.0;
+
+    // 1. Approach: the heading-0 arrival view, then a 3s hold to let it settle.
+    const approach = CameraView(
+      lat: lat,
+      lng: lng,
+      altitude: altitude,
+      tilt: KmlGenerator.orbitTilt,
+      heading: 0,
+      range: range,
+      flySeconds: 0,
+      holdSeconds: 0,
+    );
+    await LGService.instance.runCommand(
+      'echo "${KmlGenerator.flyToViewQuery(approach)}" > /tmp/query.txt',
+    );
+    await Future<void>.delayed(const Duration(seconds: 3));
+
+    // 2. Full 360° orbit (headings 45…360) via the shared, fixed generation.
+    debugPrint('[OrbitTest] starting orbit around Shaniwar Wada');
+    final sweep = KmlGenerator.orbitSweep(
+      lat,
+      lng,
+      range: range,
+      altitude: altitude,
+    );
+    for (final v in sweep) {
+      await LGService.instance.runCommand(
+        'echo "${KmlGenerator.flyToViewQuery(v)}" > /tmp/query.txt',
+      );
+      await Future<void>.delayed(v.settleDuration);
+    }
+  }
+
   Future<void> cleanup() async {
     await LGService.instance.cleanup();
   }
 
-  /// TEMP dev helper : exercises the full image fallback chain across three
-  /// cases (Wikipedia hit / Unsplash fallback / text-only), logging each
-  /// resolved source, then deploys the historical one to the rig and clears it
-  /// after 10s. Remove once verified.
   Future<void> testBalloon() async {
     final cases = <TourLocation>[
       const TourLocation(
-        name: 'Shaniwar Wada, Pune', // exact miss → sanitised Wikipedia hit
+        name: 'Shaniwar Wada, Pune',
         type: 'Fort',
         whySignificant:
             'Built in 1732 as the seat of the Peshwas, Shaniwar Wada once '

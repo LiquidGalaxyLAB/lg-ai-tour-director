@@ -18,9 +18,16 @@ class KmlGenerator {
 
   static const double orbitRange = 800;
   static const double orbitTilt = 60;
-  static const int orbitSteps = 5;
+  // 8 segments of 45° = a full 360° circle. The sweep emits headings
+  // 45,90,…,360 (frame at 360° closes the loop back to the 0° arrival), so the
+  // whole orbit is 9 keyframes: the arrival at heading 0 + these 8.
+  static const int orbitSteps = 8;
   static const double approachHoldSeconds = 10;
-  static const double orbitTotalSeconds = 5;
+  // ~2s per 45° step. GE animates each `flytoview=` at its own built-in speed;
+  // if the next heading is written before GE finishes the current swing it gets
+  // interrupted and the orbit under-rotates (the old 5×72°/1s bug). 2s per 45°
+  // gives GE time to complete each segment, so the full circle actually closes.
+  static const double orbitTotalSeconds = 16;
 
   // Markers
 
@@ -126,10 +133,8 @@ class KmlGenerator {
     return views;
   }
 
-  /// One landmark beat: fly in and hold for the imagery to unblur, then sweep
-  /// the heading around the point in [orbitSteps] for a smooth orbit.
   static List<CameraView> _orbitViews(double lat, double lng) {
-    final views = <CameraView>[
+    return <CameraView>[
       CameraView(
         lat: lat,
         lng: lng,
@@ -139,22 +144,35 @@ class KmlGenerator {
         flySeconds: flyDurationSeconds,
         holdSeconds: approachHoldSeconds,
       ),
+      ...orbitSweep(lat, lng, range: orbitRange),
     ];
+  }
+
+  /// The 360° heading sweep around a fixed point: [orbitSteps] frames advancing
+  /// the heading by 360/[orbitSteps]° each (45° for 8 steps) — 45,90,…,360 — the
+  /// last frame closing the circle back to the starting heading. Only the
+  /// heading changes; [lat]/[lng]/[range]/[altitude]/tilt stay constant so the
+  /// camera holds a fixed radius. Reused by the tour and the dev orbit test.
+  static List<CameraView> orbitSweep(
+    double lat,
+    double lng, {
+    double range = orbitRange,
+    double altitude = 0,
+  }) {
     final perStep = orbitTotalSeconds / orbitSteps;
-    for (var i = 1; i <= orbitSteps; i++) {
-      views.add(
+    return <CameraView>[
+      for (var i = 1; i <= orbitSteps; i++)
         CameraView(
           lat: lat,
           lng: lng,
+          altitude: altitude,
           tilt: orbitTilt,
           heading: (360 / orbitSteps) * i,
-          range: orbitRange,
+          range: range,
           flySeconds: perStep,
           holdSeconds: 0,
         ),
-      );
-    }
-    return views;
+    ];
   }
 
   // The single-line `flytoview=<LookAt>…</LookAt>` payload to echo into
