@@ -216,6 +216,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   },
                   onMic: _toggleListen,
                 ),
+                const SizedBox(height: 16),
+                // Sits right under the prompt so typing → generating needs no
+                // scroll. Quick Launch cards below each self-generate on tap.
+                FilledButton.icon(
+                  onPressed: () => _generate(),
+                  icon: const Icon(Icons.rocket_launch_rounded, size: 20),
+                  label: const Text('Generate Tour'),
+                ),
                 const SizedBox(height: 28),
                 Text(
                   'QUICK LAUNCH',
@@ -239,12 +247,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         onTap: () => _generate(q.prompt),
                       ),
                   ],
-                ),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: () => _generate(),
-                  icon: const Icon(Icons.rocket_launch_rounded, size: 20),
-                  label: const Text('Generate Tour'),
                 ),
               ],
             ),
