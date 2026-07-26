@@ -34,10 +34,15 @@ class KmlGenerator {
   static const double orbitTourStepSeconds = 1.2; // gx:duration per keyframe
 
   // Live smooth-orbit (server-side loop) — see [orbitLoopCommand]. Fine heading
-  // steps written fast + evenly by the master itself (no per-frame SSH latency).
+  // steps written evenly by the master itself (no per-frame SSH latency).
+  //
+  // CRITICAL: the heading must advance no FASTER than GE can chase a flytoview=
+  // (measured ≈25°/s on this rig). Faster and GE lags a half-turn behind, then
+  // takes the short way back to the final heading → looks like a 180° "return".
+  // 5° / 0.2s = 25°/s keeps GE glued to the target for a true, smooth 360°.
   static const int orbitLoopStepDegrees = 5; // heading increment per frame
-  static const double orbitLoopSleepSeconds = 0.1; // master-side pause per frame
-  // Full 360° wall-clock ≈ (360/step + 1) * sleep ≈ 7.3s.
+  static const double orbitLoopSleepSeconds = 0.2; // master-side pause per frame
+  // Full 360° wall-clock ≈ (360/step + 1) * sleep ≈ 14.6s.
   static const double orbitLoopTotalSeconds =
       (360 / orbitLoopStepDegrees + 1) * orbitLoopSleepSeconds;
 
