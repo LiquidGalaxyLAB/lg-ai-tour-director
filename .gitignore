@@ -21,6 +21,11 @@ __pycache__/
 venv/
 env/
 
+CLAUDE.md
+**/CLAUDE.md
+llm-integration 
+LLM_INTEGRATION.md
+
 # build artifacts
 build/
 dist/
@@ -32,6 +37,4 @@ dist/
 /UIs
 /flutter_app/context
 
-# local AI assistant context (not for the repo)
-CLAUDE.md
-**/CLAUDE.md
+
