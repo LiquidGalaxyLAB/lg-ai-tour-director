@@ -20,9 +20,14 @@ class KmlGenerator {
   static const double orbitTilt = 60;
   static const double approachHoldSeconds = 10;
 
-  static const int orbitSteps = 72;
-  static const double orbitStepSeconds = 0.12;
-  static const double orbitTotalSeconds = orbitSteps * orbitStepSeconds; // 8.64
+  // Query-driven orbit (one flytoview= per step): the reliable path for rigs
+  // whose GE ignores gx:Tour/playtour= (this VirtualBox rig does). The trick is
+  // FEW, LARGE steps each held long enough for GE to fully ease into it — 8×45°
+  // smooth arcs beats 72 tiny hops that each fight a full SSH round-trip's
+  // latency. Prefer [buildOrbitKml] (native gx:Tour) on rigs that support it.
+  static const int orbitSteps = 8;
+  static const double orbitStepSeconds = 2.0; // per-step settle (GE eases in)
+  static const double orbitTotalSeconds = orbitSteps * orbitStepSeconds; // 16
 
   static const String orbitTourName = 'Orbit';
   static const double orbitTourStepDegrees = 10;

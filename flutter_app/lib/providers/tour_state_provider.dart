@@ -60,10 +60,10 @@ class TourStateNotifier extends Notifier<TourState> {
   Timer? _sceneTimer; // advances currentIndex
   Timer? _progressTimer; // fills sceneProgress 0→1
 
-  static const double _perSceneBufferSeconds = 0.6; // ~6 flytoview echoes
+  static const double _perSceneBufferSeconds = 1.8; // ~9 flytoview echoes/landmark
   static const double _startupBufferSeconds = 2.0; // sendKml upload lead
 
-  /// Fixed per-landmark dwell (fly + hold + orbit + SSH buffer) ≈ 19.6s.
+  /// Fixed per-landmark dwell (fly + hold + orbit + SSH buffer) ≈ 31.8s.
   static Duration get sceneDuration => Duration(
     milliseconds:
         ((KmlGenerator.flyDurationSeconds +
