@@ -179,7 +179,7 @@ class SshConnection extends _$SshConnection {
     await Future<void>.delayed(const Duration(seconds: 3));
 
     // 2. Full 360° orbit (headings 45…360) via the shared, fixed generation.
-    debugPrint('[OrbitTest] starting orbit around Shaniwar Wada');
+    debugPrint('[Orbit] OLD (query-per-step) starting around Shaniwar Wada');
     final sweep = KmlGenerator.orbitSweep(
       lat,
       lng,
@@ -192,6 +192,33 @@ class SshConnection extends _$SshConnection {
       );
       await Future<void>.delayed(v.settleDuration);
     }
+    debugPrint('[Orbit] OLD sweep complete');
+  }
+
+  Future<void> testGxTourOrbit() async {
+    const lat = 18.5195, lng = 73.8553; // Shaniwar Wada, Pune
+    const range = 800.0, altitude = 0.0; // relativeToGround → altitude 0
+
+    debugPrint('[Orbit] gx:Tour building orbit.kml for Shaniwar Wada');
+    final kml = KmlGenerator.buildOrbitKml(
+      lat: lat,
+      lng: lng,
+      altitude: altitude,
+      range: range,
+    );
+
+    // 1. Upload the tour KML to the master and let GE load it (sendKml writes
+    //    the file, points kmls.txt at it, and triggers a load via query.txt).
+    await LGService.instance.sendKml(kml, fileName: 'orbit.kml');
+    debugPrint('[Orbit] orbit.kml deployed — waiting for GE to load the tour');
+    await Future<void>.delayed(const Duration(seconds: 2));
+
+    // 2. Play it by name. Must match <name>Orbit</name> in the KML.
+    debugPrint('[Orbit] triggering playtour=${KmlGenerator.orbitTourName}');
+    await LGService.instance.runCommand(
+      'echo "playtour=${KmlGenerator.orbitTourName}" > /tmp/query.txt',
+    );
+    debugPrint('[Orbit] gx:Tour playback triggered');
   }
 
   Future<void> cleanup() async {

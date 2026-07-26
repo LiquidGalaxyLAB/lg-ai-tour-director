@@ -24,6 +24,10 @@ class KmlGenerator {
   static const double orbitStepSeconds = 0.12;
   static const double orbitTotalSeconds = orbitSteps * orbitStepSeconds; // 8.64
 
+  static const String orbitTourName = 'Orbit';
+  static const double orbitTourStepDegrees = 10;
+  static const double orbitTourStepSeconds = 1.2; // gx:duration per keyframe
+
   // Markers
 
   //numbered `<Placemark>` pin for one stop
@@ -163,6 +167,47 @@ class KmlGenerator {
           holdSeconds: 0,
         ),
     ];
+  }
+
+  static String buildOrbitKml({
+    required double lat,
+    required double lng,
+    required double altitude,
+    double range = orbitRange,
+    double tilt = orbitTilt,
+    double stepDurationSeconds = orbitTourStepSeconds,
+  }) {
+    final flyToBlocks = StringBuffer();
+    double heading = 0;
+    for (var step = 0; step <= 36; step++) {
+      if (heading >= 360) heading -= 360;
+      flyToBlocks.write('''
+      <gx:FlyTo>
+        <gx:duration>$stepDurationSeconds</gx:duration>
+        <gx:flyToMode>smooth</gx:flyToMode>
+        <LookAt>
+          <longitude>$lng</longitude>
+          <latitude>$lat</latitude>
+          <heading>$heading</heading>
+          <tilt>$tilt</tilt>
+          <range>$range</range>
+          <gx:fovy>60</gx:fovy>
+          <altitude>$altitude</altitude>
+          <gx:altitudeMode>relativeToGround</gx:altitudeMode>
+        </LookAt>
+      </gx:FlyTo>
+''');
+      heading += orbitTourStepDegrees;
+    }
+
+    return '''<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+  <gx:Tour>
+    <name>$orbitTourName</name>
+    <gx:Playlist>
+$flyToBlocks    </gx:Playlist>
+  </gx:Tour>
+</kml>''';
   }
 
   // The single-line `flytoview=<LookAt>…</LookAt>` payload to echo into
