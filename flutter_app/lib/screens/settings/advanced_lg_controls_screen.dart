@@ -151,14 +151,7 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
               OutlinedButton.icon(
                 onPressed: () => run('Test Orbit', notifier.testOrbit),
                 icon: const Icon(Icons.threesixty_rounded),
-                label: const Text('Test Orbit (query · smooth)'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () =>
-                    run('Test Orbit gx:Tour', notifier.testGxTourOrbit),
-                icon: const Icon(Icons.threesixty_rounded),
-                label: const Text('Test Orbit gx:Tour (needs playtour support)'),
+                label: const Text('Test Orbit (Shaniwar Wada)'),
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(

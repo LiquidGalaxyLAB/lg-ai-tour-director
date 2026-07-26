@@ -33,6 +33,14 @@ class KmlGenerator {
   static const double orbitTourStepDegrees = 10;
   static const double orbitTourStepSeconds = 1.2; // gx:duration per keyframe
 
+  // Live smooth-orbit (server-side loop) — see [orbitLoopCommand]. Fine heading
+  // steps written fast + evenly by the master itself (no per-frame SSH latency).
+  static const int orbitLoopStepDegrees = 5; // heading increment per frame
+  static const double orbitLoopSleepSeconds = 0.1; // master-side pause per frame
+  // Full 360° wall-clock ≈ (360/step + 1) * sleep ≈ 7.3s.
+  static const double orbitLoopTotalSeconds =
+      (360 / orbitLoopStepDegrees + 1) * orbitLoopSleepSeconds;
+
   // Markers
 
   //numbered `<Placemark>` pin for one stop
@@ -218,6 +226,65 @@ $flyToBlocks      </gx:Playlist>
     </gx:Tour>
   </Document>
 </kml>''';
+  }
+
+  // ── Live smooth orbit via a SINGLE server-side loop ─────────────────────────
+  // The landmark stays perfectly centered because longitude/latitude are frozen
+  // and only <heading> sweeps 0→360 — LG's canonical orbit trick
+  // (LiquidGalaxyLAB/LG-Space-Visualizations orbit_kml.dart). We drive it live
+  // with flytoview= (not gx:Tour) because this rig's GE ignores playtour=. Both
+  // the framing shot and the orbit share this LookAt geometry (altitude 0,
+  // relativeToGround) so there is NO vertical jump when the orbit starts.
+
+  static String _orbitLookAt(
+    double lat,
+    double lng,
+    double range,
+    double tilt,
+    String heading,
+  ) =>
+      '<LookAt>'
+      '<longitude>$lng</longitude>'
+      '<latitude>$lat</latitude>'
+      '<altitude>0</altitude>'
+      '<range>$range</range>'
+      '<tilt>$tilt</tilt>'
+      '<heading>$heading</heading>'
+      '<gx:altitudeMode>relativeToGround</gx:altitudeMode>'
+      '</LookAt>';
+
+  /// A single `flytoview=` payload that frames [lat],[lng] dead-centre at a
+  /// fixed [heading] (used for the approach shot before the orbit begins).
+  static String orbitFrameQuery(
+    double lat,
+    double lng, {
+    double range = orbitRange,
+    double tilt = orbitTilt,
+    double heading = 0,
+  }) =>
+      'flytoview=${_orbitLookAt(lat, lng, range, tilt, heading.toStringAsFixed(1))}';
+
+  /// ONE shell command that plays a smooth 360° orbit around [lat],[lng].
+  ///
+  /// It writes an incrementing-heading LookAt to `/tmp/query.txt` in a
+  /// SERVER-SIDE bash loop, so all the timing runs on the master (`sleep`) and
+  /// the whole orbit costs exactly ONE SSH round-trip — no per-frame network
+  /// latency, which is what made the client-side per-step loop jumpy. GE gets
+  /// evenly-timed heading updates and rotates continuously.
+  static String orbitLoopCommand({
+    required double lat,
+    required double lng,
+    double range = orbitRange,
+    double tilt = orbitTilt,
+    int stepDegrees = orbitLoopStepDegrees,
+    double sleepSeconds = orbitLoopSleepSeconds,
+  }) {
+    // `\$h` / `\$(...)` stay literal for the REMOTE shell; $lat/$lng/etc are
+    // interpolated by Dart here.
+    final lookAt = _orbitLookAt(lat, lng, range, tilt, '\$h');
+    return 'for h in \$(seq 0 $stepDegrees 360); do '
+        'echo "flytoview=$lookAt" > /tmp/query.txt; '
+        'sleep $sleepSeconds; done';
   }
 
   // The single-line `flytoview=<LookAt>…</LookAt>` payload to echo into

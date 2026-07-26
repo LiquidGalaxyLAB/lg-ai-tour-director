@@ -158,41 +158,27 @@ class SshConnection extends _$SshConnection {
     await LGService.instance.flyTo(18.5195, 73.8553, tilt: 45);
   }
 
+  /// Smooth 360° orbit that keeps the landmark dead-centre. Frames Shaniwar Wada
+  /// first (altitude 0, relativeToGround), then runs the WHOLE orbit as a single
+  /// server-side loop — one SSH round-trip, evenly-timed frames, no judder.
   Future<void> testOrbit() async {
     const lat = 18.5195, lng = 73.8553; // Shaniwar Wada, Pune
-    const range = 600.0, altitude = 500.0;
+    const range = 800.0;
 
-    // 1. Approach: the heading-0 arrival view, then a 3s hold to let it settle.
-    const approach = CameraView(
-      lat: lat,
-      lng: lng,
-      altitude: altitude,
-      tilt: KmlGenerator.orbitTilt,
-      heading: 0,
-      range: range,
-      flySeconds: 0,
-      holdSeconds: 0,
-    );
+    // 1. Frame the landmark dead-centre and let the imagery sharpen.
     await LGService.instance.runCommand(
-      'echo "${KmlGenerator.flyToViewQuery(approach)}" > /tmp/query.txt',
+      'echo "${KmlGenerator.orbitFrameQuery(lat, lng, range: range)}" '
+      '> /tmp/query.txt',
     );
+    debugPrint('[Orbit] framing Shaniwar Wada — smooth server-side orbit next');
     await Future<void>.delayed(const Duration(seconds: 3));
 
-    // 2. Full 360° orbit (headings 45…360) via the shared, fixed generation.
-    debugPrint('[Orbit] OLD (query-per-step) starting around Shaniwar Wada');
-    final sweep = KmlGenerator.orbitSweep(
-      lat,
-      lng,
-      range: range,
-      altitude: altitude,
+    // 2. ONE command → the master writes every heading itself, GE rotates
+    //    smoothly around the fixed centre point.
+    await LGService.instance.runCommand(
+      KmlGenerator.orbitLoopCommand(lat: lat, lng: lng, range: range),
     );
-    for (final v in sweep) {
-      await LGService.instance.runCommand(
-        'echo "${KmlGenerator.flyToViewQuery(v)}" > /tmp/query.txt',
-      );
-      await Future<void>.delayed(v.settleDuration);
-    }
-    debugPrint('[Orbit] OLD sweep complete');
+    debugPrint('[Orbit] orbit complete');
   }
 
   Future<void> testGxTourOrbit() async {
