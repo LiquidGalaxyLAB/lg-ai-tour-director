@@ -46,6 +46,11 @@ class KmlGenerator {
   static const double orbitLoopTotalSeconds =
       (360 / orbitLoopStepDegrees + 1) * orbitLoopSleepSeconds;
 
+  // A stop-flag file on the master. [orbitLoopCommand] checks for it each frame,
+  // so touching it (from stopTour, on a separate SSH channel) ends the orbit
+  // within one frame — lets End Tour interrupt an in-flight orbit instantly.
+  static const String orbitStopSentinel = '/tmp/lg_orbit_stop';
+
   // Markers
 
   //numbered `<Placemark>` pin for one stop
@@ -276,6 +281,9 @@ $flyToBlocks      </gx:Playlist>
   /// the whole orbit costs exactly ONE SSH round-trip — no per-frame network
   /// latency, which is what made the client-side per-step loop jumpy. GE gets
   /// evenly-timed heading updates and rotates continuously.
+  ///
+  /// The loop clears then watches [orbitStopSentinel] each frame, so the orbit
+  /// can be ended mid-flight by `touch`ing that file (see stopTour).
   static String orbitLoopCommand({
     required double lat,
     required double lng,
@@ -287,9 +295,26 @@ $flyToBlocks      </gx:Playlist>
     // `\$h` / `\$(...)` stay literal for the REMOTE shell; $lat/$lng/etc are
     // interpolated by Dart here.
     final lookAt = _orbitLookAt(lat, lng, range, tilt, '\$h');
-    return 'for h in \$(seq 0 $stepDegrees 360); do '
+    return 'rm -f $orbitStopSentinel; '
+        'for h in \$(seq 0 $stepDegrees 360); do '
+        '[ -f $orbitStopSentinel ] && break; '
         'echo "flytoview=$lookAt" > /tmp/query.txt; '
         'sleep $sleepSeconds; done';
+  }
+
+  /// The opening wide shot that frames every stop (top-down), shown once before
+  /// diving into the per-landmark approach + orbit. Same framing the tour used
+  /// before — just exposed on its own so the driver can run the orbit itself.
+  static CameraView overviewView(List<TourLocation> locations) {
+    final center = _centroid(locations);
+    return CameraView(
+      lat: center.lat,
+      lng: center.lng,
+      tilt: 0,
+      range: _framingRange(locations, center),
+      flySeconds: flyDurationSeconds + 1,
+      holdSeconds: 2,
+    );
   }
 
   // The single-line `flytoview=<LookAt>…</LookAt>` payload to echo into
