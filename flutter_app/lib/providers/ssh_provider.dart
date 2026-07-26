@@ -199,6 +199,22 @@ class SshConnection extends _$SshConnection {
     const lat = 18.5195, lng = 73.8553; // Shaniwar Wada, Pune
     const range = 800.0, altitude = 0.0; // relativeToGround → altitude 0
 
+    const approach = CameraView(
+      lat: lat,
+      lng: lng,
+      altitude: altitude,
+      tilt: KmlGenerator.orbitTilt,
+      heading: 0,
+      range: range,
+      flySeconds: 0,
+      holdSeconds: 0,
+    );
+    await LGService.instance.runCommand(
+      'echo "${KmlGenerator.flyToViewQuery(approach)}" > /tmp/query.txt',
+    );
+    debugPrint('[Orbit] approach flytoview sent — framing Shaniwar Wada');
+    await Future<void>.delayed(const Duration(seconds: 2));
+
     debugPrint('[Orbit] gx:Tour building orbit.kml for Shaniwar Wada');
     final kml = KmlGenerator.buildOrbitKml(
       lat: lat,
@@ -207,11 +223,15 @@ class SshConnection extends _$SshConnection {
       range: range,
     );
 
-    // 1. Upload the tour KML to the master and let GE load it (sendKml writes
-    //    the file, points kmls.txt at it, and triggers a load via query.txt).
+    // 1. Upload the tour KML + point kmls.txt at it (sendKml does both). The
+    //    master GE pulls it in via its kmls.txt NetworkLink, so give it time.
     await LGService.instance.sendKml(kml, fileName: 'orbit.kml');
-    debugPrint('[Orbit] orbit.kml deployed — waiting for GE to load the tour');
-    await Future<void>.delayed(const Duration(seconds: 2));
+    final host = state.connection.host;
+    debugPrint(
+      '[Orbit] orbit.kml deployed (http://$host:81/orbit.kml) — '
+      'waiting 5s for the master to load the tour',
+    );
+    await Future<void>.delayed(const Duration(seconds: 5));
 
     // 2. Play it by name. Must match <name>Orbit</name> in the KML.
     debugPrint('[Orbit] triggering playtour=${KmlGenerator.orbitTourName}');

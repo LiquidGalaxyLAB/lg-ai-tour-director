@@ -200,13 +200,18 @@ class KmlGenerator {
       heading += orbitTourStepDegrees;
     }
 
+    // gx:Tour wrapped in a <Document> — some GE builds only expose the tour to
+    // `playtour=<name>` when it is a Document feature, not a bare root child.
     return '''<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
-  <gx:Tour>
-    <name>$orbitTourName</name>
-    <gx:Playlist>
-$flyToBlocks    </gx:Playlist>
-  </gx:Tour>
+  <Document>
+    <name>Orbit Tour</name>
+    <gx:Tour>
+      <name>$orbitTourName</name>
+      <gx:Playlist>
+$flyToBlocks      </gx:Playlist>
+    </gx:Tour>
+  </Document>
 </kml>''';
   }
 
