@@ -339,7 +339,9 @@ class SshConnection extends _$SshConnection {
       //    framing every stop, then per landmark an approach (held so imagery
       //    sharpens + the balloon shows) followed by a smooth, centred 360°
       //    orbit (one server-side loop — see KmlGenerator.orbitLoopCommand).
-      debugPrint('SSH: flying ${geocoded.length} stop(s) via flytoview + orbit');
+      debugPrint(
+        'SSH: flying ${geocoded.length} stop(s) via flytoview + orbit',
+      );
 
       // The rig is the master clock: it tells the companion (narration + UI)
       // which landmark it has ARRIVED at, so narration never runs ahead of a
@@ -371,17 +373,17 @@ class SshConnection extends _$SshConnection {
         final l = geocoded[j];
         final lat = l.latitude!, lng = l.longitude!;
 
-        tour.enterScene(j); // narration for THIS stop starts now
-
+        // Fly IN to the landmark and let the imagery sharpen — kept SILENT so
+        // the narration isn't wasted on the transition. The balloon deploys now
+        // so it's ready by the time we arrive.
         await LGService.instance.runCommand(
           'echo "${KmlGenerator.orbitFrameQuery(lat, lng)}" > /tmp/query.txt',
         );
-        unawaited(_showStopBalloon(l)); // fire on arrival; shows through orbit
+        unawaited(_showStopBalloon(l));
         await _interruptibleDelay(approachHold);
         if (_stopRequested) break;
 
-        // Blocks ~29s while the master sweeps the heading; End Tour ends it
-        // early by touching the stop-sentinel (see stopTour) on another channel.
+        tour.enterScene(j);
         final sw = Stopwatch()..start();
         await LGService.instance.runCommand(
           KmlGenerator.orbitLoopCommand(lat: lat, lng: lng),
