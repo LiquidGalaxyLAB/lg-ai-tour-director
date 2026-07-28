@@ -104,6 +104,10 @@ class SshConnection extends _$SshConnection {
         state = state.copyWith(status: SshStatus.connected, errorMessage: null);
 
         unawaited(_sendLogoOnConnect());
+        // One-time, automatic: enable master.kml live-refresh so the landmark
+        // ring shows during tours with no manual Set Refresh (relaunches lg1
+        // once on the very first connect, then never again).
+        unawaited(_ensureRingRefresh());
         return true;
       }
       state = state.copyWith(
@@ -180,6 +184,34 @@ class SshConnection extends _$SshConnection {
       KmlGenerator.orbitLoopCommand(lat: lat, lng: lng, range: range),
     );
     debugPrint('[Orbit] orbit complete');
+  }
+
+  Future<void> testLandmarkRing() async {
+    const lat = 18.5195, lng = 73.8553; // Shaniwar Wada, Pune
+    await LGService.instance.runCommand(
+      'echo "${KmlGenerator.orbitFrameQuery(lat, lng)}" > /tmp/query.txt',
+    );
+    await Future<void>.delayed(const Duration(seconds: 3));
+    // 0. One-time: make sure master.kml live-refreshes (relaunches lg1 the first
+    //    time only). Wait for GE to come back if it relaunched.
+    final relaunched = await LGService.instance.ensureMasterLiveRefresh();
+    if (relaunched) {
+      debugPrint('[LandmarkRing] test — enabled master refresh + relaunched lg1, '
+          'waiting ~15s for GE');
+      await Future<void>.delayed(const Duration(seconds: 15));
+      // Re-frame the landmark after the relaunch.
+      await LGService.instance.runCommand(
+        'echo "${KmlGenerator.orbitFrameQuery(lat, lng)}" > /tmp/query.txt',
+      );
+      await Future<void>.delayed(const Duration(seconds: 2));
+    }
+    // The SAME working ring the tour uses. (The flicker-free <Update> path was
+    // dropped — this rig's GE ignores NetworkLinkControl updates.)
+    debugPrint('[LandmarkRing] test — showing at Shaniwar Wada');
+    await LGService.instance.showLandmarkRing(lat, lng);
+    await Future<void>.delayed(const Duration(seconds: 20));
+    await LGService.instance.clearLandmarkRing();
+    debugPrint('[LandmarkRing] test — cleared');
   }
 
   Future<void> testGxTourOrbit() async {
@@ -286,6 +318,14 @@ class SshConnection extends _$SshConnection {
     }
   }
 
+  Future<void> _ensureRingRefresh() async {
+    try {
+      await LGService.instance.ensureMasterLiveRefresh();
+    } catch (e) {
+      debugPrint('SSH: ensureMasterLiveRefresh on connect failed: $e');
+    }
+  }
+
   Future<void> setLogos() async {
     await LGService.instance.setLogos(
       logoPath: AppConstants.logoAssetPath,
@@ -335,6 +375,7 @@ class SshConnection extends _$SshConnection {
         await LGService.instance.sendKml(kml, fileName: 'tour.kml');
       }
 
+
       // 2. Drive the camera via the proven flytoview= hook: an opening overview
       //    framing every stop, then per landmark an approach (held so imagery
       //    sharpens + the balloon shows) followed by a smooth, centred 360°
@@ -350,18 +391,21 @@ class SshConnection extends _$SshConnection {
       // as soon as that screen calls start(rigDriven: true).
       final tour = ref.read(tourStateProvider.notifier);
 
-      // 2a. Opening overview.
+      // 2a. Opening overview (fly-to — pausable/skippable like every fly-to).
       final overview = KmlGenerator.overviewView(geocoded);
+      final overviewQuery = KmlGenerator.flyToViewQuery(overview);
       await LGService.instance.runCommand(
-        'echo "${KmlGenerator.flyToViewQuery(overview)}" > /tmp/query.txt',
+        'echo "$overviewQuery" > /tmp/query.txt',
       );
-      await _interruptibleDelay(overview.settleDuration);
+      await _pausableHold(overview.settleDuration, overviewQuery);
 
-      // 2b. Per landmark: advance narration to this stop AS WE ARRIVE, approach
-      //     (same relativeToGround geometry as the orbit start → no vertical
-      //     jump), fire the balloon, hold for imagery, then a full 360° orbit.
-      //     Each landmark only ends when its orbit truly completes, so the next
-      //     fly-to + narration fire together — the camera is given its "justice".
+      // 2b. Per landmark. Play/Pause/Next act throughout the FLY-TO phases
+      //     (fly-in + post-orbit settle); the ORBIT is the one uninterruptible
+      //     island (server-side loop — always completes, untouched). The ring
+      //     stays up through the whole landmark (cleared only as the NEXT one
+      //     starts) so it never vanishes while paused. On RESUME the camera is
+      //     re-framed to the landmark first, so the orbit never starts from a
+      //     spot the user explored to (no janky half-return).
       final approachHold = Duration(
         milliseconds:
             ((KmlGenerator.flyDurationSeconds +
@@ -372,36 +416,80 @@ class SshConnection extends _$SshConnection {
       for (var j = 0; j < geocoded.length && !_stopRequested; j++) {
         final l = geocoded[j];
         final lat = l.latitude!, lng = l.longitude!;
+        final frameQuery = KmlGenerator.orbitFrameQuery(lat, lng);
 
-        // Fly IN to the landmark and let the imagery sharpen — kept SILENT so
-        // the narration isn't wasted on the transition. The balloon deploys now
-        // so it's ready by the time we arrive.
+        // Boundary: hold here if paused, BEFORE flying to this landmark (so a
+        // pause keeps you on the previous stop, not mid-transition).
+        while (tour.isPaused && !_stopRequested && !tour.skipRequested) {
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+        }
+        if (_stopRequested) break;
+        tour.clearSkip();
+        // Clear the previous landmark's ring now that we're moving on.
+        await LGService.instance.clearLandmarkRing();
+
+        // FLY-IN (fly-to) — pausable + skippable. Balloon deploys on the way.
         await LGService.instance.runCommand(
-          'echo "${KmlGenerator.orbitFrameQuery(lat, lng)}" > /tmp/query.txt',
+          'echo "$frameQuery" > /tmp/query.txt',
         );
         unawaited(_showStopBalloon(l));
-        await _interruptibleDelay(approachHold);
-        if (_stopRequested) break;
+        final flyIn = await _pausableHold(approachHold, frameQuery);
+        if (flyIn == 'stop') break;
+        if (flyIn == 'skip') continue; // Next during fly-in → skip this landmark
 
+        // Arrived — narration + ring (both persist through the orbit + settle).
         tour.enterScene(j);
-        final sw = Stopwatch()..start();
-        await LGService.instance.runCommand(
-          KmlGenerator.orbitLoopCommand(lat: lat, lng: lng),
-        );
-        debugPrint('[Orbit] stop $j sweep ran ${sw.elapsedMilliseconds}ms');
+        unawaited(LGService.instance.showLandmarkRing(lat, lng));
 
-        if (_stopRequested) break;
-        await _interruptibleDelay(
+        // ORBIT — normally a single UNINTERRUPTIBLE server-side loop, but the
+        // user can now Pause/Next/End it via the SAME stop-sentinel End Tour
+        // uses (touched on a side channel while the loop blocks — proven safe).
+        // On PAUSE we HOLD, then on resume re-frame the camera to the landmark,
+        // give GE time to fly back, and re-run a FRESH full 360 — so it never
+        // resumes mid-spin or orbits from a spot you explored to. The orbit
+        // COMMAND, its bash loop, and the sentinel are unchanged (DO-NOT-TOUCH).
+        var orbit = 'done';
+        while (true) {
+          orbit = await _runOrbitInterruptible(lat, lng);
+          if (orbit != 'pause') break;
+          // Paused mid-orbit — hold until resumed/ended/skipped.
+          while (tour.isPaused && !_stopRequested && !tour.skipRequested) {
+            await Future<void>.delayed(const Duration(milliseconds: 200));
+          }
+          if (_stopRequested) {
+            orbit = 'stop';
+            break;
+          }
+          if (tour.skipRequested) {
+            orbit = 'skip';
+            break;
+          }
+          // Resumed — snap the camera back to the landmark and let GE fly there
+          // BEFORE re-running the orbit, so it starts from the coords, never
+          // from wherever you explored to.
+          await LGService.instance.runCommand(
+            'echo "$frameQuery" > /tmp/query.txt',
+          );
+          await Future<void>.delayed(const Duration(seconds: 5));
+        }
+        if (orbit == 'stop') break;
+        if (orbit == 'skip') continue; // Next during orbit → next landmark
+
+        // SETTLE (fly-to) — pausable + skippable. Ring stays (cleared next loop).
+        final settle = await _pausableHold(
           Duration(
             milliseconds: (KmlGenerator.orbitLoopSettleSeconds * 1000).round(),
           ),
+          frameQuery,
         );
+        if (settle == 'stop') break;
       }
 
-      // 3. Tour finished naturally — clear the info balloon and end the
+      // 3. Tour finished naturally — clear the ring + balloon and end the
       //    companion (routes to post-tour). If it was stopped, stopTour()
       //    already cleared the rig, so don't double up.
       if (!_stopRequested) {
+        await LGService.instance.clearLandmarkRing();
         await LGService.instance.clearBalloon();
         tour.markEnded();
       }
@@ -411,16 +499,84 @@ class SshConnection extends _$SshConnection {
     }
   }
 
-  Future<void> _interruptibleDelay(Duration total) async {
+  /// A fly-to phase hold of [total] that honours Play/Pause/Next:
+  ///  • End Tour     → returns 'stop'  (caller returns).
+  ///  • Next Scene   → returns 'skip'  (caller advances).
+  ///  • Pause        → holds indefinitely (no countdown). On RESUME it re-frames
+  ///    the camera to [reframeQuery] (the user may have explored away) and gives
+  ///    GE ~5s to arrive, then returns 'done' — so whatever runs next (an orbit,
+  ///    the next fly-in) starts from the correct camera position.
+  ///  • Otherwise    → counts down and returns 'done'.
+  /// Wraps the fly-to waits; the orbit uses [_runOrbitInterruptible] instead.
+  Future<String> _pausableHold(Duration total, String reframeQuery) async {
     const step = Duration(milliseconds: 200);
     var elapsed = Duration.zero;
+    final tour = ref.read(tourStateProvider.notifier);
     while (elapsed < total) {
-      if (_stopRequested) return;
+      if (_stopRequested) return 'stop';
+      if (tour.skipRequested) return 'skip';
+      if (tour.isPaused) {
+        while (tour.isPaused && !_stopRequested && !tour.skipRequested) {
+          await Future<void>.delayed(step);
+        }
+        if (_stopRequested) return 'stop';
+        if (tour.skipRequested) return 'skip';
+        // Resumed after a pause — snap the camera back before continuing.
+        await LGService.instance.runCommand(
+          'echo "$reframeQuery" > /tmp/query.txt',
+        );
+        await Future<void>.delayed(const Duration(seconds: 5));
+        return 'done';
+      }
       final remaining = total - elapsed;
       final chunk = remaining < step ? remaining : step;
       await Future<void>.delayed(chunk);
       elapsed += chunk;
     }
+    return 'done';
+  }
+
+  /// Runs ONE server-side orbit sweep for a landmark, but lets Pause / Next /
+  /// End break it early. While the orbit command blocks, a side watcher polls
+  /// the control flags and — if any fires — touches the SAME stop-sentinel End
+  /// Tour uses (on a separate SSH channel, exactly like [stopTour]) so the bash
+  /// loop's per-frame `[ -f sentinel ] && break` cuts it within one frame. The
+  /// orbit command clears that sentinel at its own start, so the next sweep runs
+  /// clean. Returns why it ended: 'done' | 'pause' | 'skip' | 'stop'. The orbit
+  /// command / loop / sentinel are all untouched — we only touch the flag file.
+  Future<String> _runOrbitInterruptible(double lat, double lng) async {
+    final tour = ref.read(tourStateProvider.notifier);
+    var reason = 'done';
+    var orbitRunning = true;
+    final watcher = Future(() async {
+      while (orbitRunning) {
+        final r = _stopRequested
+            ? 'stop'
+            : tour.skipRequested
+            ? 'skip'
+            : tour.isPaused
+            ? 'pause'
+            : null;
+        if (r != null) {
+          reason = r;
+          if (orbitRunning) {
+            await LGService.instance.runCommand(
+              'touch ${KmlGenerator.orbitStopSentinel}',
+            );
+          }
+          return;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      }
+    });
+    final sw = Stopwatch()..start();
+    await LGService.instance.runCommand(
+      KmlGenerator.orbitLoopCommand(lat: lat, lng: lng),
+    );
+    orbitRunning = false;
+    await watcher;
+    debugPrint('[Orbit] sweep ran ${sw.elapsedMilliseconds}ms ($reason)');
+    return reason;
   }
 
   Future<void> stopTour() async {
@@ -433,6 +589,7 @@ class SshConnection extends _$SshConnection {
       );
       await LGService.instance.cleanup();
       await LGService.instance.clearBalloon();
+      await LGService.instance.clearLandmarkRing();
     } catch (e) {
       debugPrint('SSH: stopTour cleanup failed: $e');
     }

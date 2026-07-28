@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../kml/generator.dart';
@@ -17,6 +18,7 @@ class TourState {
     this.currentIndex = 0,
     this.totalLocations = 0,
     this.sceneProgress = 0.0,
+    this.isPaused = false,
     this.args,
   });
 
@@ -24,6 +26,7 @@ class TourState {
   final int currentIndex; // 0-based scene
   final int totalLocations;
   final double sceneProgress; // 0..1 fill of the current scene
+  final bool isPaused; // user tapped Pause; the flight holds at the next boundary
   final TourFlowArgs? args; // so the "return to tour" banner can re-open it
 
   bool get isRunning => status == TourStatus.running;
@@ -36,11 +39,16 @@ class TourState {
 
   int get percent => (progress * 100).round();
 
-  TourState copyWith({int? currentIndex, double? sceneProgress}) => TourState(
+  TourState copyWith({
+    int? currentIndex,
+    double? sceneProgress,
+    bool? isPaused,
+  }) => TourState(
     status: status,
     currentIndex: currentIndex ?? this.currentIndex,
     totalLocations: totalLocations,
     sceneProgress: sceneProgress ?? this.sceneProgress,
+    isPaused: isPaused ?? this.isPaused,
     args: args,
   );
 }
@@ -48,6 +56,13 @@ class TourState {
 class TourStateNotifier extends Notifier<TourState> {
   Timer? _sceneTimer; // advances currentIndex
   Timer? _progressTimer; // fills sceneProgress 0→1
+
+  // Transient "skip to next landmark" request from the Next Scene button. The
+  // rig loop reads it (to cut the post-orbit settle short) and clears it at each
+  // new scene. Kept off [TourState] since it's a one-shot signal, not UI state.
+  bool _skipRequested = false;
+  bool get isPaused => state.isPaused;
+  bool get skipRequested => _skipRequested;
 
   static const double _perSceneBufferSeconds = 1.0; // approach + orbit SSH lead
   static const double _startupBufferSeconds = 2.0; // sendKml upload lead
@@ -85,6 +100,7 @@ class TourStateNotifier extends Notifier<TourState> {
   void start(TourFlowArgs args, {bool rigDriven = false}) {
     _sceneTimer?.cancel();
     _progressTimer?.cancel();
+    _skipRequested = false;
     state = TourState(
       status: TourStatus.running,
       // rigDriven: start "before" scene 0; the flight calls enterScene(0) when
@@ -111,11 +127,42 @@ class TourStateNotifier extends Notifier<TourState> {
     _restartSceneProgress();
   }
 
+  // ── Play / Pause / Next Scene controls ──────────────────────────────────────
+  // These only flip flags/state. The rig loop (flyGeneratedTour) reads them at
+  // scene boundaries — no SSH, no orbit, no sentinel touched here.
+
+  /// Hold at the next scene boundary. The current fly-in/orbit finish first.
+  void pause() {
+    if (!state.isRunning || state.isPaused) return;
+    state = state.copyWith(isPaused: true);
+    debugPrint('[TourControl] paused');
+  }
+
+  /// Resume from a hold — the rig loop's boundary poll continues.
+  void resume() {
+    if (!state.isRunning || !state.isPaused) return;
+    state = state.copyWith(isPaused: false);
+    debugPrint('[TourControl] resumed');
+  }
+
+  /// Request skip to the next landmark: cuts the post-orbit settle short and
+  /// (if paused) releases the hold. The orbit/fly-in still complete.
+  void requestNext() {
+    if (!state.isRunning) return;
+    _skipRequested = true;
+    if (state.isPaused) state = state.copyWith(isPaused: false);
+    debugPrint('[TourControl] next scene requested');
+  }
+
+  /// The rig loop clears the skip signal at the start of each new scene.
+  void clearSkip() => _skipRequested = false;
+
   /// Rig-driven natural end: the flight finished the last landmark's orbit.
   void markEnded() {
     if (state.status != TourStatus.running) return;
     _sceneTimer?.cancel();
     _progressTimer?.cancel();
+    _skipRequested = false;
     state = TourState(
       status: TourStatus.ended,
       currentIndex: state.totalLocations,
@@ -167,6 +214,7 @@ class TourStateNotifier extends Notifier<TourState> {
   void finish() {
     _sceneTimer?.cancel();
     _progressTimer?.cancel();
+    _skipRequested = false;
     state = const TourState();
   }
 }

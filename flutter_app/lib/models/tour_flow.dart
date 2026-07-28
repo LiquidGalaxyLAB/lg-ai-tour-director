@@ -8,6 +8,7 @@ class TourFlowArgs {
     required this.prompt,
     required this.locations,
     this.generateFilm = false,
+    this.savedTourId,
   });
 
   final String title;
@@ -17,10 +18,13 @@ class TourFlowArgs {
   /// Whether an AI film was opted into before the tour started.
   final bool generateFilm;
 
+  final String? savedTourId;
+
   TourFlowArgs copyWith({bool? generateFilm}) => TourFlowArgs(
     title: title,
     prompt: prompt,
     locations: locations,
     generateFilm: generateFilm ?? this.generateFilm,
+    savedTourId: savedTourId,
   );
 }

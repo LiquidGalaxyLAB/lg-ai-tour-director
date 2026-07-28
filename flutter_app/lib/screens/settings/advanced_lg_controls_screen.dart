@@ -155,6 +155,13 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(
+                onPressed: () =>
+                    run('Test Landmark Ring', notifier.testLandmarkRing),
+                icon: const Icon(Icons.blur_circular_rounded),
+                label: const Text('Test Landmark Ring (Shaniwar Wada)'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
                 onPressed: () => run('Test Balloon', notifier.testBalloon),
                 icon: const Icon(Icons.web_asset_rounded),
                 label: const Text('Test Balloon (auto-clears in 10s)'),

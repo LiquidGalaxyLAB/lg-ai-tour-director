@@ -47,7 +47,7 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
         tour.isRunning && tour.totalLocations == widget.args.locations.length;
     if (resuming) {
       _spokenIndex = tour.currentIndex;
-      _speak(tour.currentIndex);
+      if (!tour.isPaused) _speak(tour.currentIndex); // stay silent if paused
     } else if (rigDriven) {
       // The LG flight drives scene changes (enterScene) as it arrives at each
       // landmark, so narration stays locked to the real camera. Nothing to time
@@ -110,7 +110,7 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
 
     final view = ref.watch(
       tourStateProvider.select(
-        (s) => (index: s.currentIndex, status: s.status),
+        (s) => (index: s.currentIndex, status: s.status, paused: s.isPaused),
       ),
     );
     final sceneIndex = view.index.clamp(0, total - 1);
@@ -178,20 +178,41 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                   const SizedBox(height: 16),
                   const MapPlaceholder(height: 160, synced: true),
                   const SizedBox(height: 16),
-                  const Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
                       Expanded(
-                        child: _ComingSoonAction(
-                          icon: Icons.pause_rounded,
-                          label: 'Pause Tour',
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            final n = ref.read(tourStateProvider.notifier);
+                            if (view.paused) {
+                              n.resume();
+                              _speak(sceneIndex); // restart current narration
+                            } else {
+                              n.pause();
+                              _tts.stop();
+                            }
+                          },
+                          icon: Icon(
+                            view.paused
+                                ? Icons.play_arrow_rounded
+                                : Icons.pause_rounded,
+                          ),
+                          label: Text(view.paused ? 'Resume' : 'Pause'),
                         ),
                       ),
-                      SizedBox(width: 12),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: _ComingSoonAction(
-                          icon: Icons.skip_next_rounded,
-                          label: 'Skip Scene',
+                        child: OutlinedButton.icon(
+                          onPressed: sceneIndex >= total - 1
+                              ? null
+                              : () {
+                                  ref
+                                      .read(tourStateProvider.notifier)
+                                      .requestNext();
+                                  _tts.stop();
+                                },
+                          icon: const Icon(Icons.skip_next_rounded),
+                          label: const Text('Next Scene'),
                         ),
                       ),
                     ],
@@ -211,42 +232,6 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _ComingSoonAction extends StatelessWidget {
-  const _ComingSoonAction({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Opacity(
-          opacity: 0.4,
-          child: IgnorePointer(
-            child: OutlinedButton.icon(
-              onPressed: null,
-              icon: Icon(icon),
-              label: Text(label),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Coming Soon',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 10,
-            color: Colors.grey,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      ],
     );
   }
 }

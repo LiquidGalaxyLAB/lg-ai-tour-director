@@ -385,6 +385,14 @@ class SSHConnection {
     final pass = _pass ?? '';
     final files = _slaveLoaderFiles.join(' ');
 
+    // Master (lg1, THIS host): make its own master.kml NetworkLink refresh live
+    // too, so geometry written to /var/www/html/kml/master.kml (the landmark
+    // ring) appears without a GE relaunch. Local home file → no sshpass/sudo.
+    await sendCommand(
+      "sed -i -e '${_masterStripExpr()}' -e '${_masterInjectExpr(seconds)}' "
+      '~/.googleearth/myplaces.kml',
+    );
+
     for (var i = 2; i <= screenAmount; i++) {
       final strip = _stripExpr(i);
       final inject =
@@ -402,13 +410,52 @@ class SSHConnection {
     final pass = _pass ?? '';
     final files = _slaveLoaderFiles.join(' ');
 
+    await sendCommand(
+      "sed -i -e '${_masterStripExpr()}' ~/.googleearth/myplaces.kml",
+    );
+
     for (var i = 2; i <= screenAmount; i++) {
       final remote = "echo $pass | sudo -S sed -i -e '${_stripExpr(i)}' $files";
       await sendCommand('sshpass -p $pass ssh -t lg$i "$remote"');
     }
   }
 
+  /// One-time, automatic: make the master's own master.kml NetworkLink refresh
+  /// live so content written to /var/www/html/kml/master.kml (the landmark ring)
+  /// appears WITHOUT a manual Set Refresh or relaunch. Idempotent — checks the
+  /// master's myplaces first and only edits + relaunches lg1's GE if it isn't
+  /// already enabled. Returns true iff it relaunched (caller should then wait
+  /// for GE to come back before writing content).
+  Future<bool> ensureMasterLiveRefresh({int seconds = 2}) async {
+    if (!await isConnected()) return false;
+    final probe = await sendCommand(
+      "grep -c 'master\\.kml</href><refreshMode>' "
+      '~/.googleearth/myplaces.kml 2>/dev/null',
+    );
+    if (probe != null && (int.tryParse(probe.trim()) ?? 0) > 0) {
+      debugPrint('SSH: master.kml live-refresh already enabled');
+      return false;
+    }
+    debugPrint('SSH: enabling master.kml live-refresh (one-time) + relaunch lg1');
+    await sendCommand(
+      "sed -i -e '${_masterStripExpr()}' -e '${_masterInjectExpr(seconds)}' "
+      '~/.googleearth/myplaces.kml',
+    );
+    await sendCommand('killall -9 googleearth-bin; google-earth-pro &');
+    return true;
+  }
+
   String _stripExpr(int i) =>
       "/slave_$i.kml/ s#<refreshMode>onInterval</refreshMode>"
       "<refreshInterval>[0-9]*</refreshInterval>##";
+
+  // Same idea as [_stripExpr] but for the master's own master.kml NetworkLink
+  // (dot escaped so it can't match master_1.kml).
+  String _masterStripExpr() =>
+      "/master\\.kml/ s#<refreshMode>onInterval</refreshMode>"
+      "<refreshInterval>[0-9]*</refreshInterval>##";
+  String _masterInjectExpr(int seconds) =>
+      "/master\\.kml/ s#</href>#</href>"
+      "<refreshMode>onInterval</refreshMode>"
+      "<refreshInterval>$seconds</refreshInterval>#";
 }

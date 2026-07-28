@@ -39,6 +39,10 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
   bool get _film => widget.args.generateFilm;
   bool get _filmReady => _filmProgress >= 1.0;
 
+  /// A REPLAY of a tour already in the library → no "Save Tour" (it would spawn
+  /// a duplicate library entry on every replay).
+  bool get _alreadyInLibrary => widget.args.savedTourId != null;
+
   @override
   void initState() {
     super.initState();
@@ -215,24 +219,42 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
                 ],
 
                 const SizedBox(height: 20),
-                FilledButton.icon(
-                  onPressed: _saved ? null : _saveKml,
-                  icon: Icon(
-                    _saved ? Icons.check_rounded : Icons.bookmark_add_outlined,
-                  ),
-                  label: Text(_saved ? 'Saved to Library' : 'Save Tour (KML)'),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    'Save tours to your library to revisit the immersive '
-                    'experience anytime.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+
+                if (_alreadyInLibrary)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'This tour is already saved in your library.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                else ...[
+                  FilledButton.icon(
+                    onPressed: _saved ? null : _saveKml,
+                    icon: Icon(
+                      _saved
+                          ? Icons.check_rounded
+                          : Icons.bookmark_add_outlined,
+                    ),
+                    label: Text(
+                      _saved ? 'Saved to Library' : 'Save Tour (KML)',
                     ),
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Save tours to your library to revisit the immersive '
+                      'experience anytime.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
 
                 if (_film && _filmReady) ...[
                   const SizedBox(height: 12),

@@ -325,8 +325,125 @@ $flyToBlocks      </gx:Playlist>
     );
   }
 
-  // The single-line `flytoview=<LookAt>…</LookAt>` payload to echo into
-  // /tmp/query.txt — same shape as the proven flyToPune command.
+  // ── Glowing landmark highlight ring ─────────────────────────────────────────
+
+  static String _ringCoordinates(double lat, double lng, double radiusMetres) {
+    final latRad = lat * math.pi / 180;
+    final metresPerDegLng = 111320 * math.cos(latRad);
+    final buffer = StringBuffer();
+    for (var deg = 0; deg <= 360; deg += 10) {
+      final t = deg * math.pi / 180;
+      final pLat = lat + (radiusMetres / 111320) * math.cos(t);
+      final pLng = lng + (radiusMetres / metresPerDegLng) * math.sin(t);
+      buffer.write('${pLng.toStringAsFixed(7)},${pLat.toStringAsFixed(7)},0 ');
+    }
+    return buffer.toString().trim();
+  }
+
+  // One ring stroke (a bare LineString outline) at [coords], for stacking.
+  static String _ringStroke(
+    String id,
+    String coords,
+    String color, // KML aabbggrr
+    double width, // screen pixels
+  ) {
+    return '''
+    <Placemark>
+      <name>$id</name>
+      <Style><LineStyle><color>$color</color><width>$width</width></LineStyle></Style>
+      <LineString>
+        <tessellate>1</tessellate>
+        <altitudeMode>clampToGround</altitudeMode>
+        <coordinates>$coords</coordinates>
+      </LineString>
+    </Placemark>''';
+  }
+
+  static const List<(double, String)> _ringGlowLayers = [
+    (48.0, '1FF48542'), // ~12% — widest soft halo
+    (32.0, '40F48542'), // ~25%
+    (20.0, '73F48542'), // ~45%
+    (11.0, 'B3F48542'), // ~70%
+    (5.0, 'FFF48542'), //  100% — bright core
+  ];
+
+  static String buildLandmarkRingKml(
+    double lat,
+    double lng, {
+    double innerRadius = 150,
+    double outerRadius = 200,
+  }) {
+    final radius = (innerRadius + outerRadius) / 2;
+    final coords = _ringCoordinates(lat, lng, radius);
+    final strokes = StringBuffer();
+    for (var i = 0; i < _ringGlowLayers.length; i++) {
+      final (width, color) = _ringGlowLayers[i];
+      strokes.writeln(_ringStroke('landmark-ring-$i', coords, color, width));
+    }
+    return '''<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>LandmarkRing</name>
+$strokes  </Document>
+</kml>''';
+  }
+
+  static const String ringUpdateTargetHref = 'http://lg1:81//kml/master.kml';
+
+  static String landmarkRingBaseKml() {
+    final strokes = StringBuffer();
+    for (var i = 0; i < _ringGlowLayers.length; i++) {
+      final (width, color) = _ringGlowLayers[i];
+      strokes.writeln('''
+    <Placemark id="lg-ring-$i">
+      <visibility>0</visibility>
+      <Style><LineStyle><color>$color</color><width>$width</width></LineStyle></Style>
+      <LineString id="lg-ring-line-$i">
+        <tessellate>1</tessellate>
+        <altitudeMode>clampToGround</altitudeMode>
+        <coordinates>0,0,0 0,0,0</coordinates>
+      </LineString>
+    </Placemark>''');
+    }
+    return '''<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document id="lg-ring-doc">
+    <name>LandmarkRing</name>
+$strokes  </Document>
+</kml>''';
+  }
+
+  static String landmarkRingUpdateKml(
+    double lat,
+    double lng, {
+    required bool visible,
+    double innerRadius = 150,
+    double outerRadius = 200,
+  }) {
+    final radius = (innerRadius + outerRadius) / 2;
+    final coords = visible ? _ringCoordinates(lat, lng, radius) : '0,0,0 0,0,0';
+    final vis = visible ? 1 : 0;
+    final changes = StringBuffer();
+    for (var i = 0; i < _ringGlowLayers.length; i++) {
+      changes.writeln(
+        '      <Change><Placemark targetId="lg-ring-$i">'
+        '<visibility>$vis</visibility></Placemark></Change>',
+      );
+      changes.writeln(
+        '      <Change><LineString targetId="lg-ring-line-$i">'
+        '<coordinates>$coords</coordinates></LineString></Change>',
+      );
+    }
+    return '''<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <NetworkLinkControl>
+    <Update>
+      <targetHref>$ringUpdateTargetHref</targetHref>
+$changes    </Update>
+  </NetworkLinkControl>
+</kml>''';
+  }
+
   static String flyToViewQuery(CameraView v) {
     return 'flytoview=<LookAt>'
         '<longitude>${v.lng}</longitude>'

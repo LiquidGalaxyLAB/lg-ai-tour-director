@@ -11,6 +11,7 @@ import '../../core/theme/app_colors.dart';
 import '../../kml/assembler.dart';
 import '../../models/location.dart';
 import '../../models/saved_tour.dart';
+import '../../models/tour_flow.dart';
 import '../../providers/library_provider.dart';
 import '../../providers/ssh_provider.dart';
 import '../../shared/widgets/location_image.dart';
@@ -113,6 +114,17 @@ class SavedDetailScreen extends ConsumerWidget {
             debugPrint('SavedDetail: replay error: $e');
             return 0;
           }),
+    );
+
+    if (!context.mounted) return;
+    context.push(
+      '/home/active',
+      extra: TourFlowArgs(
+        title: tour.title,
+        prompt: tour.prompt,
+        locations: tour.locations,
+        savedTourId: tour.id,
+      ),
     );
   }
 
