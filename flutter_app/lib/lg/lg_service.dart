@@ -1,9 +1,12 @@
 // import 'dart:developer' as developer;
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:dio/dio.dart';
 import '../kml/balloon_image_maker.dart';
 import '../kml/balloon_maker.dart';
+import '../kml/generator.dart';
 import '../models/lg_connection.dart';
 import '../models/location.dart';
 import '../models/rig_config.dart';
@@ -141,6 +144,50 @@ class LGService {
   Future<void> clearBalloon() async {
     await sendKmlToSlave(infoScreen, BalloonMaker.emptyBalloon());
     await _ssh.sendCommand('rm -f /var/www/html/infoballoon_*.png');
+  }
+
+  static const String _ringFile = 'landmark_ring.kml';
+
+  Future<void> showLandmarkRing(
+    double lat,
+    double lng, {
+    double innerRadius = 250,
+    double outerRadius = 350,
+  }) async {
+    try {
+      final kml = KmlGenerator.buildLandmarkRingKml(
+        lat,
+        lng,
+        innerRadius: innerRadius,
+        outerRadius: outerRadius,
+      );
+      await _ssh.uploadBytes(Uint8List.fromList(utf8.encode(kml)), _ringFile);
+      final host = _ssh.host ?? 'lg1';
+      final url = 'http://$host:81/$_ringFile';
+
+      await _ssh.sendCommand(
+        'grep -qF "$url" /var/www/html/kmls.txt 2>/dev/null || '
+        'echo "$url" >> /var/www/html/kmls.txt',
+      );
+      debugPrint(
+        '[LandmarkRing] show ($lat, $lng) inner=${innerRadius}m '
+        'outer=${outerRadius}m',
+      );
+    } catch (e) {
+      debugPrint('[LandmarkRing] error (show): $e');
+    }
+  }
+
+  Future<void> clearLandmarkRing() async {
+    try {
+      await _ssh.sendCommand(
+        "sed -i '\\#$_ringFile#d' /var/www/html/kmls.txt 2>/dev/null; "
+        'rm -f /var/www/html/$_ringFile',
+      );
+      debugPrint('[LandmarkRing] clear');
+    } catch (e) {
+      debugPrint('[LandmarkRing] error (clear): $e');
+    }
   }
 
   Future<void> flyTo(

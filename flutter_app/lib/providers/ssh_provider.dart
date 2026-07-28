@@ -182,6 +182,19 @@ class SshConnection extends _$SshConnection {
     debugPrint('[Orbit] orbit complete');
   }
 
+  Future<void> testLandmarkRing() async {
+    const lat = 18.5195, lng = 73.8553; // Shaniwar Wada, Pune
+    await LGService.instance.runCommand(
+      'echo "${KmlGenerator.orbitFrameQuery(lat, lng)}" > /tmp/query.txt',
+    );
+    await Future<void>.delayed(const Duration(seconds: 3));
+    debugPrint('[LandmarkRing] test — showing at Shaniwar Wada');
+    await LGService.instance.showLandmarkRing(lat, lng);
+    await Future<void>.delayed(const Duration(seconds: 20));
+    await LGService.instance.clearLandmarkRing();
+    debugPrint('[LandmarkRing] test — cleared');
+  }
+
   Future<void> testGxTourOrbit() async {
     const lat = 18.5195, lng = 73.8553; // Shaniwar Wada, Pune
     const range = 800.0, altitude = 0.0; // relativeToGround → altitude 0
@@ -384,6 +397,7 @@ class SshConnection extends _$SshConnection {
         if (_stopRequested) break;
 
         tour.enterScene(j);
+        unawaited(LGService.instance.showLandmarkRing(lat, lng));
         final sw = Stopwatch()..start();
         await LGService.instance.runCommand(
           KmlGenerator.orbitLoopCommand(lat: lat, lng: lng),
@@ -396,6 +410,7 @@ class SshConnection extends _$SshConnection {
             milliseconds: (KmlGenerator.orbitLoopSettleSeconds * 1000).round(),
           ),
         );
+        await LGService.instance.clearLandmarkRing();
       }
 
       // 3. Tour finished naturally — clear the info balloon and end the
@@ -433,6 +448,7 @@ class SshConnection extends _$SshConnection {
       );
       await LGService.instance.cleanup();
       await LGService.instance.clearBalloon();
+      await LGService.instance.clearLandmarkRing();
     } catch (e) {
       debugPrint('SSH: stopTour cleanup failed: $e');
     }

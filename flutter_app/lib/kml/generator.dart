@@ -325,6 +325,89 @@ $flyToBlocks      </gx:Playlist>
     );
   }
 
+  // ── Glowing landmark highlight ring ─────────────────────────────────────────
+
+  static String _ringCoordinates(double lat, double lng, double radiusMetres) {
+    final latRad = lat * math.pi / 180;
+    final metresPerDegLng = 111320 * math.cos(latRad);
+    final buffer = StringBuffer();
+    for (var deg = 0; deg <= 360; deg += 10) {
+      final t = deg * math.pi / 180;
+      final pLat = lat + (radiusMetres / 111320) * math.cos(t);
+      final pLng = lng + (radiusMetres / metresPerDegLng) * math.sin(t);
+      buffer.write('${pLng.toStringAsFixed(7)},${pLat.toStringAsFixed(7)},0 ');
+    }
+    return buffer.toString().trim();
+  }
+
+  static String _ringPlacemark({
+    required String id,
+    required double lat,
+    required double lng,
+    required double radius,
+    required String lineColor, // KML aabbggrr
+    required double lineWidth,
+    required String fillColor, // KML aabbggrr (00…… = no fill)
+  }) {
+    return '''
+    <Placemark>
+      <name>$id</name>
+      <Style>
+        <LineStyle><color>$lineColor</color><width>$lineWidth</width></LineStyle>
+        <PolyStyle><color>$fillColor</color></PolyStyle>
+      </Style>
+      <Polygon>
+        <extrude>0</extrude>
+        <tessellate>1</tessellate>
+        <altitudeMode>clampToGround</altitudeMode>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>${_ringCoordinates(lat, lng, radius)}</coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>''';
+  }
+
+  /// Complete KML for the two-ring landmark highlight. [innerRadius]/[outerRadius]
+  /// are in metres and tunable per landmark (a big fort needs more than a small
+  /// temple). Outer ≈ 1.4× inner by default.
+  static String buildLandmarkRingKml(
+    double lat,
+    double lng, {
+    double innerRadius = 250,
+    double outerRadius = 350,
+  }) {
+    // Outer first (drawn under), inner on top. aabbggrr, brand blue F48542:
+    //   outer line 40 (~25%) width 4 + fill 14 (~8%); inner line CC (~80%) width 2, no fill.
+    final outer = _ringPlacemark(
+      id: 'landmark-ring-outer',
+      lat: lat,
+      lng: lng,
+      radius: outerRadius,
+      lineColor: '40F48542',
+      lineWidth: 4,
+      fillColor: '14F48542',
+    );
+    final inner = _ringPlacemark(
+      id: 'landmark-ring-inner',
+      lat: lat,
+      lng: lng,
+      radius: innerRadius,
+      lineColor: 'CCF48542',
+      lineWidth: 2,
+      fillColor: '00000000',
+    );
+    return '''<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>LandmarkRing</name>
+$outer
+$inner
+  </Document>
+</kml>''';
+  }
+
   // The single-line `flytoview=<LookAt>…</LookAt>` payload to echo into
   // /tmp/query.txt — same shape as the proven flyToPune command.
   static String flyToViewQuery(CameraView v) {
