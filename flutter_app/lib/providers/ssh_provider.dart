@@ -205,68 +205,13 @@ class SshConnection extends _$SshConnection {
       );
       await Future<void>.delayed(const Duration(seconds: 2));
     }
-    // FLICKER-FREE TEST (incremental <Update>): prime the hidden strokes, wait a
-    // couple of refresh cycles so GE loads them, then SHOW via an in-place
-    // update — should be rock-steady (no blink). Tour is untouched (still the
-    // working full-geometry) until this is confirmed.
-    debugPrint('[LandmarkRing] test — priming base (flicker-free)');
-    await LGService.instance.primeLandmarkRing();
-    await Future<void>.delayed(const Duration(seconds: 6));
-    debugPrint('[LandmarkRing] test — SHOW via update (watch: should be steady)');
-    await LGService.instance.showLandmarkRingUpdate(lat, lng);
-    await Future<void>.delayed(const Duration(seconds: 25));
-    await LGService.instance.clearLandmarkRingUpdate();
-    debugPrint('[LandmarkRing] test — cleared (update)');
-  }
-
-  Future<void> diagnoseMasterKml() async {
-    Future<void> probe(String label, String cmd) async {
-      final out = await LGService.instance.runCommand(cmd);
-      debugPrint('[RingDiag] $label →\n${(out ?? "(null)").trim()}\n');
-    }
-
-    debugPrint('[RingDiag] ===== deploying ring (kept in place) =====');
-    await LGService.instance.showLandmarkRing(18.5195, 73.8553);
-
-    await probe('1. kmls.txt content', 'cat /var/www/html/kmls.txt');
-    await probe(
-      '2. is ring served? (expect 200)',
-      'curl -s -o /dev/null -w "%{http_code}" '
-          'http://localhost:81/landmark_ring.kml',
-    );
-    await probe(
-      '3. who references kmls.txt',
-      'grep -rl "kmls.txt" ~/.googleearth ~/earth 2>/dev/null || echo NONE',
-    );
-    await probe(
-      '4. master myplaces URLs',
-      "grep -oE 'http://[^<]*' ~/.googleearth/myplaces.kml 2>/dev/null "
-          '| head -20 || echo NO_MASTER_MYPLACES',
-    );
-    await probe(
-      '5. master myplaces refresh modes',
-      "grep -oE '<refreshMode>[^<]*' ~/.googleearth/myplaces.kml 2>/dev/null "
-          '| sort | uniq -c || echo NONE',
-    );
-    await probe(
-      '6. slave loader URLs',
-      "grep -oE 'http://[^<]*' ~/earth/kml/slave/myplaces.kml 2>/dev/null "
-          '| head -20 || echo NONE',
-    );
-    await probe(
-      '7. any *.kml GE watches in home',
-      'grep -rlE "NetworkLink|href" ~/.googleearth ~/earth 2>/dev/null '
-          '| head -20 || echo NONE',
-    );
-    await probe(
-      '8. master.kml link + its refresh setting',
-      "grep -oE '.{0,30}master.kml.{0,140}' ~/.googleearth/myplaces.kml "
-          '2>/dev/null | head -5 || echo NONE',
-    );
-    debugPrint(
-      '[RingDiag] ===== done. If probe 8 now shows onInterval near master.kml '
-      'after a Set Refresh, the ring will appear live (no relaunch). =====',
-    );
+    // The SAME working ring the tour uses. (The flicker-free <Update> path was
+    // dropped — this rig's GE ignores NetworkLinkControl updates.)
+    debugPrint('[LandmarkRing] test — showing at Shaniwar Wada');
+    await LGService.instance.showLandmarkRing(lat, lng);
+    await Future<void>.delayed(const Duration(seconds: 20));
+    await LGService.instance.clearLandmarkRing();
+    debugPrint('[LandmarkRing] test — cleared');
   }
 
   Future<void> testGxTourOrbit() async {
@@ -466,6 +411,16 @@ class SshConnection extends _$SshConnection {
                 .round(),
       );
       for (var j = 0; j < geocoded.length && !_stopRequested; j++) {
+        // SCENE BOUNDARY — the ONLY place Play/Pause/Next act. The previous
+        // landmark's fly-in + orbit + settle already finished. Hold here while
+        // paused (no SSH, no orbit, no sentinel — just a flag poll), then start
+        // this scene fresh (clear any pending skip).
+        while (tour.isPaused && !_stopRequested) {
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+        }
+        if (_stopRequested) break;
+        tour.clearSkip();
+
         final l = geocoded[j];
         final lat = l.latitude!, lng = l.longitude!;
 
@@ -488,7 +443,9 @@ class SshConnection extends _$SshConnection {
         debugPrint('[Orbit] stop $j sweep ran ${sw.elapsedMilliseconds}ms');
 
         if (_stopRequested) break;
-        await _interruptibleDelay(
+        // Post-orbit settle — cut short by End Tour OR a Next-Scene skip. This
+        // is the Dart-side hold AFTER the orbit command returns, not the orbit.
+        await _settleDelay(
           Duration(
             milliseconds: (KmlGenerator.orbitLoopSettleSeconds * 1000).round(),
           ),
@@ -514,6 +471,21 @@ class SshConnection extends _$SshConnection {
     var elapsed = Duration.zero;
     while (elapsed < total) {
       if (_stopRequested) return;
+      final remaining = total - elapsed;
+      final chunk = remaining < step ? remaining : step;
+      await Future<void>.delayed(chunk);
+      elapsed += chunk;
+    }
+  }
+
+  // Like _interruptibleDelay but ALSO cut short by a Next-Scene skip. Used only
+  // for the post-orbit settle (a Dart-side wait, never the orbit/fly-in).
+  Future<void> _settleDelay(Duration total) async {
+    const step = Duration(milliseconds: 200);
+    var elapsed = Duration.zero;
+    final tour = ref.read(tourStateProvider.notifier);
+    while (elapsed < total) {
+      if (_stopRequested || tour.skipRequested) return;
       final remaining = total - elapsed;
       final chunk = remaining < step ? remaining : step;
       await Future<void>.delayed(chunk);
