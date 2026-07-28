@@ -45,17 +45,6 @@ class TourState {
   );
 }
 
-/// App-level tour state that also OWNS the tour's timers, so progress advances
-/// even when the user has left the Active Tour screen (the banner keeps moving
-/// on Home). A plain top-level [NotifierProvider] is never auto-disposed, so it
-/// lives at the ProviderScope root for the session.
-///
-/// Two timers: a scene-transition timer (advances [currentIndex] once per
-/// [sceneDuration]) and a 100ms intra-scene timer (fills [sceneProgress] 0→1
-/// across the current scene, for the smooth subtitle bar). The per-scene
-/// interval is the FIXED rig-matched dwell (same [KmlGenerator] constants the
-/// flight uses), NOT the AI's suggested durations — keeps the companion in sync
-/// with Google Earth.
 class TourStateNotifier extends Notifier<TourState> {
   Timer? _sceneTimer; // advances currentIndex
   Timer? _progressTimer; // fills sceneProgress 0→1
@@ -63,13 +52,12 @@ class TourStateNotifier extends Notifier<TourState> {
   static const double _perSceneBufferSeconds = 1.0; // approach + orbit SSH lead
   static const double _startupBufferSeconds = 2.0; // sendKml upload lead
 
-  /// Fixed per-landmark dwell (approach fly + hold + smooth 360° orbit + SSH
-  /// buffer) ≈ 29.6s — matches the flytoview approach + one orbitLoopCommand.
   static Duration get sceneDuration => Duration(
     milliseconds:
         ((KmlGenerator.flyDurationSeconds +
                     KmlGenerator.approachHoldSeconds +
                     KmlGenerator.orbitLoopTotalSeconds +
+                    KmlGenerator.orbitLoopSettleSeconds +
                     _perSceneBufferSeconds) *
                 1000)
             .round(),

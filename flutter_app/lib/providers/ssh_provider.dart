@@ -388,7 +388,14 @@ class SshConnection extends _$SshConnection {
         await LGService.instance.runCommand(
           KmlGenerator.orbitLoopCommand(lat: lat, lng: lng),
         );
-        debugPrint('[Orbit] stop $j orbit ran ${sw.elapsedMilliseconds}ms');
+        debugPrint('[Orbit] stop $j sweep ran ${sw.elapsedMilliseconds}ms');
+
+        if (_stopRequested) break;
+        await _interruptibleDelay(
+          Duration(
+            milliseconds: (KmlGenerator.orbitLoopSettleSeconds * 1000).round(),
+          ),
+        );
       }
 
       // 3. Tour finished naturally — clear the info balloon and end the

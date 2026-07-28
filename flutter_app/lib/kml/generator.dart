@@ -46,10 +46,13 @@ class KmlGenerator {
   // through the whole turn. 5° / 0.4s ≈ 12.5°/s completes a true forward 360°
   // even under tour load (~29s). Tune down toward 0.2s only if the rig keeps up.
   static const int orbitLoopStepDegrees = 5; // heading increment per frame
-  static const double orbitLoopSleepSeconds = 0.4; // master-side pause per frame
+  static const double orbitLoopSleepSeconds =
+      0.4; // master-side pause per frame
   // Full 360° wall-clock ≈ (360/step + 1) * sleep ≈ 29.2s.
   static const double orbitLoopTotalSeconds =
       (360 / orbitLoopStepDegrees + 1) * orbitLoopSleepSeconds;
+
+  static const double orbitLoopSettleSeconds = 12;
 
   // A stop-flag file on the master. [orbitLoopCommand] checks for it each frame,
   // so touching it (from stopTour, on a separate SSH channel) ends the orbit
