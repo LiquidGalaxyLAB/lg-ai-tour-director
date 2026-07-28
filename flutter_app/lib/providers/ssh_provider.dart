@@ -441,14 +441,39 @@ class SshConnection extends _$SshConnection {
         tour.enterScene(j);
         unawaited(LGService.instance.showLandmarkRing(lat, lng));
 
-        // ORBIT — server-side loop, UNINTERRUPTIBLE and DO-NOT-TOUCH. By here the
-        // fly-in hold has handled any pause + reframe, so the camera is framed.
-        final sw = Stopwatch()..start();
-        await LGService.instance.runCommand(
-          KmlGenerator.orbitLoopCommand(lat: lat, lng: lng),
-        );
-        debugPrint('[Orbit] stop $j sweep ran ${sw.elapsedMilliseconds}ms');
-        if (_stopRequested) break;
+        // ORBIT — normally a single UNINTERRUPTIBLE server-side loop, but the
+        // user can now Pause/Next/End it via the SAME stop-sentinel End Tour
+        // uses (touched on a side channel while the loop blocks — proven safe).
+        // On PAUSE we HOLD, then on resume re-frame the camera to the landmark,
+        // give GE time to fly back, and re-run a FRESH full 360 — so it never
+        // resumes mid-spin or orbits from a spot you explored to. The orbit
+        // COMMAND, its bash loop, and the sentinel are unchanged (DO-NOT-TOUCH).
+        var orbit = 'done';
+        while (true) {
+          orbit = await _runOrbitInterruptible(lat, lng);
+          if (orbit != 'pause') break;
+          // Paused mid-orbit — hold until resumed/ended/skipped.
+          while (tour.isPaused && !_stopRequested && !tour.skipRequested) {
+            await Future<void>.delayed(const Duration(milliseconds: 200));
+          }
+          if (_stopRequested) {
+            orbit = 'stop';
+            break;
+          }
+          if (tour.skipRequested) {
+            orbit = 'skip';
+            break;
+          }
+          // Resumed — snap the camera back to the landmark and let GE fly there
+          // BEFORE re-running the orbit, so it starts from the coords, never
+          // from wherever you explored to.
+          await LGService.instance.runCommand(
+            'echo "$frameQuery" > /tmp/query.txt',
+          );
+          await Future<void>.delayed(const Duration(seconds: 5));
+        }
+        if (orbit == 'stop') break;
+        if (orbit == 'skip') continue; // Next during orbit → next landmark
 
         // SETTLE (fly-to) — pausable + skippable. Ring stays (cleared next loop).
         final settle = await _pausableHold(
@@ -479,10 +504,10 @@ class SshConnection extends _$SshConnection {
   ///  • Next Scene   → returns 'skip'  (caller advances).
   ///  • Pause        → holds indefinitely (no countdown). On RESUME it re-frames
   ///    the camera to [reframeQuery] (the user may have explored away) and gives
-  ///    GE ~3s to arrive, then returns 'done' — so whatever runs next (an orbit,
+  ///    GE ~5s to arrive, then returns 'done' — so whatever runs next (an orbit,
   ///    the next fly-in) starts from the correct camera position.
   ///  • Otherwise    → counts down and returns 'done'.
-  /// NEVER used around the orbit command itself — only fly-to waits.
+  /// Wraps the fly-to waits; the orbit uses [_runOrbitInterruptible] instead.
   Future<String> _pausableHold(Duration total, String reframeQuery) async {
     const step = Duration(milliseconds: 200);
     var elapsed = Duration.zero;
@@ -500,7 +525,7 @@ class SshConnection extends _$SshConnection {
         await LGService.instance.runCommand(
           'echo "$reframeQuery" > /tmp/query.txt',
         );
-        await Future<void>.delayed(const Duration(seconds: 3));
+        await Future<void>.delayed(const Duration(seconds: 5));
         return 'done';
       }
       final remaining = total - elapsed;
@@ -509,6 +534,49 @@ class SshConnection extends _$SshConnection {
       elapsed += chunk;
     }
     return 'done';
+  }
+
+  /// Runs ONE server-side orbit sweep for a landmark, but lets Pause / Next /
+  /// End break it early. While the orbit command blocks, a side watcher polls
+  /// the control flags and — if any fires — touches the SAME stop-sentinel End
+  /// Tour uses (on a separate SSH channel, exactly like [stopTour]) so the bash
+  /// loop's per-frame `[ -f sentinel ] && break` cuts it within one frame. The
+  /// orbit command clears that sentinel at its own start, so the next sweep runs
+  /// clean. Returns why it ended: 'done' | 'pause' | 'skip' | 'stop'. The orbit
+  /// command / loop / sentinel are all untouched — we only touch the flag file.
+  Future<String> _runOrbitInterruptible(double lat, double lng) async {
+    final tour = ref.read(tourStateProvider.notifier);
+    var reason = 'done';
+    var orbitRunning = true;
+    final watcher = Future(() async {
+      while (orbitRunning) {
+        final r = _stopRequested
+            ? 'stop'
+            : tour.skipRequested
+            ? 'skip'
+            : tour.isPaused
+            ? 'pause'
+            : null;
+        if (r != null) {
+          reason = r;
+          if (orbitRunning) {
+            await LGService.instance.runCommand(
+              'touch ${KmlGenerator.orbitStopSentinel}',
+            );
+          }
+          return;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      }
+    });
+    final sw = Stopwatch()..start();
+    await LGService.instance.runCommand(
+      KmlGenerator.orbitLoopCommand(lat: lat, lng: lng),
+    );
+    orbitRunning = false;
+    await watcher;
+    debugPrint('[Orbit] sweep ran ${sw.elapsedMilliseconds}ms ($reason)');
+    return reason;
   }
 
   Future<void> stopTour() async {
