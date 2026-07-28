@@ -1,6 +1,14 @@
 class LLMPrompts {
   LLMPrompts._();
 
+  /// Creative Director : infers the intent behind a travel prompt, then selects
+  /// 4-6 locations that MATCH that intent. Returns a strict JSON array (no
+  /// prose, no markdown fences).
+  ///
+  /// The intent-inference step is what makes a "young dude who wants fun" get
+  /// thrill rides and nightlife spots instead of the same famous monuments a
+  /// history buff would get. The naming rule is explicit (city + country)
+  /// because weaker models otherwise return bare names that geocode wrong.
   static const String creativeDirectorSystem = '''
 You are a geographic tour curator for an immersive travel experience displayed
 on a multi-screen Liquid Galaxy rig. Your job is to read the user's prompt,

@@ -116,60 +116,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
-  /// Confirmation gate for the typed prompt: pressing Enter or tapping Generate
-  /// Tour both land here, ask "Start with the tour?", and only generate on Yes.
-  /// (Quick Launch chips stay one-tap — they call [_generate] directly.)
-  Future<void> _confirmAndGenerate() async {
-    final prompt = _promptController.text.trim();
-    if (prompt.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Describe a place or theme to begin.')),
-      );
-      return;
-    }
-    final start = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        final theme = Theme.of(ctx);
-        return AlertDialog(
-          icon: Icon(
-            Icons.rocket_launch_rounded,
-            color: theme.colorScheme.primary,
-            size: 32,
-          ),
-          title: const Text('Start with the tour?'),
-          content: const Text(
-            'Generate an immersive tour from your prompt?',
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-          // Same stacked, full-width layout as the film / setup dialogs — the
-          // affirmative is an emphasised FilledButton, dismiss is a plain
-          // TextButton. Full-width means the actions never wrap out of line.
-          actions: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    icon: const Icon(Icons.rocket_launch_rounded, size: 18),
-                    label: const Text('Yes, start the tour'),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Go back'),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
-    if (start == true) await _generate();
-  }
-
   Future<void> _generate([String? preset]) async {
     final prompt = (preset ?? _promptController.text).trim();
     if (prompt.isEmpty) {
@@ -269,15 +215,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     _promptController.text = _suggestion;
                   },
                   onMic: _toggleListen,
-                  onSubmit: _confirmAndGenerate,
-                ),
-                const SizedBox(height: 16),
-                // Sits right under the prompt so typing → generating needs no
-                // scroll. Quick Launch cards below each self-generate on tap.
-                FilledButton.icon(
-                  onPressed: _confirmAndGenerate,
-                  icon: const Icon(Icons.rocket_launch_rounded, size: 20),
-                  label: const Text('Generate Tour'),
                 ),
                 const SizedBox(height: 28),
                 Text(
@@ -302,6 +239,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         onTap: () => _generate(q.prompt),
                       ),
                   ],
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: () => _generate(),
+                  icon: const Icon(Icons.rocket_launch_rounded, size: 20),
+                  label: const Text('Generate Tour'),
                 ),
               ],
             ),
@@ -424,7 +367,6 @@ class _PromptCard extends StatelessWidget {
     required this.isListening,
     required this.onSuggestionTap,
     required this.onMic,
-    required this.onSubmit,
   });
 
   final TextEditingController controller;
@@ -432,7 +374,6 @@ class _PromptCard extends StatelessWidget {
   final bool isListening;
   final VoidCallback onSuggestionTap;
   final VoidCallback onMic;
-  final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) {
@@ -454,11 +395,7 @@ class _PromptCard extends StatelessWidget {
                   controller: controller,
                   minLines: 3,
                   maxLines: 5,
-                  // Enter submits (asks to start the tour) rather than adding a
-                  // newline — a tour prompt is a single line and this saves the
-                  // reach for the Generate button. Text still soft-wraps.
-                  textInputAction: TextInputAction.go,
-                  onSubmitted: (_) => onSubmit(),
+                  textInputAction: TextInputAction.newline,
                   decoration: const InputDecoration(
                     filled: false,
                     border: InputBorder.none,

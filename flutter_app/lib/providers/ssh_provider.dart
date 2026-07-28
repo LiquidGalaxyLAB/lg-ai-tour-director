@@ -12,7 +12,6 @@ import '../models/lg_connection.dart';
 import '../models/location.dart';
 import '../models/rig_config.dart';
 import '../services/media/location_media_resolver.dart';
-import 'tour_state_provider.dart';
 
 part 'ssh_provider.g.dart';
 
@@ -159,83 +158,18 @@ class SshConnection extends _$SshConnection {
     await LGService.instance.flyTo(18.5195, 73.8553, tilt: 45);
   }
 
-  /// Smooth 360° orbit that keeps the landmark dead-centre. Frames Shaniwar Wada
-  /// first (altitude 0, relativeToGround), then runs the WHOLE orbit as a single
-  /// server-side loop — one SSH round-trip, evenly-timed frames, no judder.
-  Future<void> testOrbit() async {
-    const lat = 18.5195, lng = 73.8553; // Shaniwar Wada, Pune
-    const range = 800.0;
-
-    // 1. Frame the landmark dead-centre and let the imagery sharpen.
-    await LGService.instance.runCommand(
-      'echo "${KmlGenerator.orbitFrameQuery(lat, lng, range: range)}" '
-      '> /tmp/query.txt',
-    );
-    debugPrint('[Orbit] framing Shaniwar Wada — smooth server-side orbit next');
-    await Future<void>.delayed(const Duration(seconds: 3));
-
-    // 2. ONE command → the master writes every heading itself, GE rotates
-    //    smoothly around the fixed centre point.
-    await LGService.instance.runCommand(
-      KmlGenerator.orbitLoopCommand(lat: lat, lng: lng, range: range),
-    );
-    debugPrint('[Orbit] orbit complete');
-  }
-
-  Future<void> testGxTourOrbit() async {
-    const lat = 18.5195, lng = 73.8553; // Shaniwar Wada, Pune
-    const range = 800.0, altitude = 0.0; // relativeToGround → altitude 0
-
-    const approach = CameraView(
-      lat: lat,
-      lng: lng,
-      altitude: altitude,
-      tilt: KmlGenerator.orbitTilt,
-      heading: 0,
-      range: range,
-      flySeconds: 0,
-      holdSeconds: 0,
-    );
-    await LGService.instance.runCommand(
-      'echo "${KmlGenerator.flyToViewQuery(approach)}" > /tmp/query.txt',
-    );
-    debugPrint('[Orbit] approach flytoview sent — framing Shaniwar Wada');
-    await Future<void>.delayed(const Duration(seconds: 2));
-
-    debugPrint('[Orbit] gx:Tour building orbit.kml for Shaniwar Wada');
-    final kml = KmlGenerator.buildOrbitKml(
-      lat: lat,
-      lng: lng,
-      altitude: altitude,
-      range: range,
-    );
-
-    // 1. Upload the tour KML + point kmls.txt at it (sendKml does both). The
-    //    master GE pulls it in via its kmls.txt NetworkLink, so give it time.
-    await LGService.instance.sendKml(kml, fileName: 'orbit.kml');
-    final host = state.connection.host;
-    debugPrint(
-      '[Orbit] orbit.kml deployed (http://$host:81/orbit.kml) — '
-      'waiting 5s for the master to load the tour',
-    );
-    await Future<void>.delayed(const Duration(seconds: 5));
-
-    // 2. Play it by name. Must match <name>Orbit</name> in the KML.
-    debugPrint('[Orbit] triggering playtour=${KmlGenerator.orbitTourName}');
-    await LGService.instance.runCommand(
-      'echo "playtour=${KmlGenerator.orbitTourName}" > /tmp/query.txt',
-    );
-    debugPrint('[Orbit] gx:Tour playback triggered');
-  }
-
   Future<void> cleanup() async {
     await LGService.instance.cleanup();
   }
 
+  /// TEMP dev helper : exercises the full image fallback chain across three
+  /// cases (Wikipedia hit / Unsplash fallback / text-only), logging each
+  /// resolved source, then deploys the historical one to the rig and clears it
+  /// after 10s. Remove once verified.
   Future<void> testBalloon() async {
     final cases = <TourLocation>[
       const TourLocation(
-        name: 'Shaniwar Wada, Pune',
+        name: 'Shaniwar Wada, Pune', // exact miss → sanitised Wikipedia hit
         type: 'Fort',
         whySignificant:
             'Built in 1732 as the seat of the Peshwas, Shaniwar Wada once '
@@ -335,76 +269,30 @@ class SshConnection extends _$SshConnection {
         await LGService.instance.sendKml(kml, fileName: 'tour.kml');
       }
 
-      // 2. Drive the camera via the proven flytoview= hook: an opening overview
-      //    framing every stop, then per landmark an approach (held so imagery
-      //    sharpens + the balloon shows) followed by a smooth, centred 360°
-      //    orbit (one server-side loop — see KmlGenerator.orbitLoopCommand).
-      debugPrint(
-        'SSH: flying ${geocoded.length} stop(s) via flytoview + orbit',
-      );
-
-      // The rig is the master clock: it tells the companion (narration + UI)
-      // which landmark it has ARRIVED at, so narration never runs ahead of a
-      // still-orbiting camera. enterScene() is a no-op if the companion wasn't
-      // started (e.g. flight fired before the Active Tour screen) — it re-syncs
-      // as soon as that screen calls start(rigDriven: true).
-      final tour = ref.read(tourStateProvider.notifier);
-
-      // 2a. Opening overview.
-      final overview = KmlGenerator.overviewView(geocoded);
-      await LGService.instance.runCommand(
-        'echo "${KmlGenerator.flyToViewQuery(overview)}" > /tmp/query.txt',
-      );
-      await _interruptibleDelay(overview.settleDuration);
-
-      // 2b. Per landmark: advance narration to this stop AS WE ARRIVE, approach
-      //     (same relativeToGround geometry as the orbit start → no vertical
-      //     jump), fire the balloon, hold for imagery, then a full 360° orbit.
-      //     Each landmark only ends when its orbit truly completes, so the next
-      //     fly-to + narration fire together — the camera is given its "justice".
-      final approachHold = Duration(
-        milliseconds:
-            ((KmlGenerator.flyDurationSeconds +
-                        KmlGenerator.approachHoldSeconds) *
-                    1000)
-                .round(),
-      );
-      for (var j = 0; j < geocoded.length && !_stopRequested; j++) {
-        final l = geocoded[j];
-        final lat = l.latitude!, lng = l.longitude!;
-
-        // Fly IN to the landmark and let the imagery sharpen — kept SILENT so
-        // the narration isn't wasted on the transition. The balloon deploys now
-        // so it's ready by the time we arrive.
+      // 2. Drive the camera through each view via the proven flytoview= hook.
+      //    View 0 is the framing overview; each landmark then occupies a block
+      //    of (1 approach + orbitSteps orbit) views, so landmark j starts at
+      //    view index 1 + j*(1+orbitSteps). As each landmark's block begins we
+      //    fire its info balloon (fetch + deploy) WITHOUT awaiting, so the
+      //    camera flight never blocks on the network.
+      final views = KmlGenerator.tourCameraViews(geocoded);
+      const perLandmark = 1 + KmlGenerator.orbitSteps;
+      debugPrint('SSH: flying ${geocoded.length} stop(s) via flytoview');
+      for (var i = 0; i < views.length; i++) {
+        if (_stopRequested) break; // End Tour pressed → stop moving the rig
+        if (i > 0 && (i - 1) % perLandmark == 0) {
+          final j = (i - 1) ~/ perLandmark;
+          if (j < geocoded.length) unawaited(_showStopBalloon(geocoded[j]));
+        }
         await LGService.instance.runCommand(
-          'echo "${KmlGenerator.orbitFrameQuery(lat, lng)}" > /tmp/query.txt',
+          'echo "${KmlGenerator.flyToViewQuery(views[i])}" > /tmp/query.txt',
         );
-        unawaited(_showStopBalloon(l));
-        await _interruptibleDelay(approachHold);
-        if (_stopRequested) break;
-
-        tour.enterScene(j);
-        final sw = Stopwatch()..start();
-        await LGService.instance.runCommand(
-          KmlGenerator.orbitLoopCommand(lat: lat, lng: lng),
-        );
-        debugPrint('[Orbit] stop $j sweep ran ${sw.elapsedMilliseconds}ms');
-
-        if (_stopRequested) break;
-        await _interruptibleDelay(
-          Duration(
-            milliseconds: (KmlGenerator.orbitLoopSettleSeconds * 1000).round(),
-          ),
-        );
+        await _interruptibleDelay(views[i].settleDuration);
       }
 
-      // 3. Tour finished naturally — clear the info balloon and end the
-      //    companion (routes to post-tour). If it was stopped, stopTour()
-      //    already cleared the rig, so don't double up.
-      if (!_stopRequested) {
-        await LGService.instance.clearBalloon();
-        tour.markEnded();
-      }
+      // 3. Tour finished naturally — clear the info balloon. If it was stopped,
+      //    stopTour() already cleared the rig, so don't double up.
+      if (!_stopRequested) await LGService.instance.clearBalloon();
       return geocoded.length;
     } finally {
       _isFlying = false;
@@ -426,11 +314,6 @@ class SshConnection extends _$SshConnection {
   Future<void> stopTour() async {
     _stopRequested = true;
     try {
-      // End any in-flight server-side orbit loop within one frame (runs on a
-      // separate SSH channel, so it lands even while the orbit command blocks).
-      await LGService.instance.runCommand(
-        'touch ${KmlGenerator.orbitStopSentinel}',
-      );
       await LGService.instance.cleanup();
       await LGService.instance.clearBalloon();
     } catch (e) {

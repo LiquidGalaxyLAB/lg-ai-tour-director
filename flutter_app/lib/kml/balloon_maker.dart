@@ -1,15 +1,15 @@
 import 'package:flutter/foundation.dart';
 
+import 'balloon_image_maker.dart';
+
 class BalloonMaker {
   BalloonMaker._();
 
-  // Card width as a FRACTION of the screen so it scales with any rig's
-  // resolution (pixel sizing looked tiny on the high-res GalaxyLAB panels).
-  // Height is auto (`y="0"`) so the portrait aspect is preserved — never
-  // stretched. Tune this one number on the rig: bigger = larger card.
-  static const double _widthFraction = 0.5;
+  static const double _displayScale = 0.85;
 
   static String imageOverlay({required String host, required String fileName}) {
+    final cardW = (BalloonImageMaker.w * _displayScale).round();
+    final cardH = (BalloonImageMaker.h * _displayScale).round();
     final kml =
         '''<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -20,7 +20,7 @@ class BalloonMaker {
       <overlayXY x="0.5" y="0.5" xunits="fraction" yunits="fraction"/>
       <screenXY x="0.5" y="0.5" xunits="fraction" yunits="fraction"/>
       <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
-      <size x="$_widthFraction" y="0" xunits="fraction" yunits="fraction"/>
+      <size x="$cardW" y="$cardH" xunits="pixels" yunits="pixels"/>
     </ScreenOverlay>
   </Document>
 </kml>''';
