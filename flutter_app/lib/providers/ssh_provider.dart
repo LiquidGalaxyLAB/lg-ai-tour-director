@@ -391,18 +391,21 @@ class SshConnection extends _$SshConnection {
       // as soon as that screen calls start(rigDriven: true).
       final tour = ref.read(tourStateProvider.notifier);
 
-      // 2a. Opening overview.
+      // 2a. Opening overview (fly-to — pausable/skippable like every fly-to).
       final overview = KmlGenerator.overviewView(geocoded);
+      final overviewQuery = KmlGenerator.flyToViewQuery(overview);
       await LGService.instance.runCommand(
-        'echo "${KmlGenerator.flyToViewQuery(overview)}" > /tmp/query.txt',
+        'echo "$overviewQuery" > /tmp/query.txt',
       );
-      await _interruptibleDelay(overview.settleDuration);
+      await _pausableHold(overview.settleDuration, overviewQuery);
 
-      // 2b. Per landmark: advance narration to this stop AS WE ARRIVE, approach
-      //     (same relativeToGround geometry as the orbit start → no vertical
-      //     jump), fire the balloon, hold for imagery, then a full 360° orbit.
-      //     Each landmark only ends when its orbit truly completes, so the next
-      //     fly-to + narration fire together — the camera is given its "justice".
+      // 2b. Per landmark. Play/Pause/Next act throughout the FLY-TO phases
+      //     (fly-in + post-orbit settle); the ORBIT is the one uninterruptible
+      //     island (server-side loop — always completes, untouched). The ring
+      //     stays up through the whole landmark (cleared only as the NEXT one
+      //     starts) so it never vanishes while paused. On RESUME the camera is
+      //     re-framed to the landmark first, so the orbit never starts from a
+      //     spot the user explored to (no janky half-return).
       final approachHold = Duration(
         milliseconds:
             ((KmlGenerator.flyDurationSeconds +
@@ -411,52 +414,57 @@ class SshConnection extends _$SshConnection {
                 .round(),
       );
       for (var j = 0; j < geocoded.length && !_stopRequested; j++) {
-        // SCENE BOUNDARY — the ONLY place Play/Pause/Next act. The previous
-        // landmark's fly-in + orbit + settle already finished. Hold here while
-        // paused (no SSH, no orbit, no sentinel — just a flag poll), then start
-        // this scene fresh (clear any pending skip).
-        while (tour.isPaused && !_stopRequested) {
+        final l = geocoded[j];
+        final lat = l.latitude!, lng = l.longitude!;
+        final frameQuery = KmlGenerator.orbitFrameQuery(lat, lng);
+
+        // Boundary: hold here if paused, BEFORE flying to this landmark (so a
+        // pause keeps you on the previous stop, not mid-transition).
+        while (tour.isPaused && !_stopRequested && !tour.skipRequested) {
           await Future<void>.delayed(const Duration(milliseconds: 200));
         }
         if (_stopRequested) break;
         tour.clearSkip();
+        // Clear the previous landmark's ring now that we're moving on.
+        await LGService.instance.clearLandmarkRing();
 
-        final l = geocoded[j];
-        final lat = l.latitude!, lng = l.longitude!;
-
-        // Fly IN to the landmark and let the imagery sharpen — kept SILENT so
-        // the narration isn't wasted on the transition. The balloon deploys now
-        // so it's ready by the time we arrive.
+        // FLY-IN (fly-to) — pausable + skippable. Balloon deploys on the way.
         await LGService.instance.runCommand(
-          'echo "${KmlGenerator.orbitFrameQuery(lat, lng)}" > /tmp/query.txt',
+          'echo "$frameQuery" > /tmp/query.txt',
         );
         unawaited(_showStopBalloon(l));
-        await _interruptibleDelay(approachHold);
-        if (_stopRequested) break;
+        final flyIn = await _pausableHold(approachHold, frameQuery);
+        if (flyIn == 'stop') break;
+        if (flyIn == 'skip') continue; // Next during fly-in → skip this landmark
 
+        // Arrived — narration + ring (both persist through the orbit + settle).
         tour.enterScene(j);
         unawaited(LGService.instance.showLandmarkRing(lat, lng));
+
+        // ORBIT — server-side loop, UNINTERRUPTIBLE and DO-NOT-TOUCH. By here the
+        // fly-in hold has handled any pause + reframe, so the camera is framed.
         final sw = Stopwatch()..start();
         await LGService.instance.runCommand(
           KmlGenerator.orbitLoopCommand(lat: lat, lng: lng),
         );
         debugPrint('[Orbit] stop $j sweep ran ${sw.elapsedMilliseconds}ms');
-
         if (_stopRequested) break;
-        // Post-orbit settle — cut short by End Tour OR a Next-Scene skip. This
-        // is the Dart-side hold AFTER the orbit command returns, not the orbit.
-        await _settleDelay(
+
+        // SETTLE (fly-to) — pausable + skippable. Ring stays (cleared next loop).
+        final settle = await _pausableHold(
           Duration(
             milliseconds: (KmlGenerator.orbitLoopSettleSeconds * 1000).round(),
           ),
+          frameQuery,
         );
-        await LGService.instance.clearLandmarkRing();
+        if (settle == 'stop') break;
       }
 
-      // 3. Tour finished naturally — clear the info balloon and end the
+      // 3. Tour finished naturally — clear the ring + balloon and end the
       //    companion (routes to post-tour). If it was stopped, stopTour()
       //    already cleared the rig, so don't double up.
       if (!_stopRequested) {
+        await LGService.instance.clearLandmarkRing();
         await LGService.instance.clearBalloon();
         tour.markEnded();
       }
@@ -466,31 +474,41 @@ class SshConnection extends _$SshConnection {
     }
   }
 
-  Future<void> _interruptibleDelay(Duration total) async {
-    const step = Duration(milliseconds: 200);
-    var elapsed = Duration.zero;
-    while (elapsed < total) {
-      if (_stopRequested) return;
-      final remaining = total - elapsed;
-      final chunk = remaining < step ? remaining : step;
-      await Future<void>.delayed(chunk);
-      elapsed += chunk;
-    }
-  }
-
-  // Like _interruptibleDelay but ALSO cut short by a Next-Scene skip. Used only
-  // for the post-orbit settle (a Dart-side wait, never the orbit/fly-in).
-  Future<void> _settleDelay(Duration total) async {
+  /// A fly-to phase hold of [total] that honours Play/Pause/Next:
+  ///  • End Tour     → returns 'stop'  (caller returns).
+  ///  • Next Scene   → returns 'skip'  (caller advances).
+  ///  • Pause        → holds indefinitely (no countdown). On RESUME it re-frames
+  ///    the camera to [reframeQuery] (the user may have explored away) and gives
+  ///    GE ~3s to arrive, then returns 'done' — so whatever runs next (an orbit,
+  ///    the next fly-in) starts from the correct camera position.
+  ///  • Otherwise    → counts down and returns 'done'.
+  /// NEVER used around the orbit command itself — only fly-to waits.
+  Future<String> _pausableHold(Duration total, String reframeQuery) async {
     const step = Duration(milliseconds: 200);
     var elapsed = Duration.zero;
     final tour = ref.read(tourStateProvider.notifier);
     while (elapsed < total) {
-      if (_stopRequested || tour.skipRequested) return;
+      if (_stopRequested) return 'stop';
+      if (tour.skipRequested) return 'skip';
+      if (tour.isPaused) {
+        while (tour.isPaused && !_stopRequested && !tour.skipRequested) {
+          await Future<void>.delayed(step);
+        }
+        if (_stopRequested) return 'stop';
+        if (tour.skipRequested) return 'skip';
+        // Resumed after a pause — snap the camera back before continuing.
+        await LGService.instance.runCommand(
+          'echo "$reframeQuery" > /tmp/query.txt',
+        );
+        await Future<void>.delayed(const Duration(seconds: 3));
+        return 'done';
+      }
       final remaining = total - elapsed;
       final chunk = remaining < step ? remaining : step;
       await Future<void>.delayed(chunk);
       elapsed += chunk;
     }
+    return 'done';
   }
 
   Future<void> stopTour() async {
