@@ -149,12 +149,6 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(
-                onPressed: () => run('Test Orbit', notifier.testOrbit),
-                icon: const Icon(Icons.threesixty_rounded),
-                label: const Text('Test Orbit (Shaniwar Wada)'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
                 onPressed: () => run('Test Balloon', notifier.testBalloon),
                 icon: const Icon(Icons.web_asset_rounded),
                 label: const Text('Test Balloon (auto-clears in 10s)'),

@@ -23,10 +23,7 @@ class BalloonImageMaker {
     required String locationSubtitle,
     required String description,
     Uint8List? imageBytes,
-    // Supersample factor: the PNG is rendered at scale× the logical 380×500 so
-    // it stays crisp when Google Earth scales the (now larger, fraction-sized)
-    // overlay up on a high-res rig.
-    double scale = 3,
+    double scale = 2,
   }) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, w * scale, h * scale));

@@ -42,21 +42,12 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
 
     final notifier = ref.read(tourStateProvider.notifier);
     final tour = ref.read(tourStateProvider);
-    final rigDriven = ref.read(sshConnectionProvider).isConnected;
     final resuming =
         tour.isRunning && tour.totalLocations == widget.args.locations.length;
     if (resuming) {
       _spokenIndex = tour.currentIndex;
       _speak(tour.currentIndex);
-    } else if (rigDriven) {
-      // The LG flight drives scene changes (enterScene) as it arrives at each
-      // landmark, so narration stays locked to the real camera. Nothing to time
-      // here — just wait for the flight's first enterScene(0).
-      _spokenIndex = -1;
-      notifier.start(widget.args, rigDriven: true);
     } else {
-      // No rig connected (companion-only, e.g. web preview): fall back to the
-      // fixed rig-matched timer so the UI still advances on its own.
       _spokenIndex = 0;
       notifier.start(widget.args);
       await Future<void>.delayed(TourStateNotifier.overviewDelay);
