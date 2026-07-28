@@ -1,6 +1,4 @@
 // import 'dart:developer' as developer;
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:dio/dio.dart';
@@ -146,7 +144,7 @@ class LGService {
     await _ssh.sendCommand('rm -f /var/www/html/infoballoon_*.png');
   }
 
-  static const String _ringFile = 'landmark_ring.kml';
+  static const String _masterKmlPath = '/var/www/html/kml/master.kml';
 
   Future<void> showLandmarkRing(
     double lat,
@@ -161,17 +159,10 @@ class LGService {
         innerRadius: innerRadius,
         outerRadius: outerRadius,
       );
-      await _ssh.uploadBytes(Uint8List.fromList(utf8.encode(kml)), _ringFile);
-      final host = _ssh.host ?? 'lg1';
-      final url = 'http://$host:81/$_ringFile';
-
-      await _ssh.sendCommand(
-        'grep -qF "$url" /var/www/html/kmls.txt 2>/dev/null || '
-        'echo "$url" >> /var/www/html/kmls.txt',
-      );
+      await _ssh.sendCommand("echo '$kml' > $_masterKmlPath");
       debugPrint(
         '[LandmarkRing] show ($lat, $lng) inner=${innerRadius}m '
-        'outer=${outerRadius}m',
+        'outer=${outerRadius}m → master.kml',
       );
     } catch (e) {
       debugPrint('[LandmarkRing] error (show): $e');
@@ -181,8 +172,7 @@ class LGService {
   Future<void> clearLandmarkRing() async {
     try {
       await _ssh.sendCommand(
-        "sed -i '\\#$_ringFile#d' /var/www/html/kmls.txt 2>/dev/null; "
-        'rm -f /var/www/html/$_ringFile',
+        "echo '${BalloonMaker.emptyBalloon()}' > $_masterKmlPath",
       );
       debugPrint('[LandmarkRing] clear');
     } catch (e) {
