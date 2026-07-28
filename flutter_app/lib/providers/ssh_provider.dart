@@ -205,11 +205,18 @@ class SshConnection extends _$SshConnection {
       );
       await Future<void>.delayed(const Duration(seconds: 2));
     }
-    debugPrint('[LandmarkRing] test — showing at Shaniwar Wada');
-    await LGService.instance.showLandmarkRing(lat, lng);
-    await Future<void>.delayed(const Duration(seconds: 20));
-    await LGService.instance.clearLandmarkRing();
-    debugPrint('[LandmarkRing] test — cleared');
+    // FLICKER-FREE TEST (incremental <Update>): prime the hidden strokes, wait a
+    // couple of refresh cycles so GE loads them, then SHOW via an in-place
+    // update — should be rock-steady (no blink). Tour is untouched (still the
+    // working full-geometry) until this is confirmed.
+    debugPrint('[LandmarkRing] test — priming base (flicker-free)');
+    await LGService.instance.primeLandmarkRing();
+    await Future<void>.delayed(const Duration(seconds: 6));
+    debugPrint('[LandmarkRing] test — SHOW via update (watch: should be steady)');
+    await LGService.instance.showLandmarkRingUpdate(lat, lng);
+    await Future<void>.delayed(const Duration(seconds: 25));
+    await LGService.instance.clearLandmarkRingUpdate();
+    debugPrint('[LandmarkRing] test — cleared (update)');
   }
 
   Future<void> diagnoseMasterKml() async {

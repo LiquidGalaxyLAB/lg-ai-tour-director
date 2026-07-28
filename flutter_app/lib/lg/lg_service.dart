@@ -186,6 +186,57 @@ class LGService {
     }
   }
 
+  // ── Flicker-free ring (NetworkLinkControl <Update>) — UNDER TEST ────────────
+  // Kept SEPARATE from the working show/clear above so the live tour is
+  // untouched. Once the test button confirms these are rock-steady, the tour
+  // switches to them. See generator.landmarkRingBaseKml / landmarkRingUpdateKml.
+
+  /// Write the persistent (hidden) ring strokes once. Allow a master-refresh
+  /// cycle for GE to load them before the first update.
+  Future<void> primeLandmarkRing() async {
+    try {
+      await _ssh.sendCommand(
+        "echo '${KmlGenerator.landmarkRingBaseKml()}' > $_masterKmlPath",
+      );
+      debugPrint('[LandmarkRing] base primed → master.kml');
+    } catch (e) {
+      debugPrint('[LandmarkRing] error (prime): $e');
+    }
+  }
+
+  Future<void> showLandmarkRingUpdate(
+    double lat,
+    double lng, {
+    double innerRadius = 150,
+    double outerRadius = 200,
+  }) async {
+    try {
+      final kml = KmlGenerator.landmarkRingUpdateKml(
+        lat,
+        lng,
+        visible: true,
+        innerRadius: innerRadius,
+        outerRadius: outerRadius,
+      );
+      await _ssh.sendCommand("echo '$kml' > $_masterKmlPath");
+      debugPrint('[LandmarkRing] show UPDATE ($lat, $lng) → master.kml');
+    } catch (e) {
+      debugPrint('[LandmarkRing] error (show update): $e');
+    }
+  }
+
+  Future<void> clearLandmarkRingUpdate() async {
+    try {
+      await _ssh.sendCommand(
+        "echo '${KmlGenerator.landmarkRingUpdateKml(0, 0, visible: false)}' "
+        '> $_masterKmlPath',
+      );
+      debugPrint('[LandmarkRing] clear UPDATE (hide)');
+    } catch (e) {
+      debugPrint('[LandmarkRing] error (clear update): $e');
+    }
+  }
+
   Future<void> flyTo(
     double lat,
     double lng, {
