@@ -123,6 +123,7 @@ class SavedDetailScreen extends ConsumerWidget {
         title: tour.title,
         prompt: tour.prompt,
         locations: tour.locations,
+        savedTourId: tour.id,
       ),
     );
   }
