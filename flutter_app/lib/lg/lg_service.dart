@@ -146,6 +146,17 @@ class LGService {
 
   static const String _masterKmlPath = '/var/www/html/kml/master.kml';
 
+  Future<void> primeLandmarkRing() async {
+    try {
+      await _ssh.sendCommand(
+        "echo '${KmlGenerator.landmarkRingBaseKml()}' > $_masterKmlPath",
+      );
+      debugPrint('[LandmarkRing] base primed → master.kml');
+    } catch (e) {
+      debugPrint('[LandmarkRing] error (prime): $e');
+    }
+  }
+
   Future<void> showLandmarkRing(
     double lat,
     double lng, {
@@ -153,17 +164,15 @@ class LGService {
     double outerRadius = 200,
   }) async {
     try {
-      final kml = KmlGenerator.buildLandmarkRingKml(
+      final kml = KmlGenerator.landmarkRingUpdateKml(
         lat,
         lng,
+        visible: true,
         innerRadius: innerRadius,
         outerRadius: outerRadius,
       );
       await _ssh.sendCommand("echo '$kml' > $_masterKmlPath");
-      debugPrint(
-        '[LandmarkRing] show ($lat, $lng) inner=${innerRadius}m '
-        'outer=${outerRadius}m → master.kml',
-      );
+      debugPrint('[LandmarkRing] show update ($lat, $lng) → master.kml');
     } catch (e) {
       debugPrint('[LandmarkRing] error (show): $e');
     }
@@ -171,10 +180,12 @@ class LGService {
 
   Future<void> clearLandmarkRing() async {
     try {
+      // Hide via incremental update (no doc reload).
       await _ssh.sendCommand(
-        "echo '${BalloonMaker.emptyBalloon()}' > $_masterKmlPath",
+        "echo '${KmlGenerator.landmarkRingUpdateKml(0, 0, visible: false)}' "
+        '> $_masterKmlPath',
       );
-      debugPrint('[LandmarkRing] clear');
+      debugPrint('[LandmarkRing] clear (hide update)');
     } catch (e) {
       debugPrint('[LandmarkRing] error (clear): $e');
     }

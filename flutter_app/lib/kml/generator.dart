@@ -388,8 +388,62 @@ $strokes  </Document>
 </kml>''';
   }
 
-  // The single-line `flytoview=<LookAt>…</LookAt>` payload to echo into
-  // /tmp/query.txt — same shape as the proven flyToPune command.
+  static const String ringUpdateTargetHref = 'http://lg1:81//kml/master.kml';
+
+  static String landmarkRingBaseKml() {
+    final strokes = StringBuffer();
+    for (var i = 0; i < _ringGlowLayers.length; i++) {
+      final (width, color) = _ringGlowLayers[i];
+      strokes.writeln('''
+    <Placemark id="lg-ring-$i">
+      <visibility>0</visibility>
+      <Style><LineStyle><color>$color</color><width>$width</width></LineStyle></Style>
+      <LineString id="lg-ring-line-$i">
+        <tessellate>1</tessellate>
+        <altitudeMode>clampToGround</altitudeMode>
+        <coordinates>0,0,0 0,0,0</coordinates>
+      </LineString>
+    </Placemark>''');
+    }
+    return '''<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document id="lg-ring-doc">
+    <name>LandmarkRing</name>
+$strokes  </Document>
+</kml>''';
+  }
+
+  static String landmarkRingUpdateKml(
+    double lat,
+    double lng, {
+    required bool visible,
+    double innerRadius = 150,
+    double outerRadius = 200,
+  }) {
+    final radius = (innerRadius + outerRadius) / 2;
+    final coords = visible ? _ringCoordinates(lat, lng, radius) : '0,0,0 0,0,0';
+    final vis = visible ? 1 : 0;
+    final changes = StringBuffer();
+    for (var i = 0; i < _ringGlowLayers.length; i++) {
+      changes.writeln(
+        '      <Change><Placemark targetId="lg-ring-$i">'
+        '<visibility>$vis</visibility></Placemark></Change>',
+      );
+      changes.writeln(
+        '      <Change><LineString targetId="lg-ring-line-$i">'
+        '<coordinates>$coords</coordinates></LineString></Change>',
+      );
+    }
+    return '''<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <NetworkLinkControl>
+    <Update>
+      <targetHref>$ringUpdateTargetHref</targetHref>
+$changes    </Update>
+  </NetworkLinkControl>
+</kml>''';
+  }
+
   static String flyToViewQuery(CameraView v) {
     return 'flytoview=<LookAt>'
         '<longitude>${v.lng}</longitude>'

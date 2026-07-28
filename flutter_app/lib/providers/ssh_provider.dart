@@ -188,12 +188,17 @@ class SshConnection extends _$SshConnection {
       'echo "${KmlGenerator.orbitFrameQuery(lat, lng)}" > /tmp/query.txt',
     );
     await Future<void>.delayed(const Duration(seconds: 3));
-    debugPrint('[LandmarkRing] test — showing at Shaniwar Wada');
-    // Writes the ring to master.kml, which the master GE live-refreshes.
+    // 1. Prime the persistent (hidden) ring strokes, then wait a refresh cycle
+    //    so GE loads the base before we send incremental updates.
+    debugPrint('[LandmarkRing] test — priming base, waiting for GE to load it');
+    await LGService.instance.primeLandmarkRing();
+    await Future<void>.delayed(const Duration(seconds: 8));
+    // 2. Show via <Update> (no reload → no blink), hold, then hide via <Update>.
+    debugPrint('[LandmarkRing] test — showing (update) at Shaniwar Wada');
     await LGService.instance.showLandmarkRing(lat, lng);
     await Future<void>.delayed(const Duration(seconds: 20));
     await LGService.instance.clearLandmarkRing();
-    debugPrint('[LandmarkRing] test — cleared');
+    debugPrint('[LandmarkRing] test — cleared (update)');
   }
 
   Future<void> diagnoseMasterKml() async {
@@ -398,6 +403,11 @@ class SshConnection extends _$SshConnection {
       if (kml != null) {
         await LGService.instance.sendKml(kml, fileName: 'tour.kml');
       }
+
+      // 1b. Prime the (hidden) highlight-ring base now, so it's loaded by the
+      //     time the first orbit starts and per-landmark shows are flicker-free
+      //     incremental updates. Best-effort — ring failures never stop a tour.
+      await LGService.instance.primeLandmarkRing();
 
       // 2. Drive the camera via the proven flytoview= hook: an opening overview
       //    framing every stop, then per landmark an approach (held so imagery
