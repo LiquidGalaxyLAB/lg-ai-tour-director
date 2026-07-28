@@ -189,7 +189,14 @@ class SshConnection extends _$SshConnection {
     );
     await Future<void>.delayed(const Duration(seconds: 3));
     debugPrint('[LandmarkRing] test — showing at Shaniwar Wada');
+    // Upload + register in kmls.txt.
     await LGService.instance.showLandmarkRing(lat, lng);
+
+    final host = state.connection.host;
+    await LGService.instance.runCommand(
+      'echo "http://$host:81/landmark_ring.kml" > /tmp/query.txt',
+    );
+    debugPrint('[LandmarkRing] test — load nudge sent via query.txt');
     await Future<void>.delayed(const Duration(seconds: 20));
     await LGService.instance.clearLandmarkRing();
     debugPrint('[LandmarkRing] test — cleared');
