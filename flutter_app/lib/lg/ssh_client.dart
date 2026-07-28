@@ -317,7 +317,7 @@ class SSHConnection {
   }
 
   /// Uploads [logoPath] to the master web server and shows it as a
-  /// ScreenOverlay on the left-most screen, anchored to the top-right corner.
+  /// ScreenOverlay on the left-most screen, anchored to the top-left corner.
   ///
   /// The overlay width is [widthFraction] of the screen; the height is left to
   /// auto-scale (`<size y="0">`) so the image keeps its native aspect ratio —
@@ -346,7 +346,7 @@ class SSHConnection {
       <name>LogoOverlay</name>
       <Icon><href>http://$masterIp:81/$fileName</href></Icon>
       <overlayXY x="0" y="1" xunits="fraction" yunits="fraction"/>
-      <screenXY x="0.08" y="0.95" xunits="fraction" yunits="fraction"/>
+      <screenXY x="0.04" y="0.98" xunits="fraction" yunits="fraction"/>
       <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
       <size x="$widthFraction" y="0" xunits="fraction" yunits="fraction"/>
     </ScreenOverlay>

@@ -32,11 +32,11 @@ class AppConstants {
   static const String balloonKmlFilename = 'balloon.kml';
   static const String logoKmlFilename = 'logo.kml';
 
-  // Logo overlay shown on the left-most screen (top-right corner)
+  // Logo overlay shown on the left-most screen (top-left corner)
   static const String logoAssetPath = 'assets/logos/logo.png';
   // Overlay width as a fraction of the screen; height auto-scales to keep the
   // image's native aspect ratio (KML size y=0 preserves aspect ratio)
-  static const double logoOverlayWidthFraction = 0.3;
+  static const double logoOverlayWidthFraction = 0.264;
 
   // Tour generation tuning
   // Base narration speech rate in words/second used to estimate scene timing
