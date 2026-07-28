@@ -202,6 +202,51 @@ class SshConnection extends _$SshConnection {
     debugPrint('[LandmarkRing] test — cleared');
   }
 
+  Future<void> diagnoseMasterKml() async {
+    Future<void> probe(String label, String cmd) async {
+      final out = await LGService.instance.runCommand(cmd);
+      debugPrint('[RingDiag] $label →\n${(out ?? "(null)").trim()}\n');
+    }
+
+    debugPrint('[RingDiag] ===== deploying ring (kept in place) =====');
+    await LGService.instance.showLandmarkRing(18.5195, 73.8553);
+
+    await probe('1. kmls.txt content', 'cat /var/www/html/kmls.txt');
+    await probe(
+      '2. is ring served? (expect 200)',
+      'curl -s -o /dev/null -w "%{http_code}" '
+          'http://localhost:81/landmark_ring.kml',
+    );
+    await probe(
+      '3. who references kmls.txt',
+      'grep -rl "kmls.txt" ~/.googleearth ~/earth 2>/dev/null || echo NONE',
+    );
+    await probe(
+      '4. master myplaces URLs',
+      "grep -oE 'http://[^<]*' ~/.googleearth/myplaces.kml 2>/dev/null "
+          '| head -20 || echo NO_MASTER_MYPLACES',
+    );
+    await probe(
+      '5. master myplaces refresh modes',
+      "grep -oE '<refreshMode>[^<]*' ~/.googleearth/myplaces.kml 2>/dev/null "
+          '| sort | uniq -c || echo NONE',
+    );
+    await probe(
+      '6. slave loader URLs',
+      "grep -oE 'http://[^<]*' ~/earth/kml/slave/myplaces.kml 2>/dev/null "
+          '| head -20 || echo NONE',
+    );
+    await probe(
+      '7. any *.kml GE watches in home',
+      'grep -rlE "NetworkLink|href" ~/.googleearth ~/earth 2>/dev/null '
+          '| head -20 || echo NONE',
+    );
+    debugPrint(
+      '[RingDiag] ===== done. Ring left deployed — try "Relaunch LG" now '
+      'to see if it appears after a GE restart. =====',
+    );
+  }
+
   Future<void> testGxTourOrbit() async {
     const lat = 18.5195, lng = 73.8553; // Shaniwar Wada, Pune
     const range = 800.0, altitude = 0.0; // relativeToGround → altitude 0
