@@ -175,9 +175,16 @@ class _GenerationScreenState extends State<GenerationScreen> {
       }
     }
   }
-  // ──────────────────────────────────────────────────────────────────────────
 
-  /// Maps the pipeline's status message to a step index (0..3) for the checklist.
+  void _cancelGeneration() {
+    _navigated = true;
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
+  }
+
   int get _step {
     if (_locations != null) return 4;
     if (_statusMessage.contains('Enriching')) return 2;
@@ -290,6 +297,23 @@ class _GenerationScreenState extends State<GenerationScreen> {
                     ],
                   ),
           ),
+
+          if (_error == null && _locations == null)
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+
+                child: TextButton(
+                  onPressed: _cancelGeneration,
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error,
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  child: const Text('Cancel tour generation'),
+                ),
+              ),
+            ),
         ],
       ),
     );

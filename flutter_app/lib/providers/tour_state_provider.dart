@@ -45,30 +45,19 @@ class TourState {
   );
 }
 
-/// App-level tour state that also OWNS the tour's timers, so progress advances
-/// even when the user has left the Active Tour screen (the banner keeps moving
-/// on Home). A plain top-level [NotifierProvider] is never auto-disposed, so it
-/// lives at the ProviderScope root for the session.
-///
-/// Two timers: a scene-transition timer (advances [currentIndex] once per
-/// [sceneDuration]) and a 100ms intra-scene timer (fills [sceneProgress] 0→1
-/// across the current scene, for the smooth subtitle bar). The per-scene
-/// interval is the FIXED rig-matched dwell (same [KmlGenerator] constants the
-/// flight uses), NOT the AI's suggested durations — keeps the companion in sync
-/// with Google Earth.
 class TourStateNotifier extends Notifier<TourState> {
   Timer? _sceneTimer; // advances currentIndex
   Timer? _progressTimer; // fills sceneProgress 0→1
 
-  static const double _perSceneBufferSeconds = 0.6; // ~6 flytoview echoes
+  static const double _perSceneBufferSeconds = 1.0; // approach + orbit SSH lead
   static const double _startupBufferSeconds = 2.0; // sendKml upload lead
 
-  /// Fixed per-landmark dwell (fly + hold + orbit + SSH buffer) ≈ 19.6s.
   static Duration get sceneDuration => Duration(
     milliseconds:
         ((KmlGenerator.flyDurationSeconds +
                     KmlGenerator.approachHoldSeconds +
-                    KmlGenerator.orbitTotalSeconds +
+                    KmlGenerator.orbitLoopTotalSeconds +
+                    KmlGenerator.orbitLoopSettleSeconds +
                     _perSceneBufferSeconds) *
                 1000)
             .round(),
@@ -93,20 +82,47 @@ class TourStateNotifier extends Notifier<TourState> {
   /// A tour has begun — mark running and start the timers: an overview lead-in,
   /// then advance one scene every [sceneDuration] while the intra-scene bar
   /// fills across each scene.
-  void start(TourFlowArgs args) {
+  void start(TourFlowArgs args, {bool rigDriven = false}) {
     _sceneTimer?.cancel();
     _progressTimer?.cancel();
     state = TourState(
       status: TourStatus.running,
-      currentIndex: 0,
+      // rigDriven: start "before" scene 0; the flight calls enterScene(0) when
+      // it actually arrives at the first landmark (after the overview).
+      currentIndex: rigDriven ? -1 : 0,
       totalLocations: args.locations.length,
       sceneProgress: 0.0,
       args: args,
     );
+    if (rigDriven) return; // the rig drives scene changes via enterScene()
     _sceneTimer = Timer(overviewDelay, () {
       _restartSceneProgress(); // scene 0 bar starts filling once the rig arrives
       _sceneTimer = Timer.periodic(sceneDuration, (_) => _advance());
     });
+  }
+
+  /// Rig-driven scene change: the LG flight calls this AS IT ARRIVES at each
+  /// landmark, so narration + the companion UI advance exactly in step with the
+  /// real camera — never ahead of a rig that's still flying or orbiting.
+  void enterScene(int index) {
+    if (state.status != TourStatus.running) return;
+    if (index == state.currentIndex) return;
+    state = state.copyWith(currentIndex: index);
+    _restartSceneProgress();
+  }
+
+  /// Rig-driven natural end: the flight finished the last landmark's orbit.
+  void markEnded() {
+    if (state.status != TourStatus.running) return;
+    _sceneTimer?.cancel();
+    _progressTimer?.cancel();
+    state = TourState(
+      status: TourStatus.ended,
+      currentIndex: state.totalLocations,
+      totalLocations: state.totalLocations,
+      sceneProgress: 1.0,
+      args: state.args,
+    );
   }
 
   void _advance() {
