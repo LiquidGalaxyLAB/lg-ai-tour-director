@@ -370,8 +370,8 @@ $flyToBlocks      </gx:Playlist>
   static String buildLandmarkRingKml(
     double lat,
     double lng, {
-    double innerRadius = 250,
-    double outerRadius = 350,
+    double innerRadius = 150,
+    double outerRadius = 200,
   }) {
     final radius = (innerRadius + outerRadius) / 2;
     final coords = _ringCoordinates(lat, lng, radius);

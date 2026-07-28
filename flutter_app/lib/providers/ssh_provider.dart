@@ -235,9 +235,14 @@ class SshConnection extends _$SshConnection {
       'grep -rlE "NetworkLink|href" ~/.googleearth ~/earth 2>/dev/null '
           '| head -20 || echo NONE',
     );
+    await probe(
+      '8. master.kml link + its refresh setting',
+      "grep -oE '.{0,30}master.kml.{0,140}' ~/.googleearth/myplaces.kml "
+          '2>/dev/null | head -5 || echo NONE',
+    );
     debugPrint(
-      '[RingDiag] ===== done. Ring left deployed — try "Relaunch LG" now '
-      'to see if it appears after a GE restart. =====',
+      '[RingDiag] ===== done. If probe 8 now shows onInterval near master.kml '
+      'after a Set Refresh, the ring will appear live (no relaunch). =====',
     );
   }
 

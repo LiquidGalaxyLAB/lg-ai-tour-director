@@ -149,8 +149,8 @@ class LGService {
   Future<void> showLandmarkRing(
     double lat,
     double lng, {
-    double innerRadius = 250,
-    double outerRadius = 350,
+    double innerRadius = 150,
+    double outerRadius = 200,
   }) async {
     try {
       final kml = KmlGenerator.buildLandmarkRingKml(

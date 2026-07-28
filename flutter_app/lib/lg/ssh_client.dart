@@ -385,6 +385,14 @@ class SSHConnection {
     final pass = _pass ?? '';
     final files = _slaveLoaderFiles.join(' ');
 
+    // Master (lg1, THIS host): make its own master.kml NetworkLink refresh live
+    // too, so geometry written to /var/www/html/kml/master.kml (the landmark
+    // ring) appears without a GE relaunch. Local home file → no sshpass/sudo.
+    await sendCommand(
+      "sed -i -e '${_masterStripExpr()}' -e '${_masterInjectExpr(seconds)}' "
+      '~/.googleearth/myplaces.kml',
+    );
+
     for (var i = 2; i <= screenAmount; i++) {
       final strip = _stripExpr(i);
       final inject =
@@ -402,6 +410,10 @@ class SSHConnection {
     final pass = _pass ?? '';
     final files = _slaveLoaderFiles.join(' ');
 
+    await sendCommand(
+      "sed -i -e '${_masterStripExpr()}' ~/.googleearth/myplaces.kml",
+    );
+
     for (var i = 2; i <= screenAmount; i++) {
       final remote = "echo $pass | sudo -S sed -i -e '${_stripExpr(i)}' $files";
       await sendCommand('sshpass -p $pass ssh -t lg$i "$remote"');
@@ -411,4 +423,14 @@ class SSHConnection {
   String _stripExpr(int i) =>
       "/slave_$i.kml/ s#<refreshMode>onInterval</refreshMode>"
       "<refreshInterval>[0-9]*</refreshInterval>##";
+
+  // Same idea as [_stripExpr] but for the master's own master.kml NetworkLink
+  // (dot escaped so it can't match master_1.kml).
+  String _masterStripExpr() =>
+      "/master\\.kml/ s#<refreshMode>onInterval</refreshMode>"
+      "<refreshInterval>[0-9]*</refreshInterval>##";
+  String _masterInjectExpr(int seconds) =>
+      "/master\\.kml/ s#</href>#</href>"
+      "<refreshMode>onInterval</refreshMode>"
+      "<refreshInterval>$seconds</refreshInterval>#";
 }
