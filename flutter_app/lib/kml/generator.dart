@@ -340,71 +340,51 @@ $flyToBlocks      </gx:Playlist>
     return buffer.toString().trim();
   }
 
-  static String _ringPlacemark({
-    required String id,
-    required double lat,
-    required double lng,
-    required double radius,
-    required String lineColor, // KML aabbggrr
-    required double lineWidth,
-    required String fillColor, // KML aabbggrr (00…… = no fill)
-  }) {
+  // One ring stroke (a bare LineString outline) at [coords], for stacking.
+  static String _ringStroke(
+    String id,
+    String coords,
+    String color, // KML aabbggrr
+    double width, // screen pixels
+  ) {
     return '''
     <Placemark>
       <name>$id</name>
-      <Style>
-        <LineStyle><color>$lineColor</color><width>$lineWidth</width></LineStyle>
-        <PolyStyle><color>$fillColor</color></PolyStyle>
-      </Style>
-      <Polygon>
-        <extrude>0</extrude>
+      <Style><LineStyle><color>$color</color><width>$width</width></LineStyle></Style>
+      <LineString>
         <tessellate>1</tessellate>
         <altitudeMode>clampToGround</altitudeMode>
-        <outerBoundaryIs>
-          <LinearRing>
-            <coordinates>${_ringCoordinates(lat, lng, radius)}</coordinates>
-          </LinearRing>
-        </outerBoundaryIs>
-      </Polygon>
+        <coordinates>$coords</coordinates>
+      </LineString>
     </Placemark>''';
   }
 
-  /// Complete KML for the two-ring landmark highlight. [innerRadius]/[outerRadius]
-  /// are in metres and tunable per landmark (a big fort needs more than a small
-  /// temple). Outer ≈ 1.4× inner by default.
+  static const List<(double, String)> _ringGlowLayers = [
+    (48.0, '1FF48542'), // ~12% — widest soft halo
+    (32.0, '40F48542'), // ~25%
+    (20.0, '73F48542'), // ~45%
+    (11.0, 'B3F48542'), // ~70%
+    (5.0, 'FFF48542'), //  100% — bright core
+  ];
+
   static String buildLandmarkRingKml(
     double lat,
     double lng, {
     double innerRadius = 250,
     double outerRadius = 350,
   }) {
-    // Outer first (drawn under), inner on top. aabbggrr, brand blue F48542:
-    //   outer line 40 (~25%) width 4 + fill 14 (~8%); inner line CC (~80%) width 2, no fill.
-    final outer = _ringPlacemark(
-      id: 'landmark-ring-outer',
-      lat: lat,
-      lng: lng,
-      radius: outerRadius,
-      lineColor: '40F48542',
-      lineWidth: 4,
-      fillColor: '14F48542',
-    );
-    final inner = _ringPlacemark(
-      id: 'landmark-ring-inner',
-      lat: lat,
-      lng: lng,
-      radius: innerRadius,
-      lineColor: 'CCF48542',
-      lineWidth: 2,
-      fillColor: '00000000',
-    );
+    final radius = (innerRadius + outerRadius) / 2;
+    final coords = _ringCoordinates(lat, lng, radius);
+    final strokes = StringBuffer();
+    for (var i = 0; i < _ringGlowLayers.length; i++) {
+      final (width, color) = _ringGlowLayers[i];
+      strokes.writeln(_ringStroke('landmark-ring-$i', coords, color, width));
+    }
     return '''<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <name>LandmarkRing</name>
-$outer
-$inner
-  </Document>
+$strokes  </Document>
 </kml>''';
   }
 
