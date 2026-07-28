@@ -420,6 +420,31 @@ class SSHConnection {
     }
   }
 
+  /// One-time, automatic: make the master's own master.kml NetworkLink refresh
+  /// live so content written to /var/www/html/kml/master.kml (the landmark ring)
+  /// appears WITHOUT a manual Set Refresh or relaunch. Idempotent — checks the
+  /// master's myplaces first and only edits + relaunches lg1's GE if it isn't
+  /// already enabled. Returns true iff it relaunched (caller should then wait
+  /// for GE to come back before writing content).
+  Future<bool> ensureMasterLiveRefresh({int seconds = 2}) async {
+    if (!await isConnected()) return false;
+    final probe = await sendCommand(
+      "grep -c 'master\\.kml</href><refreshMode>' "
+      '~/.googleearth/myplaces.kml 2>/dev/null',
+    );
+    if (probe != null && (int.tryParse(probe.trim()) ?? 0) > 0) {
+      debugPrint('SSH: master.kml live-refresh already enabled');
+      return false;
+    }
+    debugPrint('SSH: enabling master.kml live-refresh (one-time) + relaunch lg1');
+    await sendCommand(
+      "sed -i -e '${_masterStripExpr()}' -e '${_masterInjectExpr(seconds)}' "
+      '~/.googleearth/myplaces.kml',
+    );
+    await sendCommand('killall -9 googleearth-bin; google-earth-pro &');
+    return true;
+  }
+
   String _stripExpr(int i) =>
       "/slave_$i.kml/ s#<refreshMode>onInterval</refreshMode>"
       "<refreshInterval>[0-9]*</refreshInterval>##";
