@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../providers/ssh_provider.dart';
+import 'map_sync_test_screen.dart';
 
 // Advanced LG Controls (mockup 19): the 2×3 grid of rig commands, moved out of
 // Home. Relaunch/Reboot/Shutdown/Clear are wired to the SSH provider; Send
@@ -165,6 +166,16 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
                 onPressed: () => run('Test Balloon', notifier.testBalloon),
                 icon: const Icon(Icons.web_asset_rounded),
                 label: const Text('Test Balloon (auto-clears in 10s)'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const MapSyncTestScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.sync_alt_rounded),
+                label: const Text('Test Map Sync'),
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(

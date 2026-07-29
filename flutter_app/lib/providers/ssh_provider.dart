@@ -11,6 +11,7 @@ import '../lg/lg_service.dart';
 import '../models/lg_connection.dart';
 import '../models/location.dart';
 import '../models/rig_config.dart';
+import '../services/maps/map_sync_service.dart';
 import '../services/media/location_media_resolver.dart';
 import 'tour_state_provider.dart';
 
@@ -56,6 +57,12 @@ class SshState {
 @Riverpod(keepAlive: true)
 class SshConnection extends _$SshConnection {
   static const String _prefsKey = 'lg_connection';
+
+  // Google Earth rewrites ~/.googleearth/myplaces.kml on exit, wiping the
+  // injected live-refresh — so ensureMasterLiveRefresh's own probe can think it
+  // "still needs" enabling and relaunch lg1 on EVERY (re)connect. This guard
+  // makes the auto-relaunch happen at most ONCE per app launch, never in a loop.
+  bool _ringRefreshAttempted = false;
 
   @override
   SshState build() {
@@ -126,12 +133,21 @@ class SshConnection extends _$SshConnection {
   }
 
   Future<void> disconnect() async {
+    // Leave the rig CALM: clear overlays, then strip the auto live-refresh we
+    // injected on connect and relaunch lg1 once, so GE stops reloading
+    // master.kml after we're gone (no config lingering post-disconnect).
     try {
+      await LGService.instance.clearLandmarkRing();
+      await LGService.instance.clearBalloon();
       await LGService.instance.clearLogos();
+      await LGService.instance.disableMasterLiveRefresh();
     } catch (e) {
-      debugPrint('SSH: clearLogos on disconnect failed: $e');
+      debugPrint('SSH: disconnect cleanup failed: $e');
     }
+    // We just stripped the refresh → allow the next connect to re-enable it.
+    _ringRefreshAttempted = false;
     await LGService.instance.disconnect();
+    MapSyncService.instance.disable(); // no rig → stop mirroring the phone map
     state = state.copyWith(status: SshStatus.disconnected, errorMessage: null);
   }
 
@@ -319,6 +335,10 @@ class SshConnection extends _$SshConnection {
   }
 
   Future<void> _ensureRingRefresh() async {
+    // Once per app launch only — see [_ringRefreshAttempted]. Prevents the
+    // relaunch-on-every-connect loop that made the rig unusable.
+    if (_ringRefreshAttempted) return;
+    _ringRefreshAttempted = true;
     try {
       await LGService.instance.ensureMasterLiveRefresh();
     } catch (e) {

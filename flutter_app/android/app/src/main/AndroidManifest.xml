@@ -8,6 +8,14 @@
         android:label="Tour Director"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Google Maps SDK for Android key, injected at build time from
+             android/local.properties (MAPS_API_KEY=...) via build.gradle.kts, so
+             it's never committed. Must be a *Maps SDK for Android* key — the
+             .env MAPS_KEY is a Geocoding key and will NOT render tiles. Without a
+             valid key the map is blank on-device; the map→rig sync still fires. -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

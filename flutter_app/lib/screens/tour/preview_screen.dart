@@ -8,16 +8,45 @@ import '../../core/theme/app_colors.dart';
 import '../../models/location.dart';
 import '../../models/tour_flow.dart';
 import '../../providers/ssh_provider.dart';
+import '../../services/maps/map_sync_service.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/film_dialog.dart';
-import '../../shared/widgets/map_placeholder.dart';
+import '../../shared/widgets/sync_map_view.dart';
 
-class PreviewScreen extends ConsumerWidget {
+class PreviewScreen extends ConsumerStatefulWidget {
   const PreviewScreen({super.key, required this.args});
 
   final TourFlowArgs args;
 
-  Future<void> _start(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<PreviewScreen> createState() => _PreviewScreenState();
+}
+
+class _PreviewScreenState extends ConsumerState<PreviewScreen> {
+  // The stop the map is focused on (set by tapping a location card). Null = the
+  // opening "frame all stops" view.
+  TourLocation? _focus;
+
+  @override
+  void dispose() {
+    // Leaving the preview → stop mirroring the phone map to the rig.
+    MapSyncService.instance.disable();
+    super.dispose();
+  }
+
+  /// Turn sync on while the preview is the live screen (idempotent). Called from
+  /// build so it re-arms when we return here after an in-between screen.
+  void _reconcileSync(bool connected) {
+    final svc = MapSyncService.instance;
+    if (connected && !svc.isEnabled) {
+      svc.updateRigCount(ref.read(sshConnectionProvider).config.totalScreens);
+      svc.enable();
+    } else if (!connected && svc.isEnabled) {
+      svc.disable();
+    }
+  }
+
+  Future<void> _start(BuildContext context) async {
     if (!ref.read(sshConnectionProvider).isConnected) {
       await _showConnectDialog(context);
       return;
@@ -32,7 +61,7 @@ class PreviewScreen extends ConsumerWidget {
     unawaited(
       ref
           .read(sshConnectionProvider.notifier)
-          .flyGeneratedTour(args.locations)
+          .flyGeneratedTour(widget.args.locations)
           .catchError((Object e) {
             debugPrint('Preview: rig flight error: $e');
             return 0;
@@ -40,7 +69,10 @@ class PreviewScreen extends ConsumerWidget {
     );
 
     if (!context.mounted) return;
-    context.push('/home/active', extra: args.copyWith(generateFilm: choice));
+    context.push(
+      '/home/active',
+      extra: widget.args.copyWith(generateFilm: choice),
+    );
   }
 
   Future<void> _showConnectDialog(BuildContext context) {
@@ -81,9 +113,13 @@ class PreviewScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final locations = args.locations;
+    final locations = widget.args.locations;
+    final connected = ref.watch(
+      sshConnectionProvider.select((s) => s.isConnected),
+    );
+    _reconcileSync(connected);
 
     return Scaffold(
       body: Column(
@@ -105,13 +141,19 @@ class PreviewScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => context.push('/home/inspection', extra: args),
-                  child: MapPlaceholder(
-                    height: 200,
-                    markerCount: locations.length,
-                    label: 'Tap to inspect',
+                SyncMapView(
+                  locations: locations,
+                  height: 200,
+                  focusLocation: _focus,
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () =>
+                        context.push('/home/inspection', extra: widget.args),
+                    icon: const Icon(Icons.travel_explore_rounded, size: 18),
+                    label: const Text('Inspect locations'),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -125,12 +167,18 @@ class PreviewScreen extends ConsumerWidget {
                     childAspectRatio: 1.45,
                   ),
                   itemCount: locations.length,
-                  itemBuilder: (_, i) =>
-                      _LocationCard(index: i + 1, location: locations[i]),
+                  itemBuilder: (_, i) => _LocationCard(
+                    index: i + 1,
+                    location: locations[i],
+                    selected: identical(_focus, locations[i]),
+                    onTap: locations[i].latitude == null
+                        ? null
+                        : () => setState(() => _focus = locations[i]),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 FilledButton.icon(
-                  onPressed: () => _start(context, ref),
+                  onPressed: () => _start(context),
                   icon: const Icon(Icons.rocket_launch_rounded, size: 20),
                   label: const Text('Start Immersive Tour'),
                 ),
@@ -153,10 +201,17 @@ class PreviewScreen extends ConsumerWidget {
 }
 
 class _LocationCard extends StatelessWidget {
-  const _LocationCard({required this.index, required this.location});
+  const _LocationCard({
+    required this.index,
+    required this.location,
+    this.onTap,
+    this.selected = false,
+  });
 
   final int index;
   final TourLocation location;
+  final VoidCallback? onTap;
+  final bool selected;
 
   static const _colors = [
     AppColors.googleRed,
@@ -170,14 +225,22 @@ class _LocationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = _colors[(index - 1) % _colors.length];
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Column(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outlineVariant,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.place, color: color),
@@ -205,7 +268,8 @@ class _LocationCard extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

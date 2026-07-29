@@ -16,6 +16,7 @@ import '../../providers/library_provider.dart';
 import '../../providers/ssh_provider.dart';
 import '../../shared/widgets/location_image.dart';
 import '../../shared/widgets/map_placeholder.dart';
+import 'virtual_replay_screen.dart';
 
 /// Saved tour detail (mockups 15 & 16): hero, replay, highlights album, route
 /// path, and Share / Export KML / Remove. Replay re-sends the saved KML to LG
@@ -24,10 +25,6 @@ class SavedDetailScreen extends ConsumerWidget {
   const SavedDetailScreen({super.key, required this.tour});
 
   final SavedTour tour;
-
-  void _stub(BuildContext context, String label) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text('$label — coming soon')));
 
   static String _category(SavedTour tour) {
     final counts = <String, int>{};
@@ -258,7 +255,14 @@ class SavedDetailScreen extends ConsumerWidget {
             sliver: SliverList.list(
               children: [
                 FilledButton.icon(
-                  onPressed: () => _stub(context, 'Virtual replay'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => VirtualReplayScreen(
+                        title: tour.title,
+                        locations: tour.locations,
+                      ),
+                    ),
+                  ),
                   icon: const Icon(Icons.play_circle_outline),
                   label: const Text('Start Virtual Replay'),
                 ),

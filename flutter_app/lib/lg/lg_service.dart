@@ -155,6 +155,16 @@ class LGService {
     }
   }
 
+  /// Strip the auto live-refresh + relaunch lg1 (inverse of the above), so the
+  /// rig stops reloading master.kml when the app disconnects.
+  Future<void> disableMasterLiveRefresh() async {
+    try {
+      await _ssh.disableMasterLiveRefresh();
+    } catch (e) {
+      debugPrint('[LandmarkRing] disableMasterLiveRefresh failed: $e');
+    }
+  }
+
   Future<void> showLandmarkRing(
     double lat,
     double lng, {

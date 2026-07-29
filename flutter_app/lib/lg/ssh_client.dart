@@ -445,6 +445,17 @@ class SSHConnection {
     return true;
   }
 
+  /// Inverse of [ensureMasterLiveRefresh]: strip the injected master.kml
+  /// onInterval from myplaces and relaunch lg1 once, so GE stops auto-reloading
+  /// and the rig is left calm (used on disconnect — no lingering refresh config).
+  Future<void> disableMasterLiveRefresh() async {
+    if (!await isConnected()) return;
+    await sendCommand(
+      "sed -i -e '${_masterStripExpr()}' ~/.googleearth/myplaces.kml",
+    );
+    await sendCommand('killall -9 googleearth-bin; google-earth-pro &');
+  }
+
   String _stripExpr(int i) =>
       "/slave_$i.kml/ s#<refreshMode>onInterval</refreshMode>"
       "<refreshInterval>[0-9]*</refreshInterval>##";

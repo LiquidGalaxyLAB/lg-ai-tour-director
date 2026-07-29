@@ -9,9 +9,10 @@ import '../../models/location.dart';
 import '../../models/tour_flow.dart';
 import '../../providers/ssh_provider.dart';
 import '../../providers/tour_state_provider.dart';
+import '../../services/maps/map_sync_service.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/location_image.dart';
-import '../../shared/widgets/map_placeholder.dart';
+import '../../shared/widgets/sync_map_view.dart';
 
 class ActiveTourScreen extends ConsumerStatefulWidget {
   const ActiveTourScreen({super.key, required this.args});
@@ -36,6 +37,12 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
   }
 
   Future<void> _init() async {
+    // During the tour the RIG owns the camera (fly-in → orbit → settle), so map
+    // sync starts OFF. It's turned on only while PAUSED (see the Pause button),
+    // where the rig loop is holding and free exploration is safe — which also
+    // means it's never on during the orbit. Nothing here touches the tour loop.
+    MapSyncService.instance.disable();
+
     final prefs = await SharedPreferences.getInstance();
     _voiceNarration = prefs.getBool('pref_voice_narration') ?? true;
     if (!mounted) return;
@@ -100,7 +107,17 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
   @override
   void dispose() {
     _tts.stop();
+    MapSyncService.instance.disable();
     super.dispose();
+  }
+
+  /// Enable map→rig sync (used while paused). Pulls the rig's screen count so
+  /// the altitude conversion matches this rig.
+  void _enableSync() {
+    MapSyncService.instance.updateRigCount(
+      ref.read(sshConnectionProvider).config.totalScreens,
+    );
+    MapSyncService.instance.enable();
   }
 
   @override
@@ -176,7 +193,12 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  const MapPlaceholder(height: 160, synced: true),
+                  SyncMapView(
+                    locations: widget.args.locations,
+                    height: 160,
+                    frameAllLocations: false,
+                    focusLocation: loc,
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -187,9 +209,12 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                             if (view.paused) {
                               n.resume();
                               _speak(sceneIndex); // restart current narration
+                              MapSyncService.instance.disable();
                             } else {
                               n.pause();
                               _tts.stop();
+                              // Paused → free to explore; mirror pans to the rig.
+                              _enableSync();
                             }
                           },
                           icon: Icon(
@@ -210,6 +235,9 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                                       .read(tourStateProvider.notifier)
                                       .requestNext();
                                   _tts.stop();
+                                  // Skipping resumes the flight → rig owns the
+                                  // camera again, so stop mirroring.
+                                  MapSyncService.instance.disable();
                                 },
                           icon: const Icon(Icons.skip_next_rounded),
                           label: const Text('Next Scene'),

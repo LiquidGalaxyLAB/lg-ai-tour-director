@@ -1,21 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/tour_flow.dart';
-import '../../shared/widgets/map_placeholder.dart';
+import '../../providers/ssh_provider.dart';
+import '../../services/maps/map_sync_service.dart';
+import '../../shared/widgets/sync_map_view.dart';
 
-/// Inspection Mode (mockup 6): pan a map of the tour's stops; on a real rig the
-/// LG mirrors the navigation. Live sync is stubbed until the rig view is wired.
-class InspectionScreen extends StatefulWidget {
+/// Inspection Mode (mockup 6): step through the tour's stops on a real satellite
+/// map; the map flies to each stop (and mirrors to the LG rig in real time).
+class InspectionScreen extends ConsumerStatefulWidget {
   const InspectionScreen({super.key, required this.args});
 
   final TourFlowArgs args;
 
   @override
-  State<InspectionScreen> createState() => _InspectionScreenState();
+  ConsumerState<InspectionScreen> createState() => _InspectionScreenState();
 }
 
-class _InspectionScreenState extends State<InspectionScreen> {
+class _InspectionScreenState extends ConsumerState<InspectionScreen> {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Free exploration screen → mirror the phone map to the rig while open.
+    final ssh = ref.read(sshConnectionProvider);
+    if (ssh.isConnected) {
+      MapSyncService.instance.updateRigCount(ssh.config.totalScreens);
+      MapSyncService.instance.enable();
+    }
+  }
+
+  @override
+  void dispose() {
+    MapSyncService.instance.disable();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,10 +73,10 @@ class _InspectionScreenState extends State<InspectionScreen> {
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: MapPlaceholder(
-                  height: double.infinity,
-                  markerCount: locations.length,
-                  synced: true,
+                child: SyncMapView(
+                  locations: locations,
+                  frameAllLocations: false,
+                  focusLocation: loc, // flies to the inspected stop
                 ),
               ),
               const SizedBox(height: 8),
