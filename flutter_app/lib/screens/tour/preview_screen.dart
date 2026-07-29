@@ -12,6 +12,7 @@ import '../../services/maps/map_sync_service.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/film_dialog.dart';
 import '../../shared/widgets/sync_map_view.dart';
+import 'fullscreen_map_screen.dart';
 
 class PreviewScreen extends ConsumerStatefulWidget {
   const PreviewScreen({super.key, required this.args});
@@ -145,6 +146,14 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
                   locations: locations,
                   height: 200,
                   focusLocation: _focus,
+                  onExpand: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => FullscreenMapScreen(
+                        locations: locations,
+                        focus: _focus,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Align(

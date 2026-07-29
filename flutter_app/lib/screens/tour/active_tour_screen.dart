@@ -13,6 +13,7 @@ import '../../services/maps/map_sync_service.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/location_image.dart';
 import '../../shared/widgets/sync_map_view.dart';
+import 'fullscreen_map_screen.dart';
 
 class ActiveTourScreen extends ConsumerStatefulWidget {
   const ActiveTourScreen({super.key, required this.args});
@@ -198,6 +199,15 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                     height: 160,
                     frameAllLocations: false,
                     focusLocation: loc,
+                    onExpand: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => FullscreenMapScreen(
+                          locations: widget.args.locations,
+                          focus: loc,
+                          pauseTour: true, // pause the flight while exploring
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Row(

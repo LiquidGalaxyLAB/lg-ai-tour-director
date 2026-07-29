@@ -61,7 +61,9 @@ class SshConnection extends _$SshConnection {
   // Google Earth rewrites ~/.googleearth/myplaces.kml on exit, wiping the
   // injected live-refresh — so ensureMasterLiveRefresh's own probe can think it
   // "still needs" enabling and relaunch lg1 on EVERY (re)connect. This guard
-  // makes the auto-relaunch happen at most ONCE per app launch, never in a loop.
+  // makes the auto-relaunch happen at most ONCE per app launch — it is set on
+  // the first connect and NEVER reset (not even on disconnect), so reconnects
+  // on a flaky rig VM can't trigger a relaunch storm.
   bool _ringRefreshAttempted = false;
 
   @override
@@ -133,19 +135,20 @@ class SshConnection extends _$SshConnection {
   }
 
   Future<void> disconnect() async {
-    // Leave the rig CALM: clear overlays, then strip the auto live-refresh we
-    // injected on connect and relaunch lg1 once, so GE stops reloading
-    // master.kml after we're gone (no config lingering post-disconnect).
+    // Leave the rig calm WITHOUT another relaunch. Clear the overlays and strip
+    // the refresh from disk (relaunch:false) so it won't survive GE's next
+    // restart; GE keeps reloading an EMPTY master.kml until then (invisible).
+    // NOTE: we deliberately do NOT reset _ringRefreshAttempted — the enable
+    // relaunch happens at most ONCE per app launch, never again on reconnect,
+    // so a flaky VM can't trigger a relaunch storm.
     try {
       await LGService.instance.clearLandmarkRing();
       await LGService.instance.clearBalloon();
       await LGService.instance.clearLogos();
-      await LGService.instance.disableMasterLiveRefresh();
+      await LGService.instance.disableMasterLiveRefresh(relaunch: false);
     } catch (e) {
       debugPrint('SSH: disconnect cleanup failed: $e');
     }
-    // We just stripped the refresh → allow the next connect to re-enable it.
-    _ringRefreshAttempted = false;
     await LGService.instance.disconnect();
     MapSyncService.instance.disable(); // no rig → stop mirroring the phone map
     state = state.copyWith(status: SshStatus.disconnected, errorMessage: null);

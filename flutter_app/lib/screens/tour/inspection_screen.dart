@@ -5,6 +5,7 @@ import '../../models/tour_flow.dart';
 import '../../providers/ssh_provider.dart';
 import '../../services/maps/map_sync_service.dart';
 import '../../shared/widgets/sync_map_view.dart';
+import 'fullscreen_map_screen.dart';
 
 /// Inspection Mode (mockup 6): step through the tour's stops on a real satellite
 /// map; the map flies to each stop (and mirrors to the LG rig in real time).
@@ -77,6 +78,14 @@ class _InspectionScreenState extends ConsumerState<InspectionScreen> {
                   locations: locations,
                   frameAllLocations: false,
                   focusLocation: loc, // flies to the inspected stop
+                  onExpand: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => FullscreenMapScreen(
+                        locations: locations,
+                        focus: loc,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),

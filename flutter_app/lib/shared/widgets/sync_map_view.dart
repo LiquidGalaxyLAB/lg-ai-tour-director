@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -16,6 +18,7 @@ class SyncMapView extends ConsumerStatefulWidget {
     this.frameAllLocations = true,
     this.focusLocation,
     this.showSyncChip = true,
+    this.onExpand,
   });
 
   final List<TourLocation> locations;
@@ -27,6 +30,10 @@ class SyncMapView extends ConsumerStatefulWidget {
   final TourLocation? focusLocation;
 
   final bool showSyncChip;
+
+  /// When set, a fullscreen button is shown (bottom-left). Tapping it should
+  /// open a full-screen explore map (see FullscreenMapScreen).
+  final VoidCallback? onExpand;
 
   @override
   ConsumerState<SyncMapView> createState() => _SyncMapViewState();
@@ -128,14 +135,20 @@ class _SyncMapViewState extends ConsumerState<SyncMapView> {
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
       compassEnabled: true,
+      // Claim drag gestures so an embedding scroll view (e.g. the Preview /
+      // Saved lists) can't swallow the pan before the map sees it — otherwise
+      // the camera never moves and nothing syncs to the rig.
+      gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+        Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
+      },
       onMapCreated: (c) {
         if (!_controller.isCompleted) _controller.complete(c);
         if (widget.focusLocation == null && widget.frameAllLocations) {
           _frameAll();
         }
       },
-      onCameraMove: MapSyncService.instance.onCameraMove,
-      onCameraIdle: MapSyncService.instance.onCameraIdle,
+      onCameraMove: (pos) => MapSyncService.instance.onCameraMove(pos),
+      onCameraIdle: () => MapSyncService.instance.onCameraIdle(),
     );
 
     final content = Stack(
@@ -146,6 +159,24 @@ class _SyncMapViewState extends ConsumerState<SyncMapView> {
             right: 12,
             top: 12,
             child: _SyncChip(connected: connected),
+          ),
+        if (widget.onExpand != null)
+          Positioned(
+            left: 12,
+            bottom: 12,
+            child: Material(
+              color: Colors.white,
+              shape: const CircleBorder(),
+              elevation: 2,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: widget.onExpand,
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(Icons.fullscreen, size: 22, color: Colors.black87),
+                ),
+              ),
+            ),
           ),
       ],
     );
