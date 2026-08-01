@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../kml/generator.dart';
 import '../../models/location.dart';
 import '../../models/tour_flow.dart';
 import '../../providers/ssh_provider.dart';
@@ -121,6 +122,23 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
     MapSyncService.instance.enable();
   }
 
+  Future<void> _setNarration(bool on) async {
+    setState(() => _voiceNarration = on);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('pref_voice_narration', on);
+    } catch (_) {}
+    if (!mounted) return;
+    if (on) {
+      // Pick up the current scene's voice mid-tour.
+      final total = widget.args.locations.length;
+      final idx = ref.read(tourStateProvider).currentIndex.clamp(0, total - 1);
+      _speak(idx);
+    } else {
+      await _tts.stop(); // silence now; the subtitle card stays visible
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -172,9 +190,9 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                         child: _InfoCard(
                           icon: Icons.center_focus_strong,
                           title: 'LOOKAT TARGET',
-                          rows: const [
-                            ('RANGE', '600m'),
-                            ('TILT', '60°'),
+                          rows: [
+                            ('RANGE', '${KmlGenerator.orbitRange.toInt()}m'),
+                            ('TILT', '${KmlGenerator.orbitTilt.toInt()}°'),
                             ('HEADING', '0°'),
                           ],
                         ),
@@ -184,10 +202,11 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                         child: _InfoCard(
                           icon: Icons.threesixty,
                           title: 'CAMERA ORBIT',
-                          rows: const [
-                            ('RADIUS', '250m'),
-                            ('ALTITUDE', '400m'),
-                            ('TILT', '65°'),
+                          // Real server-side orbit loop (orbitLoopCommand).
+                          rows: [
+                            ('SWEEP', '360°'),
+                            ('STEP', '${KmlGenerator.orbitLoopStepDegrees}°'),
+                            ('TILT', '${KmlGenerator.orbitTilt.toInt()}°'),
                           ],
                         ),
                       ),
@@ -254,6 +273,18 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _setNarration(!_voiceNarration),
+                    icon: Icon(
+                      _voiceNarration
+                          ? Icons.volume_up_rounded
+                          : Icons.volume_off_rounded,
+                    ),
+                    label: Text(
+                      _voiceNarration ? 'Narration: On' : 'Narration: Off',
+                    ),
                   ),
                   const SizedBox(height: 12),
                   FilledButton.icon(
