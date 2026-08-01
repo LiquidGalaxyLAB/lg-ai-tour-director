@@ -439,7 +439,15 @@ class SshConnection extends _$SshConnection {
       for (var j = 0; j < geocoded.length && !_stopRequested; j++) {
         final l = geocoded[j];
         final lat = l.latitude!, lng = l.longitude!;
-        final frameQuery = KmlGenerator.orbitFrameQuery(lat, lng);
+        // Fly-in / reframe view: 45° tilt + closer 600 m range so the landmark
+        // is seen obliquely (3D buildings + the extruded ring), not cenital.
+        // The ORBIT keeps its own tuned orbitTilt/orbitRange — untouched.
+        final frameQuery = KmlGenerator.orbitFrameQuery(
+          lat,
+          lng,
+          tilt: 45,
+          range: 600,
+        );
 
         // Boundary: hold here if paused, BEFORE flying to this landmark (so a
         // pause keeps you on the previous stop, not mid-transition).
@@ -462,7 +470,7 @@ class SshConnection extends _$SshConnection {
 
         // Arrived — narration + ring (both persist through the orbit + settle).
         tour.enterScene(j);
-        unawaited(LGService.instance.showLandmarkRing(lat, lng));
+        unawaited(LGService.instance.showLandmarkRing(lat, lng, colorIndex: j));
 
         // ORBIT — normally a single UNINTERRUPTIBLE server-side loop, but the
         // user can now Pause/Next/End it via the SAME stop-sentinel End Tour

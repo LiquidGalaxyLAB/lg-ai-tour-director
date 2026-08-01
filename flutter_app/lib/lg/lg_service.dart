@@ -170,6 +170,7 @@ class LGService {
     double lng, {
     double innerRadius = 150,
     double outerRadius = 200,
+    int colorIndex = 0,
   }) async {
     try {
       final kml = KmlGenerator.buildLandmarkRingKml(
@@ -177,8 +178,13 @@ class LGService {
         lng,
         innerRadius: innerRadius,
         outerRadius: outerRadius,
+        colorIndex: colorIndex,
       );
       await _ssh.sendCommand("echo '$kml' > $_masterKmlPath");
+      debugPrint(
+        '[LandmarkRing] location $colorIndex color: '
+        '${KmlGenerator.ringColorName(colorIndex)}',
+      );
       debugPrint('[LandmarkRing] show ($lat, $lng) → master.kml');
     } catch (e) {
       debugPrint('[LandmarkRing] error (show): $e');
