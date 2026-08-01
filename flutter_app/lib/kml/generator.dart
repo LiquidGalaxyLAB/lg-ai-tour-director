@@ -387,6 +387,9 @@ $flyToBlocks      </gx:Playlist>
   static String ringColorName(int colorIndex) =>
       _ringColors[colorIndex % _ringColors.length].$1;
 
+  /// Number of ring colours available — for random per-landmark selection.
+  static int get ringColorCount => _ringColors.length;
+
   static String buildLandmarkRingKml(
     double lat,
     double lng, {

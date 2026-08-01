@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -470,7 +471,15 @@ class SshConnection extends _$SshConnection {
 
         // Arrived — narration + ring (both persist through the orbit + settle).
         tour.enterScene(j);
-        unawaited(LGService.instance.showLandmarkRing(lat, lng, colorIndex: j));
+        // Random colour per landmark (repeats allowed) so it's not always
+        // yellow-first; picked once here so it stays stable for this stop.
+        unawaited(
+          LGService.instance.showLandmarkRing(
+            lat,
+            lng,
+            colorIndex: Random().nextInt(KmlGenerator.ringColorCount),
+          ),
+        );
 
         // ORBIT — normally a single UNINTERRUPTIBLE server-side loop, but the
         // user can now Pause/Next/End it via the SAME stop-sentinel End Tour
