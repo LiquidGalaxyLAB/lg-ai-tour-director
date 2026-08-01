@@ -396,7 +396,8 @@ $flyToBlocks      </gx:Playlist>
   }) {
     final radius = (innerRadius + outerRadius) / 2;
 
-    final coords = _ringCoordinates(lat, lng, radius, altitude: 120);
+    final wallHeight = (radius / 3).round();
+    final coords = _ringCoordinates(lat, lng, radius, altitude: wallHeight);
     final (_, bgr) = _ringColors[colorIndex % _ringColors.length];
     final strokes = StringBuffer();
     for (var i = 0; i < _ringGlowLayers.length; i++) {
