@@ -6,10 +6,10 @@ import 'package:flutter/painting.dart';
 class BalloonImageMaker {
   BalloonImageMaker._();
 
-  static const double w = 380;
-  static const double h = 500;
-  static const double imageH = 200;
-  static const double pad = 14;
+  static const double w = 494;
+  static const double h = 650;
+  static const double imageH = 260;
+  static const double pad = 18;
 
   static const Color _bg = Color(0xFF1A1A2E);
   static const Color _title = Color(0xFFFFFFFF);
@@ -54,7 +54,7 @@ class BalloonImageMaker {
 
     final name = _paragraph(
       locationName,
-      size: 22,
+      size: 29,
       color: _title,
       weight: FontWeight.bold,
       maxWidth: contentWidth,
@@ -66,7 +66,7 @@ class BalloonImageMaker {
 
     final sub = _paragraph(
       locationSubtitle,
-      size: 12,
+      size: 16,
       color: _subtitle,
       maxWidth: contentWidth,
       maxLines: 1,
@@ -80,9 +80,9 @@ class BalloonImageMaker {
 
     // Footer sits in a reserved zone at the bottom; cap the description so it
     // can never run into it (ellipsise the overflow).
-    const footerSize = 10.0;
+    const footerSize = 13.0;
     const footerZone = footerSize * 1.3 + 12; // text height + bottom gap
-    const descSize = 17.0;
+    const descSize = 22.0;
     const descLineHeight = descSize * 1.55;
     final descMaxLines = ((h - y - footerZone) / descLineHeight).floor().clamp(
       1,

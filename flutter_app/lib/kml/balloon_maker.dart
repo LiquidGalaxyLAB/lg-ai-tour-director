@@ -3,13 +3,7 @@ import 'package:flutter/foundation.dart';
 class BalloonMaker {
   BalloonMaker._();
 
-  // Card width as a FRACTION of the screen so it scales with any rig's
-  // resolution (pixel sizing looked tiny on the high-res GalaxyLAB panels).
-  // Height is auto (`y="0"`) so the portrait aspect is preserved — never
-  // stretched. Tune this one number on the rig: bigger = larger card.
-  // 0.5 covered the whole landmark on the rig; 0.42 keeps it readable while the
-  // scene stays visible behind it.
-  static const double _widthFraction = 0.42;
+  static const double _widthFraction = 0.546;
 
   static String imageOverlay({required String host, required String fileName}) {
     final kml =
