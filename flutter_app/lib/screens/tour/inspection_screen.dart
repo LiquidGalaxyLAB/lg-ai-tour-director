@@ -78,6 +78,7 @@ class _InspectionScreenState extends ConsumerState<InspectionScreen> {
                   locations: locations,
                   frameAllLocations: false,
                   focusLocation: loc, // flies to the inspected stop
+                  showSyncChip: false,
                   onExpand: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => FullscreenMapScreen(
@@ -120,18 +121,6 @@ class _InspectionScreenState extends ConsumerState<InspectionScreen> {
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               )),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.circle,
-                                  size: 8, color: Color(0xFF34A853)),
-                              const SizedBox(width: 6),
-                              Text('Synced with Liquid Galaxy',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: const Color(0xFF34A853),
-                                  )),
-                            ],
-                          ),
                         ],
                       ),
                     ),

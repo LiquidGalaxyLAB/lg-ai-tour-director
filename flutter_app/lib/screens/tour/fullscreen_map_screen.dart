@@ -7,25 +7,21 @@ import '../../providers/tour_state_provider.dart';
 import '../../services/maps/map_sync_service.dart';
 import '../../shared/widgets/sync_map_view.dart';
 
-/// Full-screen satellite map for free exploration, mirrored to the rig live.
-///
-/// Opened from the small maps (Preview / Inspection / Active Tour). When opened
-/// mid-tour ([pauseTour] true) it auto-PAUSES the flight so the rig stops
-/// driving the camera and your pans actually reflect on GE — then resumes when
-/// you close it. The rig owns `/tmp/query.txt` during an unpaused tour, so
-/// without the pause your writes would be instantly overwritten.
 class FullscreenMapScreen extends ConsumerStatefulWidget {
   const FullscreenMapScreen({
     super.key,
     required this.locations,
     this.focus,
     this.pauseTour = false,
+    this.syncToLg = true,
     this.title = 'Explore · move the map to fly LG',
   });
 
   final List<TourLocation> locations;
   final TourLocation? focus;
   final bool pauseTour;
+
+  final bool syncToLg;
   final String title;
 
   @override
@@ -40,9 +36,11 @@ class _FullscreenMapScreenState extends ConsumerState<FullscreenMapScreen> {
   void initState() {
     super.initState();
     final ssh = ref.read(sshConnectionProvider);
-    if (ssh.isConnected) {
+    if (widget.syncToLg && ssh.isConnected) {
       MapSyncService.instance.updateRigCount(ssh.config.totalScreens);
       MapSyncService.instance.enable();
+    } else {
+      MapSyncService.instance.disable();
     }
     // Pause the flight while exploring (only if it wasn't already paused).
     if (widget.pauseTour) {
@@ -73,6 +71,7 @@ class _FullscreenMapScreenState extends ConsumerState<FullscreenMapScreen> {
         locations: widget.locations,
         focusLocation: widget.focus,
         frameAllLocations: widget.focus == null,
+        showSyncChip: widget.syncToLg, // no "Synced" chip when phone-only
       ),
     );
   }

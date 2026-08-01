@@ -35,16 +35,13 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
     super.dispose();
   }
 
-  /// Turn sync on while the preview is the live screen (idempotent). Called from
-  /// build so it re-arms when we return here after an in-between screen.
-  void _reconcileSync(bool connected) {
-    final svc = MapSyncService.instance;
-    if (connected && !svc.isEnabled) {
-      svc.updateRigCount(ref.read(sshConnectionProvider).config.totalScreens);
-      svc.enable();
-    } else if (!connected && svc.isEnabled) {
-      svc.disable();
-    }
+  /// Preview must NOT mirror to the rig (Andreu: pre-tour exploration stays on
+  /// the phone). The map still pans/animates locally — MapSyncService simply
+  /// stays disabled, so its idle handler is a silent no-op and nothing reaches
+  /// LG. We proactively turn it off here in case a previous screen (e.g.
+  /// Inspection) left it enabled.
+  void _ensureSyncOff() {
+    if (MapSyncService.instance.isEnabled) MapSyncService.instance.disable();
   }
 
   Future<void> _start(BuildContext context) async {
@@ -117,10 +114,7 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final locations = widget.args.locations;
-    final connected = ref.watch(
-      sshConnectionProvider.select((s) => s.isConnected),
-    );
-    _reconcileSync(connected);
+    _ensureSyncOff();
 
     return Scaffold(
       body: Column(
@@ -146,11 +140,14 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
                   locations: locations,
                   height: 200,
                   focusLocation: _focus,
+                  showSyncChip: false, // preview doesn't mirror to LG
                   onExpand: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => FullscreenMapScreen(
                         locations: locations,
                         focus: _focus,
+                        syncToLg: false, // stay on the phone during preview
+                        title: 'Explore locations',
                       ),
                     ),
                   ),
