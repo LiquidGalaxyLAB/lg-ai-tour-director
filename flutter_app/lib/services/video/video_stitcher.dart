@@ -5,6 +5,7 @@ import 'package:ffmpeg_kit_flutter_min/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_min/return_code.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../models/video_generation_result.dart';
 
@@ -103,15 +104,22 @@ class VideoStitcher {
     }
   }
 
-  /// Copy the finished film into the device Downloads folder and return the
-  /// saved path.
   static Future<String> saveToDownloads(String sourcePath) async {
     final ts = DateTime.now().millisecondsSinceEpoch;
     final name = 'TourDirectorFilm_$ts.mp4';
 
-    // Android public Downloads; fall back to app external/documents dir.
     Directory? dir;
     if (Platform.isAndroid) {
+      final status = await Permission.manageExternalStorage.request();
+      if (!status.isGranted) {
+        throw VideoGenerationException(
+          type: VideoGenerationError.unknown,
+          rawMessage: 'Permission denied',
+          userMessage:
+              'Storage permission is required to save the film to your '
+              'Downloads folder. Please grant it in your device settings.',
+        );
+      }
       const downloads = '/storage/emulated/0/Download';
       if (await Directory(downloads).exists()) dir = Directory(downloads);
       dir ??= await getExternalStorageDirectory();
