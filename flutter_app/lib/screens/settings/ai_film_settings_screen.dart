@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/ai_film_provider.dart';
+import '../../models/video_generation_result.dart';
 import '../../models/video_generation_settings.dart';
 import '../../services/video/video_cost.dart';
 import '../../services/video/video_provider_factory.dart';
@@ -123,8 +124,9 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
           ? _falModels[_falModelIndex].$2
           : _modelController.text.trim();
     }
-    if (_provider == VideoProviderType.custom)
+    if (_provider == VideoProviderType.custom) {
       return _modelController.text.trim();
+    }
     return '';
   }
 
@@ -153,15 +155,14 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
 
   Future<void> _test() async {
     setState(() => _testing = true);
-    bool ok;
+    var ok = false;
     String? err;
     try {
       final provider = VideoProviderFactory.create(_buildSettings());
       ok = await provider.testConnection();
-    } on UnimplementedError {
-      ok = true; // stub — real connection test lands in Prompt 3
+    } on VideoGenerationException catch (e) {
+      err = e.userMessage;
     } catch (e) {
-      ok = false;
       err = e.toString();
     }
     if (!mounted) return;
