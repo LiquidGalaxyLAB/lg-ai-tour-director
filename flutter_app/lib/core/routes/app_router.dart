@@ -14,6 +14,7 @@ import '../../screens/saved/saved_detail_screen.dart';
 import '../../screens/saved/saved_screen.dart';
 import '../../screens/splash/splash_screen.dart';
 import '../../screens/settings/advanced_lg_controls_screen.dart';
+import '../../screens/settings/ai_film_settings_screen.dart';
 import '../../screens/settings/ai_model_screen.dart';
 import '../../screens/settings/language_screen.dart';
 import '../../screens/settings/lg_connection_screen.dart';
@@ -145,6 +146,13 @@ final GoRouter appRouter = GoRouter(
       path: '/settings/ai',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AiModelScreen(),
+    ),
+    GoRoute(
+      path: '/settings/ai-film',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => AiFilmSettingsScreen(
+        returnToTour: state.uri.queryParameters['returnToTour'] == 'true',
+      ),
     ),
     GoRoute(
       path: '/help/ai-setup',

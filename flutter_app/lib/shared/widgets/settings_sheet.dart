@@ -81,6 +81,12 @@ class _SettingsSheet extends ConsumerWidget {
               onTap: () => go('/settings/ai'),
             ),
             _SettingsRow(
+              icon: Icons.movie_creation_outlined,
+              title: 'AI Film',
+              subtitle: 'Generate a cinematic video of your tour',
+              onTap: () => go('/settings/ai-film'),
+            ),
+            _SettingsRow(
               icon: Icons.movie_filter_outlined,
               title: 'Tour Preferences',
               subtitle: 'Narration and film settings',
