@@ -96,7 +96,9 @@ class VllmOmniProvider extends VideoProvider {
       try {
         final r = await _dio.get('$_root$path', options: _opts);
         if (r.statusCode == 200) return true;
-      } on DioException {}
+      } on DioException {
+        continue;
+      }
     }
     debugPrint('[VllmOmni] cannot reach local server at $_root');
     throw VideoGenerationException(

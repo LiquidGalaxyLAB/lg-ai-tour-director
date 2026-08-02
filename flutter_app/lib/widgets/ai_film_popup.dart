@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../models/location.dart';
 import '../models/video_generation_settings.dart';
 import '../providers/ai_film_provider.dart';
 import '../services/video/video_cost.dart';
 
-/// Post-tour bottom sheet offering AI Film. Returns `true` if the user chose
-/// **Generate Film** (the caller runs generation — wired in Prompt 4), else
-/// `false`/null. Shows nothing when AI Film is disabled.
-///
-/// Not wired to any screen yet — that's Prompt 4.
-Future<bool?> showAiFilmPopup(
+/// What the user chose in the post-tour AI Film sheet.
+enum AiFilmChoice { generate, setUp, dismiss }
+
+/// Post-tour bottom sheet offering AI Film. Returns the user's [AiFilmChoice]
+/// (the caller handles navigation). Shows nothing when AI Film is disabled.
+Future<AiFilmChoice?> showAiFilmPopup(
   BuildContext context,
   WidgetRef ref, {
   required List<TourLocation> locations,
 }) {
   final settings = ref.read(aiFilmProvider).settings;
-  if (!settings.isEnabled) return Future<bool?>.value(false); // don't show
-  return showModalBottomSheet<bool>(
+  if (!settings.isEnabled) {
+    return Future<AiFilmChoice?>.value(AiFilmChoice.dismiss); // don't show
+  }
+  return showModalBottomSheet<AiFilmChoice>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
@@ -61,35 +62,41 @@ class AiFilmPopup extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             if (ready) ...[
-              _costLine(context, settings.providerType, settings.modelId,
-                  settings.durationPerLocationSeconds, locations.length),
+              _costLine(
+                context,
+                settings.providerType,
+                settings.modelId,
+                settings.durationPerLocationSeconds,
+                locations.length,
+              ),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => Navigator.of(context).pop(true),
+                  onPressed: () =>
+                      Navigator.of(context).pop(AiFilmChoice.generate),
                   icon: const Icon(Icons.movie_creation_rounded),
                   label: const Text('Generate Film'),
                 ),
               ),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () =>
+                    Navigator.of(context).pop(AiFilmChoice.dismiss),
                 child: const Text('Maybe Later'),
               ),
             ] else ...[
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pop(false);
-                    context.push('/settings/ai-film?returnToTour=true');
-                  },
+                  onPressed: () =>
+                      Navigator.of(context).pop(AiFilmChoice.setUp),
                   icon: const Icon(Icons.settings_rounded),
                   label: const Text('Set Up AI Film'),
                 ),
               ),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () =>
+                    Navigator.of(context).pop(AiFilmChoice.dismiss),
                 child: const Text('Skip'),
               ),
             ],

@@ -52,6 +52,8 @@ dependencies:
   share_plus: ^13.2.0
   url_launcher: ^6.3.2
   crypto: ^3.0.6 # Kling HMAC-SHA256 JWT signing (dart_jsonwebtoken conflicts with dartssh2)
+  ffmpeg_kit_flutter_min: ^6.0.3 # MP4 concat stitching (min build — no re-encode needed)
+  video_player: ^2.9.2 # AI Film playback
 
 dev_dependencies:
   flutter_test:

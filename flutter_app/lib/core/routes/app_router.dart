@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/location.dart';
 import '../../models/saved_tour.dart';
 import '../../models/tour_flow.dart';
 import '../../screens/dev/theme_preview_screen.dart';
@@ -21,6 +22,8 @@ import '../../screens/settings/lg_connection_screen.dart';
 import '../../screens/settings/theme_screen.dart';
 import '../../screens/settings/tour_preferences_screen.dart';
 import '../../screens/tour/active_tour_screen.dart';
+import '../../screens/tour/ai_film_progress_screen.dart';
+import '../../screens/tour/ai_film_result_screen.dart';
 import '../../screens/tour/inspection_screen.dart';
 import '../../screens/tour/post_tour_screen.dart';
 import '../../screens/tour/preview_screen.dart';
@@ -152,6 +155,20 @@ final GoRouter appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => AiFilmSettingsScreen(
         returnToTour: state.uri.queryParameters['returnToTour'] == 'true',
+      ),
+    ),
+    GoRoute(
+      path: '/tour/ai-film-progress',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => AiFilmProgressScreen(
+        locations: (state.extra as List<TourLocation>?) ?? const [],
+      ),
+    ),
+    GoRoute(
+      path: '/tour/ai-film-result',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => AiFilmResultScreen(
+        locations: (state.extra as List<TourLocation>?) ?? const [],
       ),
     ),
     GoRoute(

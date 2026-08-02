@@ -15,6 +15,7 @@ import '../../models/tour_history_entry.dart';
 import '../../providers/library_provider.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/map_placeholder.dart';
+import '../../widgets/ai_film_popup.dart';
 
 /// Post-tour (mockups 10 & 11). If an AI film was requested it "produces" while
 /// the user explores the recap, then reveals the player. Either way the user is
@@ -46,8 +47,11 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
   @override
   void initState() {
     super.initState();
-    // Every completed tour is recorded in the Tours history.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _recordHistory());
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _recordHistory();
+      if (!_film) _maybeShowAiFilm();
+    });
     _sayThankYou();
     if (_film) {
       // Simulate Veo producing the film in the background (~6s).
@@ -55,6 +59,27 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
         setState(() => _filmProgress = (_filmProgress + 0.05).clamp(0.0, 1.0));
         if (_filmReady) t.cancel();
       });
+    }
+  }
+
+  /// Offer AI Film after the tour. The sheet self-hides unless AI Film is
+  /// enabled; the choice drives navigation (setup re-offers on return).
+  Future<void> _maybeShowAiFilm() async {
+    final choice = await showAiFilmPopup(
+      context,
+      ref,
+      locations: widget.args.locations,
+    );
+    if (!mounted) return;
+    if (choice == AiFilmChoice.generate) {
+      context.push('/tour/ai-film-progress', extra: widget.args.locations);
+    } else if (choice == AiFilmChoice.setUp) {
+      await context.push('/settings/ai-film?returnToTour=true');
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _maybeShowAiFilm();
+        });
+      }
     }
   }
 
