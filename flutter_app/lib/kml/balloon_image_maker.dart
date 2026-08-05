@@ -7,9 +7,9 @@ class BalloonImageMaker {
   BalloonImageMaker._();
 
   static const double w = 494;
-  static const double h = 650;
+  static const double h = 720;
   static const double imageH = 260;
-  static const double pad = 18;
+  static const double pad = 26;
 
   static const Color _bg = Color(0xFF1A1A2E);
   static const Color _title = Color(0xFFFFFFFF);

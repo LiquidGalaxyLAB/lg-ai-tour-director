@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 class BalloonMaker {
   BalloonMaker._();
 
-  static const double _widthFraction = 0.546;
+  static const double _widthFraction = 0.71;
 
   static String imageOverlay({required String host, required String fileName}) {
     final kml =
@@ -14,7 +14,7 @@ class BalloonMaker {
       <name>InfoBalloon</name>
       <Icon><href>http://$host:81/$fileName</href></Icon>
       <overlayXY x="0.5" y="0.5" xunits="fraction" yunits="fraction"/>
-      <screenXY x="0.5" y="0.5" xunits="fraction" yunits="fraction"/>
+      <screenXY x="0.5" y="0.55" xunits="fraction" yunits="fraction"/>
       <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
       <size x="$_widthFraction" y="0" xunits="fraction" yunits="fraction"/>
     </ScreenOverlay>
