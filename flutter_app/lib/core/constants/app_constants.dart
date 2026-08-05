@@ -36,7 +36,7 @@ class AppConstants {
   static const String logoAssetPath = 'assets/logos/logo.png';
   // Overlay width as a fraction of the screen; height auto-scales to keep the
   // image's native aspect ratio (KML size y=0 preserves aspect ratio)
-  static const double logoOverlayWidthFraction = 0.70;
+  static const double logoOverlayWidthFraction = 0.64;
 
   // Tour generation tuning
   // Base narration speech rate in words/second used to estimate scene timing

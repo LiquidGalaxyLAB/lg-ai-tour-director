@@ -7,9 +7,17 @@ class BalloonImageMaker {
   BalloonImageMaker._();
 
   static const double w = 494;
-  static const double h = 720;
   static const double imageH = 260;
   static const double pad = 26;
+  // Canvas height grows to fit the full (untruncated) description, then is
+  // clamped. On the rig the card is shown at width fraction 0.71, so on-screen
+  //   heightFraction = 0.71 * (canvasH / w) * (screenW / screenH).
+  // For a portrait 1080x1920 screen centred at screenXY y=0.55, maxH=860 keeps
+  // the card at ~70% of screen height (bottom at ~90% → ~10% margin) so it can
+  // NEVER touch/cross the top, bottom, or side borders. The narration prompt is
+  // capped (~70 words) so 5 sentences fit inside this height without clipping.
+  static const double minH = 720;
+  static const double maxH = 860;
 
   static const Color _bg = Color(0xFF1A1A2E);
   static const Color _title = Color(0xFFFFFFFF);
@@ -28,16 +36,65 @@ class BalloonImageMaker {
     // overlay up on a high-res rig.
     double scale = 3,
   }) async {
+    final image = imageBytes == null ? null : await _decode(imageBytes);
+
+    const contentWidth = w - pad * 2;
+
+    // Lay text out FIRST so we can size the canvas to fit the full, untruncated
+    // description (no maxLines / no ellipsis on the body).
+    final name = _paragraph(
+      locationName,
+      size: 29,
+      color: _title,
+      weight: FontWeight.bold,
+      maxWidth: contentWidth,
+      height: 1.2,
+      maxLines: 2,
+    );
+    final sub = _paragraph(
+      locationSubtitle,
+      size: 16,
+      color: _subtitle,
+      maxWidth: contentWidth,
+      maxLines: 1,
+    );
+    final desc = _paragraph(
+      description,
+      size: 22,
+      color: _body,
+      maxWidth: contentWidth,
+      height: 1.55,
+    );
+    final footer = _paragraph(
+      'Powered by Liquid Galaxy',
+      size: 13,
+      color: _footerColor,
+      maxWidth: contentWidth,
+      maxLines: 1,
+    );
+
+    // Vertical layout math — mirrors the draw order below.
+    final descTop =
+        (image != null ? imageH + pad : pad) +
+        name.height +
+        4 +
+        sub.height +
+        12 +
+        2 +
+        12; // accent divider (2px) + gap
+    final footerZone = footer.height + 12; // footer text + bottom gap
+    final computedH = descTop + desc.height + footerZone;
+    final double h = computedH.clamp(minH, maxH).toDouble();
+
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, w * scale, h * scale));
     // Draw in logical w×h coordinates; the scale just supersamples output.
     canvas.scale(scale);
 
     // Card background.
-    canvas.drawRect(const Rect.fromLTWH(0, 0, w, h), Paint()..color = _bg);
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), Paint()..color = _bg);
 
     var y = pad;
-    final image = imageBytes == null ? null : await _decode(imageBytes);
     if (image != null) {
       // object-fit: cover — paintImage handles the centre-crop + clipping.
       paintImage(
@@ -50,27 +107,9 @@ class BalloonImageMaker {
       y = imageH + pad;
     }
 
-    const contentWidth = w - pad * 2;
-
-    final name = _paragraph(
-      locationName,
-      size: 29,
-      color: _title,
-      weight: FontWeight.bold,
-      maxWidth: contentWidth,
-      height: 1.2,
-      maxLines: 2,
-    );
     canvas.drawParagraph(name, Offset(pad, y));
     y += name.height + 4;
 
-    final sub = _paragraph(
-      locationSubtitle,
-      size: 16,
-      color: _subtitle,
-      maxWidth: contentWidth,
-      maxLines: 1,
-    );
     canvas.drawParagraph(sub, Offset(pad, y));
     y += sub.height + 12;
 
@@ -78,34 +117,9 @@ class BalloonImageMaker {
     canvas.drawRect(Rect.fromLTWH(pad, y, 40, 2), Paint()..color = _accent);
     y += 2 + 12;
 
-    // Footer sits in a reserved zone at the bottom; cap the description so it
-    // can never run into it (ellipsise the overflow).
-    const footerSize = 13.0;
-    const footerZone = footerSize * 1.3 + 12; // text height + bottom gap
-    const descSize = 22.0;
-    const descLineHeight = descSize * 1.55;
-    final descMaxLines = ((h - y - footerZone) / descLineHeight).floor().clamp(
-      1,
-      99,
-    );
-    final desc = _paragraph(
-      description,
-      size: descSize,
-      color: _body,
-      maxWidth: contentWidth,
-      height: 1.55,
-      maxLines: descMaxLines,
-    );
     canvas.drawParagraph(desc, Offset(pad, y));
 
     // Footer pinned to the bottom-left.
-    final footer = _paragraph(
-      'Powered by Liquid Galaxy',
-      size: footerSize,
-      color: _footerColor,
-      maxWidth: contentWidth,
-      maxLines: 1,
-    );
     canvas.drawParagraph(footer, Offset(pad, h - footer.height - 12));
 
     final picture = recorder.endRecording();

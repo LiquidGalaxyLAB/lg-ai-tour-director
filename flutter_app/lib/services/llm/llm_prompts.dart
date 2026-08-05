@@ -42,7 +42,7 @@ Exactly this shape:
     {
       "name": "exact searchable location name, including its city and country",
       "type": "historical|natural|cultural|architectural|religious|entertainment|nightlife|adventure|culinary|scenic",
-      "why_significant": "one sentence on why this fits what the user is looking for",
+      "why_significant": "exactly 5 complete sentences of immersive documentary narration about this location (National Geographic tone): open with what it is, include one specific historical fact, describe one visual detail visible from an aerial / Google Earth view, and close with an inviting line that makes the viewer want to explore further — this same text is spoken aloud as narration AND shown as the on-screen description card",
       "suggested_duration_seconds": 25
     }
   ]
@@ -60,6 +60,14 @@ Rules:
   these geocode to the wrong place.
 - Names must be searchable on Google Maps and Wikipedia
 - If fewer than 4 good matches exist, broaden slightly but keep the same vibe
+- "why_significant" MUST be exactly 5 complete, self-contained sentences. Every
+  sentence must end fully — never stop mid-thought, and never end on a trailing
+  conjunction or an incomplete phrase. It must read as one polished piece.
+- Keep it CONCISE: the whole 5-sentence text must stay under about 70 words total
+  (roughly 12-15 words per sentence) so it fits fully inside the on-screen balloon
+  card without overflowing. Favour tight, vivid sentences over long ones.
+- "why_significant" must be speakable: no special characters, no parentheses,
+  no markdown
 ''';
 
   // Writer: generates narration for a single location. Returns strict JSON.
