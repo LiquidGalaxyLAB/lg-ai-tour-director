@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -168,36 +169,36 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
     if (!mounted) return;
     setState(() => _testing = false);
     ok
-        ? _snack('Connected — provider ready')
-        : _snack(err ?? 'Connection failed', error: true);
+        ? _snack('provider_ready'.tr())
+        : _snack(err ?? 'connection_failed'.tr(), error: true);
   }
 
   Future<void> _save() async {
     final settings = _buildSettings();
     if (_usesBaseUrlField && settings.baseUrl.isEmpty) {
-      _snack('Enter a base URL for this provider.', error: true);
+      _snack('enter_base_url'.tr(), error: true);
       return;
     }
     if (_provider == VideoProviderType.klingDirect &&
         (_apiKeyController.text.trim().isEmpty ||
             _secretKeyController.text.trim().isEmpty)) {
-      _snack('Enter both the Access Key and the Secret Key.', error: true);
+      _snack('enter_access_and_secret_key'.tr(), error: true);
       return;
     }
     if (!_keyOptional && settings.apiKey.isEmpty) {
-      _snack('Enter your API key.', error: true);
+      _snack('enter_api_key'.tr(), error: true);
       return;
     }
     await ref.read(aiFilmProvider.notifier).saveSettings(settings);
     if (!mounted) return;
-    _snack('AI Film configured');
+    _snack('ai_film_configured'.tr());
     if (widget.returnToTour) context.pop();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AI Film')),
+      appBar: AppBar(title: Text('ai_film'.tr())),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [
@@ -234,14 +235,14 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
       child: SwitchListTile(
         value: _enabled,
         onChanged: (v) => setState(() => _enabled = v),
-        title: const Text(
-          'AI Film',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        title: Text(
+          'ai_film'.tr(),
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
           _enabled
-              ? 'On — you can configure and use AI Film.'
-              : 'Off — turn on to set up. The post-tour prompt stays hidden.',
+              ? 'ai_film_on_desc'.tr()
+              : 'ai_film_off_desc'.tr(),
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -258,31 +259,40 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('AI Film', style: theme.textTheme.titleLarge),
+          Text('ai_film'.tr(), style: theme.textTheme.titleLarge),
           Text(
-            'Generate a cinematic video of your tour',
+            'ai_film_tagline'.tr(),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 12),
           Text(
-            'AI Film uses your own AI video provider to generate a short '
-            'cinematic clip for each location in your tour. Clips are stitched '
-            'into a single shareable film.\n\n'
-            'You bring your own API key — we never store it on any server. Any '
-            'cost is charged directly by your provider.',
+            'ai_film_description'.tr(),
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: const [
-              _FeatureChip('🎬', 'Cinematic quality'),
-              _FeatureChip('🔑', 'Your own API key'),
-              _FeatureChip('✂️', 'Auto-stitched'),
+            children: [
+              _FeatureChip('🎬', 'cinematic_quality'.tr()),
+              _FeatureChip('🔑', 'your_own_api_key'.tr()),
+              _FeatureChip('✂️', 'auto_stitched'.tr()),
             ],
+          ),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: () => context.push('/settings/help'),
+            child: Text(
+              'ai_film_help_link'.tr(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: const Color(0xFF4285F4),
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+                decorationColor: const Color(0xFF4285F4),
+              ),
+            ),
           ),
         ],
       ),
@@ -296,7 +306,7 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _label('Video Provider'),
+          _label('video_provider'.tr()),
           const SizedBox(height: 8),
           DropdownButtonFormField<VideoProviderType>(
             initialValue: _provider,
@@ -331,9 +341,9 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
     switch (_provider) {
       case VideoProviderType.falAi:
         return [
-          _keyField('API Key', 'sk-...', 'Get your key at fal.ai/dashboard'),
+          _keyField('api_key'.tr(), 'sk-...', 'get_key_fal'.tr()),
           const SizedBox(height: 16),
-          _label('Model'),
+          _label('model'.tr()),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -346,7 +356,7 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
                   onSelected: (_) => setState(() => _falModelIndex = i),
                 ),
               ChoiceChip(
-                label: const Text('Custom model'),
+                label: Text('custom_model'.tr()),
                 selected: _falModelIndex == _falModels.length,
                 onSelected: (_) =>
                     setState(() => _falModelIndex = _falModels.length),
@@ -355,40 +365,39 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
           ),
           if (_falModelIndex == _falModels.length) ...[
             const SizedBox(height: 12),
-            _urlField('Model ID', 'fal-ai/wan-t2v-14b', null, _modelController),
+            _urlField('model_id'.tr(), 'fal-ai/wan-t2v-14b', null, _modelController),
           ],
         ];
       case VideoProviderType.veo3:
         return [
           _keyField(
-            'Gemini API Key',
+            'gemini_api_key'.tr(),
             'AIza...',
-            'Get your key at aistudio.google.com',
+            'get_key_aistudio'.tr(),
           ),
           const SizedBox(height: 12),
           _note(
             const Color(0xFF1A73E8),
-            'Veo 3 generates 8-second clips with native audio. Duration is '
-            'fixed at 8s for this provider.',
+            'veo3_note'.tr(),
           ),
         ];
       case VideoProviderType.runway:
         return [
-          _keyField('API Key', 'key_...', 'Get your key at app.runwayml.com'),
+          _keyField('api_key'.tr(), 'key_...', 'get_key_runway'.tr()),
           const SizedBox(height: 12),
           _note(
             theme.colorScheme.primary,
-            'Runway supports up to 16 seconds per clip.',
+            'runway_note'.tr(),
           ),
         ];
       case VideoProviderType.klingDirect:
         return [
-          _keyField('API Key (AccessKeyId)', 'access-key-id', null),
+          _keyField('api_key_access_key_id'.tr(), 'access-key-id', null),
           const SizedBox(height: 12),
           _keyField(
-            'Secret Key',
+            'secret_key'.tr(),
             'secret-key',
-            'Get keys at klingai.com/developer',
+            'get_keys_kling'.tr(),
             controller: _secretKeyController,
             obscure: _obscureSecret,
             onToggle: () => setState(() => _obscureSecret = !_obscureSecret),
@@ -396,46 +405,43 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
           const SizedBox(height: 12),
           _note(
             theme.colorScheme.primary,
-            'Kling supports 5 or 10 seconds per clip. Duration will be rounded '
-            'to the nearest valid value.',
+            'kling_note'.tr(),
           ),
         ];
       case VideoProviderType.vllmOmni:
         return [
           _urlField(
-            'Base URL',
+            'base_url'.tr(),
             'http://localhost:8080',
-            'Run: vllm serve <model> --omni',
+            'vllm_serve_hint'.tr(),
             _baseUrlController,
           ),
           const SizedBox(height: 12),
           _note(
             const Color(0xFF34A853),
-            'Local models are free. No API key needed. Duration limit depends '
-            'on your GPU memory.',
+            'vllm_note'.tr(),
           ),
         ];
       case VideoProviderType.custom:
         return [
           _urlField(
-            'Base URL',
+            'base_url'.tr(),
             'https://your-provider.com/v1',
             null,
             _baseUrlController,
           ),
           const SizedBox(height: 12),
           _keyField(
-            'API Key (optional)',
+            'api_key_optional'.tr(),
             'sk-...',
-            'Leave empty if your endpoint is unauthenticated',
+            'leave_empty_unauthenticated'.tr(),
           ),
           const SizedBox(height: 12),
-          _urlField('Model ID', 'model-name', null, _modelController),
+          _urlField('model_id'.tr(), 'model-name', null, _modelController),
           const SizedBox(height: 12),
           _note(
             const Color(0xFFF29900),
-            'Custom endpoints must accept POST /videos with {prompt, duration, '
-            'model} body and return {job_id} for polling. See documentation.',
+            'custom_endpoint_note'.tr(),
           ),
         ];
     }
@@ -454,7 +460,7 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _label('Duration per location'),
+          _label('duration_per_location'.tr()),
           const SizedBox(height: 4),
           Row(
             children: [
@@ -481,7 +487,7 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
             ],
           ),
           if (isVeo)
-            _hint('Veo 3 generates 8-second clips only', theme)
+            _hint('veo3_eight_second_only'.tr(), theme)
           else if (needsChunking)
             _hint(
               '${provider.providerName} max is ${maxClip}s per clip. Will '
@@ -507,14 +513,14 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
       locationCount: _typicalTourStops,
     );
     final rateText = rate.perSecond == null
-        ? 'Unknown'
+        ? 'unknown'.tr()
         : rate.perSecond == 0
-        ? 'Free'
+        ? 'free'.tr()
         : '\$${rate.perSecond!.toStringAsFixed(2)}/sec (${rate.label})';
     final totalText = estimate == null
         ? '—'
         : estimate == 0
-        ? 'Free'
+        ? 'free'.tr()
         : '~\$${estimate.toStringAsFixed(2)}';
 
     return Container(
@@ -527,22 +533,21 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Estimated cost',
+            'estimated_cost'.tr(),
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 10),
-          _costRow('Duration per location', '${duration}s'),
-          _costRow('Locations in a typical tour', '$_typicalTourStops'),
-          _costRow('Total video', '$totalSeconds seconds'),
-          _costRow('Provider rate', rateText),
+          _costRow('duration_per_location'.tr(), '${duration}s'),
+          _costRow('locations_in_typical_tour'.tr(), '$_typicalTourStops'),
+          _costRow('total_video'.tr(), '$totalSeconds seconds'),
+          _costRow('provider_rate'.tr(), rateText),
           const Divider(height: 18),
-          _costRow('Estimated total', totalText, bold: true),
+          _costRow('estimated_total'.tr(), totalText, bold: true),
           const SizedBox(height: 8),
           Text(
-            'Cost is an estimate. Actual charges depend on your provider\'s '
-            'current pricing. We are not responsible for any charges incurred.',
+            'cost_disclaimer'.tr(),
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -584,13 +589,13 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.wifi_tethering_rounded),
-          label: Text(_testing ? 'Testing…' : 'Test Connection'),
+          label: Text(_testing ? 'testing'.tr() : 'test_connection'.tr()),
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
           onPressed: _save,
           icon: const Icon(Icons.save_rounded),
-          label: const Text('Save Configuration'),
+          label: Text('save_configuration'.tr()),
         ),
       ],
     );

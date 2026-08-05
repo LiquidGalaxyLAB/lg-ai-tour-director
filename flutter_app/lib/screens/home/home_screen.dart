@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,27 +28,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   static const _suggestion = 'Lost empires of Rajasthan';
 
-  static const _quickLaunch = <_QuickLaunch>[
+  static final _quickLaunch = <_QuickLaunch>[
     _QuickLaunch(
-      'Historic Forts',
+      'quick_historic_forts'.tr(),
       Icons.castle_rounded,
       AppColors.googleRed,
       'Historic Forts in India',
     ),
     _QuickLaunch(
-      'World Wonders',
+      'quick_world_wonders'.tr(),
       Icons.public_rounded,
       AppColors.googleBlueBright,
       'The Seven Wonders of the World',
     ),
     _QuickLaunch(
-      'Hidden Cities',
+      'quick_hidden_cities'.tr(),
       Icons.visibility_off_rounded,
       AppColors.googleGreen,
       'Hidden ancient cities of the world',
     ),
     _QuickLaunch(
-      'Random Discovery',
+      'quick_random_discovery'.tr(),
       Icons.shuffle_rounded,
       AppColors.tileSetRefresh,
       'Surprise me with a fascinating destination',
@@ -87,8 +88,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (!_speechReady) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Speech recognition is unavailable on this device.'),
+          SnackBar(
+            content: Text('speech_unavailable'.tr()),
           ),
         );
         return;
@@ -123,7 +124,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final prompt = _promptController.text.trim();
     if (prompt.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Describe a place or theme to begin.')),
+        SnackBar(content: Text('describe_place_to_begin'.tr())),
       );
       return;
     }
@@ -137,9 +138,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             color: theme.colorScheme.primary,
             size: 32,
           ),
-          title: const Text('Start with the tour?'),
-          content: const Text(
-            'Generate an immersive tour from your prompt?',
+          title: Text('start_with_tour_q'.tr()),
+          content: Text(
+            'generate_immersive_prompt'.tr(),
           ),
           actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
           // Same stacked, full-width layout as the film / setup dialogs — the
@@ -154,12 +155,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: FilledButton.icon(
                     onPressed: () => Navigator.pop(ctx, true),
                     icon: const Icon(Icons.rocket_launch_rounded, size: 18),
-                    label: const Text('Yes, start the tour'),
+                    label: Text('yes_start_tour'.tr()),
                   ),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Go back'),
+                  child: Text('go_back'.tr()),
                 ),
               ],
             ),
@@ -174,7 +175,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final prompt = (preset ?? _promptController.text).trim();
     if (prompt.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Describe a place or theme to begin.')),
+        SnackBar(content: Text('describe_place_to_begin'.tr())),
       );
       return;
     }
@@ -195,11 +196,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         icon: const Icon(Icons.smart_toy_outlined),
-        title: const Text('Set up your AI model first'),
-        content: const Text(
-          'Tour Director needs an AI model to generate tours. Add your API key '
-          'and model ID in AI Configuration, or point it at a local model. '
-          'You only need to do this once.',
+        title: Text('setup_ai_first'.tr()),
+        content: Text(
+          'setup_ai_body'.tr(),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
         actions: [
@@ -213,12 +212,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Navigator.of(dialogContext).pop();
                     context.push('/settings/ai');
                   },
-                  child: const Text('Set up AI model'),
+                  child: Text('setup_ai_model'.tr()),
                 ),
               ),
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
+                child: Text('cancel'.tr()),
               ),
             ],
           ),
@@ -239,10 +238,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
               children: [
-                Text('Where to next?', style: theme.textTheme.headlineMedium),
+                Text('where_to_next'.tr(), style: theme.textTheme.headlineMedium),
                 const SizedBox(height: 4),
                 Text(
-                  'Describe your dream journey',
+                  'describe_dream_journey'.tr(),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -256,7 +255,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       size: 18,
                       color: theme.colorScheme.primary,
                     ),
-                    label: const Text('Before you start'),
+                    label: Text('before_you_start'.tr()),
                     onPressed: () => showQuickTipsSheet(context),
                   ),
                 ),
@@ -277,11 +276,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 FilledButton.icon(
                   onPressed: _confirmAndGenerate,
                   icon: const Icon(Icons.rocket_launch_rounded, size: 20),
-                  label: const Text('Generate Tour'),
+                  label: Text('generate_tour'.tr()),
                 ),
                 const SizedBox(height: 28),
                 Text(
-                  'QUICK LAUNCH',
+                  'quick_launch'.tr(),
                   style: theme.textTheme.labelMedium?.copyWith(
                     letterSpacing: 1,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -384,9 +383,9 @@ class _ReturnToTourBanner extends StatelessWidget {
                         const SizedBox(height: 10),
                         Row(
                           children: [
-                            const Text(
-                              'return to tour',
-                              style: TextStyle(
+                            Text(
+                              'return_to_tour'.tr(),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -459,12 +458,12 @@ class _PromptCard extends StatelessWidget {
                   // reach for the Generate button. Text still soft-wraps.
                   textInputAction: TextInputAction.go,
                   onSubmitted: (_) => onSubmit(),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     filled: false,
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
-                    hintText: 'Start your adventure with a prompt...',
+                    hintText: 'prompt_hint'.tr(),
                   ),
                 ),
               ),
@@ -473,7 +472,7 @@ class _PromptCard extends StatelessWidget {
                 color: isListening
                     ? AppColors.googleRed
                     : theme.colorScheme.primary,
-                tooltip: isListening ? 'Stop' : 'Speak your prompt',
+                tooltip: isListening ? 'stop'.tr() : 'speak_your_prompt'.tr(),
                 onPressed: onMic,
               ),
             ],

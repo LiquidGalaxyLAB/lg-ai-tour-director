@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -64,11 +65,11 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
     messenger.hideCurrentSnackBar();
     if (ok) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Connected to Liquid Galaxy')),
+        SnackBar(content: Text('connected_to_lg'.tr())),
       );
     } else {
       final error =
-          ref.read(sshConnectionProvider).errorMessage ?? 'Connection failed';
+          ref.read(sshConnectionProvider).errorMessage ?? 'connection_failed'.tr();
       messenger.showSnackBar(
         SnackBar(
           content: Text(error),
@@ -86,7 +87,7 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        const SnackBar(content: Text('Disconnected from Liquid Galaxy')),
+        SnackBar(content: Text('disconnected_from_lg'.tr())),
       );
   }
 
@@ -101,7 +102,7 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('LG Connection Settings'),
+        title: Text('lg_connection_settings'.tr()),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
@@ -119,45 +120,45 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                 const SizedBox(height: 20),
                 TextFormField(
                   controller: _hostController,
-                  decoration: const InputDecoration(
-                    labelText: 'Host IP',
+                  decoration: InputDecoration(
+                    labelText: 'host_ip'.tr(),
                     hintText: '192.168.0.10',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.url,
                   autocorrect: false,
                   validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Host cannot be empty'
+                      ? 'host_cannot_be_empty'.tr()
                       : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _portController,
-                  decoration: const InputDecoration(
-                    labelText: 'SSH Port',
+                  decoration: InputDecoration(
+                    labelText: 'ssh_port'.tr(),
                     hintText: '22',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   validator: (v) {
                     final port = int.tryParse((v ?? '').trim());
-                    if (port == null) return 'Port must be a number';
-                    if (port < 1 || port > 65535) return 'Port must be 1–65535';
+                    if (port == null) return 'port_must_be_number'.tr();
+                    if (port < 1 || port > 65535) return 'port_range_invalid'.tr();
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _usernameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Username',
+                  decoration: InputDecoration(
+                    labelText: 'username'.tr(),
                     hintText: 'lg',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   autocorrect: false,
                   validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Username cannot be empty'
+                      ? 'username_cannot_be_empty'.tr()
                       : null,
                 ),
                 const SizedBox(height: 16),
@@ -165,7 +166,7 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    labelText: 'password'.tr(),
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -181,14 +182,14 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int>(
                   initialValue: _screenCount,
-                  decoration: const InputDecoration(
-                    labelText: 'LG Screen Count',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: 'lg_screen_count'.tr(),
+                    border: const OutlineInputBorder(),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 3, child: Text('3 screens')),
-                    DropdownMenuItem(value: 5, child: Text('5 screens')),
-                    DropdownMenuItem(value: 7, child: Text('7 screens')),
+                  items: [
+                    DropdownMenuItem(value: 3, child: Text('screens_3'.tr())),
+                    DropdownMenuItem(value: 5, child: Text('screens_5'.tr())),
+                    DropdownMenuItem(value: 7, child: Text('screens_7'.tr())),
                   ],
                   onChanged: isConnecting
                       ? null
@@ -204,7 +205,7 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.link),
-                  label: Text(isConnecting ? 'Connecting…' : 'Connect to LG'),
+                  label: Text(isConnecting ? 'connecting'.tr() : 'connect_to_lg'.tr()),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -214,7 +215,7 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                   FilledButton.icon(
                     onPressed: _disconnect,
                     icon: const Icon(Icons.link_off),
-                    label: const Text('Disconnect'),
+                    label: Text('disconnect'.tr()),
                     style: FilledButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.error,
                       foregroundColor: Theme.of(context).colorScheme.onError,
@@ -229,7 +230,7 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        'OR',
+                        'or'.tr(),
                         style: Theme.of(context).textTheme.labelMedium?.copyWith(
                               color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
@@ -241,10 +242,10 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
                   onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('QR connect — coming soon')),
+                    SnackBar(content: Text('qr_connect_coming_soon'.tr())),
                   ),
                   icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Scan QR to Connect'),
+                  label: Text('scan_qr_to_connect'.tr()),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -266,10 +267,10 @@ class _StatusIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label) = switch (status) {
-      SshStatus.connected => (Colors.green, 'Connected'),
-      SshStatus.connecting => (Colors.orange, 'Connecting…'),
-      SshStatus.error => (Colors.red, 'Disconnected'),
-      SshStatus.disconnected => (Colors.red, 'Disconnected'),
+      SshStatus.connected => (Colors.green, 'connected'.tr()),
+      SshStatus.connecting => (Colors.orange, 'connecting'.tr()),
+      SshStatus.error => (Colors.red, 'disconnected'.tr()),
+      SshStatus.disconnected => (Colors.red, 'disconnected'.tr()),
     };
 
     return Row(

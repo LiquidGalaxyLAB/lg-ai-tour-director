@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'llm_exception.dart';
 import 'llm_prompts.dart';
@@ -93,10 +94,44 @@ class LLMClient {
   );
 
   //Writer : narration for a single location (raw JSON)
-  Future<String> generateNarration(String locationJson) => generate(
-    systemPrompt: LLMPrompts.writerSystem,
-    userPrompt: 'Generate narration for: $locationJson',
-  );
+  Future<String> generateNarration(String locationJson) async {
+    final languageName = await _narrationLanguageName();
+    final systemPrompt =
+        '${LLMPrompts.writerSystem}\n'
+        'Generate the narration in $languageName. '
+        'Use proper $languageName grammar and vocabulary. '
+        'Keep it natural and speakable.';
+    return generate(
+      systemPrompt: systemPrompt,
+      userPrompt: 'Generate narration for: $locationJson',
+    );
+  }
+
+  static const Map<String, String> _languageNames = {
+    'en': 'English',
+    'es': 'Spanish',
+    'fr': 'French',
+    'hi': 'Hindi',
+    'ar': 'Arabic',
+    'de': 'German',
+    'pt': 'Portuguese',
+    'zh': 'Chinese',
+  };
+
+  Future<String> _narrationLanguageName() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString('pref_subtitle_language');
+      if (saved == null || saved.trim().isEmpty) return 'English';
+      // Stored as a code → map to a name.
+      final byCode = _languageNames[saved.toLowerCase()];
+      if (byCode != null) return byCode;
+      // Otherwise it is already a display name (e.g. "English").
+      return saved;
+    } catch (_) {
+      return 'English';
+    }
+  }
 
   //Fallback : alternative name for a location that failed geocoding
   Future<String> suggestFallbackLocation(String failedName) => generate(

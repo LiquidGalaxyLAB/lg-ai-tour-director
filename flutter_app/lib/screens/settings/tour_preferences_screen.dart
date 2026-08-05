@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,7 +15,6 @@ class TourPreferencesScreen extends StatefulWidget {
 
 class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
   bool _voiceNarration = true;
-  bool _showSubtitles = true;
   bool _generateFilm = false;
   String _voice = 'Default Voice';
   String _language = 'English';
@@ -26,7 +26,16 @@ class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
     'English (US) – Female',
     'English (US) – Male',
   ];
-  static const _languages = ['English', 'Arabic', 'French', 'Hindi', 'Spanish'];
+  static const _languages = [
+    'English',
+    'Spanish',
+    'French',
+    'Hindi',
+    'Arabic',
+    'German',
+    'Portuguese',
+    'Chinese',
+  ];
 
   @override
   void initState() {
@@ -39,7 +48,6 @@ class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
     if (!mounted) return;
     setState(() {
       _voiceNarration = p.getBool('pref_voice_narration') ?? true;
-      _showSubtitles = p.getBool('pref_show_subtitles') ?? true;
       _generateFilm = p.getBool('pref_generate_film') ?? false;
       _voice = p.getString('pref_voice') ?? 'Default Voice';
       _language = p.getString('pref_subtitle_language') ?? 'English';
@@ -49,20 +57,19 @@ class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
   Future<void> _save() async {
     final p = await SharedPreferences.getInstance();
     await p.setBool('pref_voice_narration', _voiceNarration);
-    await p.setBool('pref_show_subtitles', _showSubtitles);
     await p.setBool('pref_generate_film', _generateFilm);
     await p.setString('pref_voice', _voice);
     await p.setString('pref_subtitle_language', _language);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Preferences saved')),
+      SnackBar(content: Text('preferences_saved'.tr())),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tour Preferences')),
+      appBar: AppBar(title: Text('tour_preferences'.tr())),
       body: SafeArea(
         child: Column(
           children: [
@@ -75,14 +82,6 @@ class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
                     subtitle: 'Enable AI-generated narration during the tour.',
                     value: _voiceNarration,
                     onChanged: (v) => setState(() => _voiceNarration = v),
-                  ),
-                  const Divider(),
-                  _ToggleTile(
-                    title: 'Show Subtitles on LG screens',
-                    subtitle: 'Display synchronized subtitles during narration.',
-                    value: _showSubtitles,
-                    onChanged: (v) => setState(() => _showSubtitles = v),
-                    comingSoon: true,
                   ),
                   const Divider(),
                   _ToggleTile(
@@ -105,11 +104,12 @@ class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
                   const SizedBox(height: 16),
                   _DropdownTile(
                     title: 'Subtitle Language',
-                    subtitle: 'Choose the subtitle language used during the tour.',
+                    subtitle:
+                        'Language for the tour narration voice (TTS) and '
+                        'subtitles.',
                     value: _language,
                     items: _languages,
                     onChanged: (v) => setState(() => _language = v!),
-                    comingSoon: true,
                   ),
                 ],
               ),
@@ -118,7 +118,7 @@ class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
               padding: const EdgeInsets.all(16),
               child: FilledButton(
                 onPressed: _save,
-                child: const Text('Save Preferences'),
+                child: Text('save_preferences'.tr()),
               ),
             ),
           ],

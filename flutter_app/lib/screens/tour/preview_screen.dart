@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -54,7 +55,7 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
     if (choice == null || !context.mounted) return; // cancelled
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Deploying tour to Liquid Galaxy…')),
+      SnackBar(content: Text('deploying_tour_to_lg'.tr())),
     );
     unawaited(
       ref
@@ -78,11 +79,8 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.cast_connected_rounded),
-        title: const Text('Connect to Liquid Galaxy'),
-        content: const Text(
-          'Connect to your Liquid Galaxy rig first via LG Connection Settings '
-          'to start the immersive tour.',
-        ),
+        title: Text('connect_to_liquid_galaxy'.tr()),
+        content: Text('connect_to_lg_rig_first'.tr()),
         actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
         actions: [
           Column(
@@ -95,13 +93,13 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
                     Navigator.pop(ctx);
                     context.push('/settings/lg');
                   },
-                  child: const Text('LG Connection Settings'),
+                  child: Text('lg_connection_settings'.tr()),
                 ),
               ),
               const SizedBox(height: 4),
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
+                child: Text('cancel'.tr()),
               ),
             ],
           ),
@@ -125,12 +123,12 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               children: [
                 Text(
-                  'Your tour is ready',
+                  'your_tour_is_ready'.tr(),
                   style: theme.textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Preview the journey before launching it on Liquid Galaxy.',
+                  'preview_journey_before_launching'.tr(),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -147,7 +145,7 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
                         locations: locations,
                         focus: _focus,
                         syncToLg: false, // stay on the phone during preview
-                        title: 'Explore locations',
+                        title: 'explore_locations'.tr(),
                       ),
                     ),
                   ),
@@ -159,7 +157,7 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
                     onPressed: () =>
                         context.push('/home/inspection', extra: widget.args),
                     icon: const Icon(Icons.travel_explore_rounded, size: 18),
-                    label: const Text('Inspect locations'),
+                    label: Text('inspect_locations'.tr()),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -186,7 +184,7 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
                 FilledButton.icon(
                   onPressed: () => _start(context),
                   icon: const Icon(Icons.rocket_launch_rounded, size: 20),
-                  label: const Text('Start Immersive Tour'),
+                  label: Text('start_immersive_tour'.tr()),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
@@ -195,7 +193,7 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
                     foregroundColor: theme.colorScheme.error,
                     minimumSize: const Size.fromHeight(48),
                   ),
-                  child: const Text('Cancel'),
+                  child: Text('cancel'.tr()),
                 ),
               ],
             ),

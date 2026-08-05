@@ -5,7 +5,7 @@
 import FlutterMacOS
 import Foundation
 
-import ffmpeg_kit_flutter_min
+import ffmpeg_kit_flutter_new
 import flutter_tts
 import share_plus
 import shared_preferences_foundation

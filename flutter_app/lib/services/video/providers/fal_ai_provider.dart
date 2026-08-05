@@ -31,6 +31,10 @@ class FalAiProvider extends VideoProvider {
   @override
   bool get hasNativeAudio => false;
 
+  // fal.ai's `duration` is a STRING and only accepts "5", "10" or "15".
+  String _falDuration(int seconds) =>
+      seconds <= 5 ? '5' : (seconds <= 10 ? '10' : '15');
+
   @override
   Future<String> submitJob({
     required String prompt,
@@ -42,8 +46,9 @@ class FalAiProvider extends VideoProvider {
         options: _opts,
         data: {
           'prompt': prompt,
-          'duration': durationSeconds,
+          'duration': _falDuration(durationSeconds),
           'aspect_ratio': '16:9',
+          'resolution': '720p',
         },
       );
       final id = (r.data as Map)['request_id'] as String?;
@@ -109,9 +114,22 @@ class FalAiProvider extends VideoProvider {
 
   @override
   Future<bool> testConnection() async {
+    // fal.ai has no key-only validation endpoint; submit a minimal job and
+    // treat a returned request_id as a valid key + reachable model.
+    final path = modelId.isNotEmpty ? modelId : 'wan/v2.6/text-to-video';
     try {
-      final r = await _dio.get('https://fal.run/models', options: _opts);
-      return r.statusCode == 200;
+      final r = await _dio.post(
+        '$_base/$path',
+        options: _opts,
+        data: {
+          'prompt': 'test',
+          'duration': '5',
+          'aspect_ratio': '16:9',
+          'resolution': '720p',
+        },
+      );
+      final id = (r.data as Map)['request_id'] as String?;
+      return id != null && id.isNotEmpty;
     } on DioException catch (e) {
       final code = e.response?.statusCode;
       if (code == 401 || code == 403) {

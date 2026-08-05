@@ -1,8 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// Bottom-nav shell hosting the 4 main tabs (Home · Saved · Tours · Profile).
-/// The [navigationShell] keeps each tab's navigation state independent.
 class ScaffoldWithNav extends StatelessWidget {
   const ScaffoldWithNav({super.key, required this.navigationShell});
 
@@ -11,7 +10,6 @@ class ScaffoldWithNav extends StatelessWidget {
   void _goBranch(int index) {
     navigationShell.goBranch(
       index,
-      // Re-tapping the active tab pops it back to its root.
       initialLocation: index == navigationShell.currentIndex,
     );
   }
@@ -23,26 +21,26 @@ class ScaffoldWithNav extends StatelessWidget {
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: _goBranch,
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Home',
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home_rounded),
+            label: 'nav_home'.tr(),
           ),
           NavigationDestination(
-            icon: Icon(Icons.favorite_border_rounded),
-            selectedIcon: Icon(Icons.favorite_rounded),
-            label: 'Saved',
+            icon: const Icon(Icons.favorite_border_rounded),
+            selectedIcon: const Icon(Icons.favorite_rounded),
+            label: 'nav_saved'.tr(),
           ),
           NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map_rounded),
-            label: 'Tours',
+            icon: const Icon(Icons.map_outlined),
+            selectedIcon: const Icon(Icons.map_rounded),
+            label: 'nav_tours'.tr(),
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
+            icon: const Icon(Icons.person_outline_rounded),
+            selectedIcon: const Icon(Icons.person_rounded),
+            label: 'nav_profile'.tr(),
           ),
         ],
       ),

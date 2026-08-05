@@ -32,15 +32,10 @@ import 'scaffold_with_nav.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// App navigation: a 4-tab bottom-nav shell (Home · Saved · Tours · Profile).
-/// The tour flow nests under Home, saved-detail under Saved, and help/about
-/// under Profile so the bottom nav stays visible (as in the mockups). Settings
-/// screens push full-screen over the shell.
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
   routes: [
-    // Splash — shown first (full-screen, no bottom nav), then routes to /home.
     GoRoute(
       path: '/',
       parentNavigatorKey: _rootNavigatorKey,
@@ -190,6 +185,11 @@ final GoRouter appRouter = GoRouter(
       path: '/settings/theme',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const ThemeScreen(),
+    ),
+    GoRoute(
+      path: '/settings/help',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const HelpScreen(),
     ),
     GoRoute(
       path: '/theme-preview',

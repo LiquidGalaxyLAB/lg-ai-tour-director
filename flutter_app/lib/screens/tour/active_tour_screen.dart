@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -32,6 +33,18 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
   int _spokenIndex = -1;
   bool _ending = false;
 
+  // Subtitle-language name (from Tour Preferences) → BCP-47 locale for TTS.
+  static const _ttsBcp47 = {
+    'English': 'en-US',
+    'Spanish': 'es-ES',
+    'French': 'fr-FR',
+    'Hindi': 'hi-IN',
+    'Arabic': 'ar-SA',
+    'German': 'de-DE',
+    'Portuguese': 'pt-BR',
+    'Chinese': 'zh-CN',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +60,11 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     _voiceNarration = prefs.getBool('pref_voice_narration') ?? true;
+    // Speak narration in the chosen subtitle language (best-effort per device).
+    final lang = prefs.getString('pref_subtitle_language') ?? 'English';
+    try {
+      await _tts.setLanguage(_ttsBcp47[lang] ?? 'en-US');
+    } catch (_) {}
     if (!mounted) return;
 
     final notifier = ref.read(tourStateProvider.notifier);
@@ -189,11 +207,14 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                       Expanded(
                         child: _InfoCard(
                           icon: Icons.center_focus_strong,
-                          title: 'LOOKAT TARGET',
+                          title: 'lookat_target'.tr(),
                           rows: [
-                            ('RANGE', '${KmlGenerator.orbitRange.toInt()}m'),
-                            ('TILT', '${KmlGenerator.orbitTilt.toInt()}°'),
-                            ('HEADING', '0°'),
+                            (
+                              'range'.tr(),
+                              '${KmlGenerator.orbitRange.toInt()}m',
+                            ),
+                            ('tilt'.tr(), '${KmlGenerator.orbitTilt.toInt()}°'),
+                            ('heading'.tr(), '0°'),
                           ],
                         ),
                       ),
@@ -201,12 +222,15 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                       Expanded(
                         child: _InfoCard(
                           icon: Icons.threesixty,
-                          title: 'CAMERA ORBIT',
+                          title: 'camera_orbit'.tr(),
                           // Real server-side orbit loop (orbitLoopCommand).
                           rows: [
-                            ('SWEEP', '360°'),
-                            ('STEP', '${KmlGenerator.orbitLoopStepDegrees}°'),
-                            ('TILT', '${KmlGenerator.orbitTilt.toInt()}°'),
+                            ('sweep'.tr(), '360°'),
+                            (
+                              'step'.tr(),
+                              '${KmlGenerator.orbitLoopStepDegrees}°',
+                            ),
+                            ('tilt'.tr(), '${KmlGenerator.orbitTilt.toInt()}°'),
                           ],
                         ),
                       ),
@@ -251,7 +275,9 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                                 ? Icons.play_arrow_rounded
                                 : Icons.pause_rounded,
                           ),
-                          label: Text(view.paused ? 'Resume' : 'Pause'),
+                          label: Text(
+                            view.paused ? 'resume'.tr() : 'pause'.tr(),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -269,7 +295,7 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                                   MapSyncService.instance.disable();
                                 },
                           icon: const Icon(Icons.skip_next_rounded),
-                          label: const Text('Next Scene'),
+                          label: Text('next_scene'.tr()),
                         ),
                       ),
                     ],
@@ -283,7 +309,9 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                           : Icons.volume_off_rounded,
                     ),
                     label: Text(
-                      _voiceNarration ? 'Narration: On' : 'Narration: Off',
+                      _voiceNarration
+                          ? 'narration_on'.tr()
+                          : 'narration_off'.tr(),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -293,7 +321,7 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                       backgroundColor: theme.colorScheme.error,
                     ),
                     icon: const Icon(Icons.stop_circle_outlined),
-                    label: const Text('End Tour'),
+                    label: Text('end_tour'.tr()),
                   ),
                 ],
               ),
@@ -394,9 +422,9 @@ class _SceneCard extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text(
-                      'CURRENT SCENE',
-                      style: TextStyle(
+                    child: Text(
+                      'current_scene'.tr(),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
                         letterSpacing: 1,
@@ -446,13 +474,17 @@ class _SubtitleCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.subtitles_outlined, color: Colors.white, size: 16),
-              SizedBox(width: 6),
+              const Icon(
+                Icons.subtitles_outlined,
+                color: Colors.white,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
               Text(
-                'NARRATION SUBTITLES',
-                style: TextStyle(
+                'narration_subtitles'.tr(),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 11,
                   letterSpacing: 1,
