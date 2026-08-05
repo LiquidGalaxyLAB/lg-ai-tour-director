@@ -357,7 +357,7 @@ $flyToBlocks      </gx:Playlist>
     return '''
     <Placemark>
       <name>$id</name>
-      <Style><LineStyle><color>$color</color><width>$width</width></LineStyle></Style>
+      <Style><LineStyle><color>$color</color><width>$width</width></LineStyle><PolyStyle><fill>0</fill><outline>1</outline></PolyStyle></Style>
       <LineString>
         <extrude>1</extrude>
         <tessellate>1</tessellate>
