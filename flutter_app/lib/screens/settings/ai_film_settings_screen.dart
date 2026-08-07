@@ -19,10 +19,13 @@ class AiFilmSettingsScreen extends ConsumerStatefulWidget {
       _AiFilmSettingsScreenState();
 }
 
+// Current, live fal.ai text-to-video endpoints (verified Aug 2026). Ordered
+// best-quality → cheapest. Approx pay-as-you-go pricing at 720p / audio off:
+//   Kling v3  ~$0.084/s · WAN 2.2 ~$0.08/s · Hailuo 02 ~$0.045/s · LTX ~$0.02/clip
 const _falModels = <(String, String)>[
-  ('WAN 2.6', 'fal-ai/wan-t2v-14b'),
-  ('Kling 3.0', 'fal-ai/kling-video/v3/standard/text-to-video'),
-  ('Hailuo', 'fal-ai/minimax-video/text-to-video'),
+  ('Kling v3', 'fal-ai/kling-video/v3/standard/text-to-video'),
+  ('WAN 2.2', 'fal-ai/wan/v2.2-a14b/text-to-video'),
+  ('Hailuo 02', 'fal-ai/minimax/hailuo-02/standard/text-to-video'),
   ('LTX Video', 'fal-ai/ltx-video'),
 ];
 
@@ -372,9 +375,16 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          _hint('fal_model_pricing_hint'.tr(), theme),
           if (_falModelIndex == _falModels.length) ...[
             const SizedBox(height: 12),
-            _urlField('model_id'.tr(), 'fal-ai/wan-t2v-14b', null, _modelController),
+            _urlField(
+              'model_id'.tr(),
+              'fal-ai/wan/v2.2-a14b/text-to-video',
+              null,
+              _modelController,
+            ),
           ],
         ];
       case VideoProviderType.veo3:
@@ -521,11 +531,14 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
       durationPerLocation: duration,
       locationCount: _typicalTourStops,
     );
-    final rateText = rate.perSecond == null
+    final ps = rate.perSecond;
+    final rateText = ps == null
         ? 'unknown'.tr()
-        : rate.perSecond == 0
+        : ps == 0
         ? 'free'.tr()
-        : '\$${rate.perSecond!.toStringAsFixed(2)}/sec (${rate.label})';
+        // Sub-cent rates (e.g. LTX ~$0.004/s) need 3 decimals or they read $0.00.
+        : '\$${ps < 0.1 ? ps.toStringAsFixed(3) : ps.toStringAsFixed(2)}'
+              '/sec (${rate.label})';
     final totalText = estimate == null
         ? '—'
         : estimate == 0

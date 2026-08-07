@@ -16,20 +16,22 @@ class VideoCost {
   static VideoCostRate rate(VideoProviderType type, String modelId) {
     switch (type) {
       case VideoProviderType.falAi:
+        // fal.ai pay-as-you-go, 720p / audio off (verified Aug 2026).
         final m = modelId.toLowerCase();
-        if (m.contains('wan')) return const VideoCostRate(0.05, 'WAN 2.6');
-        if (m.contains('kling')) return const VideoCostRate(0.10, 'Kling 3.0');
+        if (m.contains('kling')) return const VideoCostRate(0.084, 'Kling v3');
+        if (m.contains('wan')) return const VideoCostRate(0.08, 'WAN 2.2 720p');
         if (m.contains('minimax') || m.contains('hailuo')) {
-          return const VideoCostRate(0.08, 'Hailuo');
+          return const VideoCostRate(0.045, 'Hailuo 02');
         }
-        if (m.contains('ltx')) return const VideoCostRate(0.04, 'LTX Video');
-        return const VideoCostRate(0.05, 'fal.ai');
+        // LTX bills a flat ~$0.02/clip; expressed per-second for the estimate.
+        if (m.contains('ltx')) return const VideoCostRate(0.004, 'LTX ~\$0.02/clip');
+        return const VideoCostRate(0.06, 'fal.ai');
       case VideoProviderType.veo3:
-        return const VideoCostRate(0.40, 'Veo 3');
+        return const VideoCostRate(0.40, 'Veo 3 (Fast \$0.15)');
       case VideoProviderType.runway:
-        return const VideoCostRate(0.15, 'Runway Gen-4');
+        return const VideoCostRate(0.05, 'Runway Gen-4 Turbo');
       case VideoProviderType.klingDirect:
-        return const VideoCostRate(0.10, 'Kling');
+        return const VideoCostRate(0.09, 'Kling direct');
       case VideoProviderType.vllmOmni:
         return const VideoCostRate(0.0, 'Free (local)');
       case VideoProviderType.custom:

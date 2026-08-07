@@ -98,6 +98,9 @@ class AiFilmNotifier extends Notifier<AiFilmState> {
       final totalClips = locations.length * chunksPerLocation;
       state = state.copyWith(totalClips: totalClips);
 
+      // Set if a clip fails mid-run (e.g. out of credits). We stop immediately
+      // so we don't keep spending, then stitch whatever already succeeded.
+      VideoGenerationException? clipError;
       outer:
       for (var li = 0; li < locations.length; li++) {
         final location = locations[li];
@@ -114,39 +117,58 @@ class AiFilmNotifier extends Notifier<AiFilmState> {
 
           final prompt = _buildCinematicPrompt(location, ci);
 
-          final videoUrl = await provider.generateAndWait(
-            prompt: prompt,
-            durationSeconds: chunkDuration,
-            onStatusUpdate: (status) {
-              state = state.copyWith(currentStatus: status);
-            },
-          );
-
-          state = state.copyWith(currentStatus: 'Downloading clip $clipNum...');
-          final localPath = await VideoStitcher.downloadClip(
-            url: videoUrl,
-            filename:
-                'clip_${li}_${ci}_${DateTime.now().millisecondsSinceEpoch}.mp4',
-            onProgress: (p) {},
-          );
-
-          allClips.add(
-            VideoClip(
-              locationName: location.name,
-              localPath: localPath,
+          try {
+            final videoUrl = await provider.generateAndWait(
+              prompt: prompt,
               durationSeconds: chunkDuration,
-              clipIndex: ci,
-              locationIndex: li,
-            ),
-          );
+              onStatusUpdate: (status) {
+                state = state.copyWith(currentStatus: status);
+              },
+            );
+
+            state = state.copyWith(
+              currentStatus: 'Downloading clip $clipNum...',
+            );
+            final localPath = await VideoStitcher.downloadClip(
+              url: videoUrl,
+              filename:
+                  'clip_${li}_${ci}_${DateTime.now().millisecondsSinceEpoch}'
+                  '.mp4',
+              onProgress: (p) {},
+            );
+
+            allClips.add(
+              VideoClip(
+                locationName: location.name,
+                localPath: localPath,
+                durationSeconds: chunkDuration,
+                clipIndex: ci,
+                locationIndex: li,
+              ),
+            );
+          } on VideoGenerationException catch (e) {
+            // Pull the plug on further generation, but keep the clips already
+            // produced so they can still be stitched below.
+            clipError = e;
+            break outer;
+          }
         }
       }
 
+      // Nothing usable → surface the real error, or a clean cancel with no spend.
       if (allClips.isEmpty) {
-        const result = VideoGenerationResult(
-          success: false,
-          generatedClips: [],
-        );
+        if (clipError != null) {
+          state = state.copyWith(
+            isGenerating: false,
+            currentStatus: 'Generation failed',
+            lastResult: VideoGenerationResult(
+              success: false,
+              error: clipError.type,
+            ),
+          );
+          throw clipError;
+        }
+        const result = VideoGenerationResult(success: false, generatedClips: []);
         state = state.copyWith(
           isGenerating: false,
           currentStatus: 'Cancelled',
@@ -154,6 +176,21 @@ class AiFilmNotifier extends Notifier<AiFilmState> {
         );
         return result;
       }
+
+      // At least one clip exists — stitch what we have, even if the run was cut
+      // short by an error or a cancel. This is the "3 of 5" partial film.
+      final partial =
+          clipError != null ||
+          state.isCancelled ||
+          allClips.length < totalClips;
+      final message = clipError != null
+          ? '${clipError.userMessage} '
+                'Stitched the ${allClips.length} clip'
+                '${allClips.length == 1 ? '' : 's'} generated before that.'
+          : state.isCancelled
+          ? 'Cancelled after ${allClips.length} of $totalClips clips. '
+                'Stitched what was ready.'
+          : null;
 
       state = state.copyWith(
         currentStatus: 'Stitching ${allClips.length} clips...',
@@ -180,10 +217,12 @@ class AiFilmNotifier extends Notifier<AiFilmState> {
         success: true,
         finalVideoPath: savedPath,
         generatedClips: allClips,
+        partial: partial,
+        message: message,
       );
       state = state.copyWith(
         isGenerating: false,
-        currentStatus: 'Film ready!',
+        currentStatus: partial ? 'Partial film ready' : 'Film ready!',
         lastResult: result,
       );
       return result;

@@ -18,12 +18,21 @@ class VideoGenerationResult {
     this.finalVideoPath,
     this.error,
     this.generatedClips = const [],
+    this.partial = false,
+    this.message,
   });
 
   final bool success;
   final String? finalVideoPath;
   final VideoGenerationError? error;
   final List<VideoClip> generatedClips;
+
+  /// True when fewer clips than requested were stitched (a clip failed — e.g.
+  /// ran out of credits — or the user cancelled), but a film was still produced.
+  final bool partial;
+
+  /// Human-readable note shown on the result screen (why it's partial, etc.).
+  final String? message;
 }
 
 class VideoGenerationException implements Exception {

@@ -24,6 +24,7 @@ class AiFilmResultScreen extends ConsumerStatefulWidget {
 class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
   VideoPlayerController? _controller;
   String? _path;
+  bool _playError = false; // video_player couldn't open the stitched file
 
   @override
   void initState() {
@@ -35,6 +36,11 @@ class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
       _controller = c;
       c.initialize().then((_) {
         if (mounted) setState(() {});
+      }).catchError((Object e) {
+        // Don't spin forever on an unplayable file — show a message and keep
+        // Share working (the file is still saved on the device).
+        debugPrint('[AIFilm] player init failed: $e');
+        if (mounted) setState(() => _playError = true);
       });
     }
   }
@@ -124,6 +130,37 @@ class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
         children: [
+          // Partial-film notice (a clip failed / ran out of credits / cancelled).
+          if (result?.partial == true && result?.message != null) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF29900).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFF29900).withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    size: 20,
+                    color: Color(0xFFF29900),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      result!.message!,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           // Player
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
@@ -155,6 +192,21 @@ class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
                         ],
                       ),
                     )
+                  : _playError
+                  ? const AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text(
+                            "Saved, but this device can't preview it here. "
+                            'Use Share to open or save it elsewhere.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ),
+                      ),
+                    )
                   : const AspectRatio(
                       aspectRatio: 16 / 9,
                       child: Center(
@@ -177,7 +229,8 @@ class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
                 _detail('Duration', '${totalSeconds}s'),
                 _detail('Locations', '$locationCount'),
                 _detail('Provider used', providerName),
-                _detail('Saved to', 'Downloads folder'),
+                _detail('Clips stitched', '${clips.length}'),
+                _detail('Saved to', 'Gallery › Movies'),
               ],
             ),
           ),

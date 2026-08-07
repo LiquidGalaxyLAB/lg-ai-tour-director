@@ -127,6 +127,9 @@ class _AiFilmProgressScreenState extends ConsumerState<AiFilmProgressScreen> {
                 ),
               TextButton(
                 onPressed: () {
+                  // Pull the plug: make sure nothing keeps generating/spending,
+                  // then leave. Never re-trigger generation from Cancel.
+                  ref.read(aiFilmProvider.notifier).requestCancellation();
                   Navigator.pop(ctx);
                   context.go('/home');
                 },

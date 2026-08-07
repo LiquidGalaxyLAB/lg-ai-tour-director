@@ -51,7 +51,8 @@ class FalAiProvider extends VideoProvider {
           'resolution': '720p',
         },
       );
-      final id = (r.data as Map)['request_id'] as String?;
+      final data = r.data as Map;
+      final id = data['request_id'] as String?;
       if (id == null || id.isEmpty) {
         throw VideoGenerationException.classify(
           'fal.ai response had no request_id: ${r.data}',
@@ -59,8 +60,16 @@ class FalAiProvider extends VideoProvider {
           modelId: modelId,
         );
       }
+      // fal's status/result live UNDER the model path — and for sub-path models
+      // (e.g. Kling) the base is the app id, not the full endpoint. So use the
+      // response_url fal returns rather than constructing it ourselves (building
+      // it as .../requests/{id} without the model prefix causes a 405). Returned
+      // as the "jobId" the poll methods below GET directly.
+      final responseUrl = (data['response_url'] as String?)?.trim();
       debugPrint('[FalAi] submitted job $id');
-      return id;
+      return (responseUrl != null && responseUrl.isNotEmpty)
+          ? responseUrl
+          : '$_base/$modelId/requests/$id';
     } catch (e) {
       throwClassified(e, _type, modelId: modelId);
     }
@@ -68,8 +77,10 @@ class FalAiProvider extends VideoProvider {
 
   @override
   Future<bool> isJobComplete(String jobId) async {
+    // [jobId] is the full response_url returned by submitJob; status is at
+    // "<response_url>/status".
     try {
-      final r = await _dio.get('$_base/requests/$jobId/status', options: _opts);
+      final r = await _dio.get('$jobId/status', options: _opts);
       final status = ((r.data as Map)['status'] as String?)?.toUpperCase();
       if (status == 'FAILED') {
         debugPrint('[FalAi] job $jobId FAILED: ${r.data}');
@@ -87,8 +98,9 @@ class FalAiProvider extends VideoProvider {
 
   @override
   Future<String> getVideoUrl(String jobId) async {
+    // [jobId] is the full response_url returned by submitJob.
     try {
-      final r = await _dio.get('$_base/requests/$jobId', options: _opts);
+      final r = await _dio.get(jobId, options: _opts);
       final d = r.data;
       final candidates = <(String, String?)>[
         ('video.url', nestedString(d, ['video', 'url'])),

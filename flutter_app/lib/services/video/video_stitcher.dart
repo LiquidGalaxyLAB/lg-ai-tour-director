@@ -104,40 +104,55 @@ class VideoStitcher {
     }
   }
 
+  /// Persists the finished film and returns a File()-readable path for playback
+  /// and sharing. On Android it ALSO best-effort exports to the public Downloads
+  /// via MediaStore (so it appears in Files/Gallery) — but if that fails, the
+  /// film is NOT lost: it's already stitched, so we keep a guaranteed-readable
+  /// copy in app storage and return that. Saving must never destroy the film.
   static Future<String> saveToDownloads(String sourcePath) async {
     final ts = DateTime.now().millisecondsSinceEpoch;
     final name = 'TourDirectorFilm_$ts.mp4';
 
     if (Platform.isAndroid) {
-      // Android 13+ (API 33+): register the file with MediaStore so it shows up
-      // in Files/Gallery apps WITHOUT needing the restricted
-      // MANAGE_EXTERNAL_STORAGE ("All files access") permission.
-      final result = await SaverGallery.saveFile(
-        filePath: sourcePath,
-        fileName: name,
-        androidRelativePath: 'Download',
-        skipIfExists: false,
-      );
-      if (!result.isSuccess) {
-        throw VideoGenerationException(
-          type: VideoGenerationError.unknown,
-          rawMessage: result.errorMessage ?? 'saver_gallery save failed',
-          userMessage:
-              'Could not save the film to your device. '
-              '${result.errorMessage ?? ''}'.trim(),
+      // Best-effort MediaStore export so the film shows in the Gallery / Files
+      // apps — no MANAGE_EXTERNAL_STORAGE needed on Android 13+.
+      //
+      // IMPORTANT: the MediaStore *Video* collection only accepts RELATIVE_PATH
+      // under Movies/ (or DCIM/Pictures). Passing 'Download' throws
+      // IllegalArgumentException on EVERY Android 13+ device → no URI → "Failed
+      // to create file URI". So videos must go under Movies/. We use a branded
+      // subfolder; it appears in the Gallery and in Files › Movies.
+      //
+      // Still wrapped defensively — a MediaStore failure must never lose the
+      // film, since the app-storage copy below is what we play and share.
+      try {
+        final result = await SaverGallery.saveFile(
+          filePath: sourcePath,
+          fileName: name,
+          androidRelativePath: 'Movies/TourDirector',
+          skipIfExists: false,
+        );
+        debugPrint(
+          result.isSuccess
+              ? '[AIFilm] [Stitch] exported to Movies/TourDirector/$name'
+              : '[AIFilm] [Stitch] MediaStore export failed '
+                    '(${result.errorMessage}); keeping app-storage copy',
+        );
+      } catch (e) {
+        debugPrint(
+          '[AIFilm] [Stitch] MediaStore export threw ($e); '
+          'keeping app-storage copy',
         );
       }
-      debugPrint('[AIFilm] [Stitch] saved to MediaStore Download/$name');
-      // MediaStore doesn't return a File()-readable path, so keep playing and
-      // sharing from the readable stitched file in app storage.
-      return sourcePath;
     }
 
-    // Other platforms: copy into app documents and return that path.
+    // Always keep a readable copy in app storage for playback + sharing. This is
+    // what we return, so the result screen works whether or not the public
+    // export above succeeded.
     final dir = await getApplicationDocumentsDirectory();
     final destPath = '${dir.path}/$name';
     await File(sourcePath).copy(destPath);
-    debugPrint('[AIFilm] [Stitch] saved to: $destPath');
+    debugPrint('[AIFilm] [Stitch] saved app-storage copy: $destPath');
     return destPath;
   }
 }
