@@ -46,7 +46,7 @@ abstract class VideoProvider {
       type: VideoGenerationError.unknown,
       rawMessage: 'timeout',
       userMessage:
-          'Generation timed out after 10 minutes. The clip may still be '
+          'Generation timed out after 6 minutes. The clip may still be '
           "processing on the provider's server.",
     );
   }

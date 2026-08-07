@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../models/location.dart';
+import '../../providers/ai_film_provider.dart';
 import '../../providers/ssh_provider.dart';
 import 'map_sync_test_screen.dart';
 
@@ -55,6 +58,44 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
       if (destructive && !await _confirm(context, action)) return;
       await fn();
       toast('$action sent');
+    }
+
+    // Runs the FULL AI Film pipeline on 3 hardcoded locations — same code path
+    // as a real tour (generateFilm → providers → FFmpeg stitch → result screen),
+    // just without generating a tour first. Does NOT require the rig.
+    void testAiFilm() {
+      if (!ref.read(aiFilmProvider).settings.isConfigured) {
+        toast('Configure AI Film in Settings first');
+        return;
+      }
+      const testLocations = <TourLocation>[
+        TourLocation(
+          name: 'Shaniwar Wada',
+          type: 'historical',
+          whySignificant: 'A historic 18th century fort in Pune.',
+          suggestedDurationSeconds: 25,
+          address: 'Pune, Maharashtra, India',
+        ),
+        TourLocation(
+          name: 'Taj Mahal',
+          type: 'historical',
+          whySignificant: 'An iconic marble mausoleum built in 1632.',
+          suggestedDurationSeconds: 25,
+          address: 'Agra, Uttar Pradesh, India',
+        ),
+        TourLocation(
+          name: 'Red Fort',
+          type: 'historical',
+          whySignificant:
+              'A Mughal-era fort that served as the main residence of '
+              'emperors.',
+          suggestedDurationSeconds: 25,
+          address: 'Delhi, India',
+        ),
+      ];
+      // The progress screen owns generateFilm() + error handling + navigation to
+      // the result screen — identical to the real post-tour flow.
+      context.push('/tour/ai-film-progress', extra: testLocations);
     }
 
     final tiles = <_Tile>[
@@ -176,6 +217,12 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
                 ),
                 icon: const Icon(Icons.sync_alt_rounded),
                 label: const Text('Test Map Sync'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: testAiFilm,
+                icon: const Icon(Icons.movie_creation_outlined),
+                label: const Text('Test AI Film (3 clips)'),
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(

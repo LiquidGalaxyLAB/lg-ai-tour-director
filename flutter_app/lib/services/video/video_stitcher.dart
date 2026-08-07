@@ -5,7 +5,7 @@ import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:saver_gallery/saver_gallery.dart';
 
 import '../../models/video_generation_result.dart';
 
@@ -108,24 +108,33 @@ class VideoStitcher {
     final ts = DateTime.now().millisecondsSinceEpoch;
     final name = 'TourDirectorFilm_$ts.mp4';
 
-    Directory? dir;
     if (Platform.isAndroid) {
-      final status = await Permission.manageExternalStorage.request();
-      if (!status.isGranted) {
+      // Android 13+ (API 33+): register the file with MediaStore so it shows up
+      // in Files/Gallery apps WITHOUT needing the restricted
+      // MANAGE_EXTERNAL_STORAGE ("All files access") permission.
+      final result = await SaverGallery.saveFile(
+        filePath: sourcePath,
+        fileName: name,
+        androidRelativePath: 'Download',
+        skipIfExists: false,
+      );
+      if (!result.isSuccess) {
         throw VideoGenerationException(
           type: VideoGenerationError.unknown,
-          rawMessage: 'Permission denied',
+          rawMessage: result.errorMessage ?? 'saver_gallery save failed',
           userMessage:
-              'Storage permission is required to save the film to your '
-              'Downloads folder. Please grant it in your device settings.',
+              'Could not save the film to your device. '
+              '${result.errorMessage ?? ''}'.trim(),
         );
       }
-      const downloads = '/storage/emulated/0/Download';
-      if (await Directory(downloads).exists()) dir = Directory(downloads);
-      dir ??= await getExternalStorageDirectory();
+      debugPrint('[AIFilm] [Stitch] saved to MediaStore Download/$name');
+      // MediaStore doesn't return a File()-readable path, so keep playing and
+      // sharing from the readable stitched file in app storage.
+      return sourcePath;
     }
-    dir ??= await getApplicationDocumentsDirectory();
 
+    // Other platforms: copy into app documents and return that path.
+    final dir = await getApplicationDocumentsDirectory();
     final destPath = '${dir.path}/$name';
     await File(sourcePath).copy(destPath);
     debugPrint('[AIFilm] [Stitch] saved to: $destPath');

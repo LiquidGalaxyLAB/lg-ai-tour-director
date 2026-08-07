@@ -267,7 +267,10 @@ class AiFilmNotifier extends Notifier<AiFilmState> {
       'Smooth orbital camera movement around',
     ];
     final angle = angles[chunkIndex % angles.length];
-    return '$angle ${location.name}, ${location.address ?? ''}. '
+    final addressPart = (location.address?.isNotEmpty == true)
+        ? ', ${location.address}'
+        : '';
+    return '$angle ${location.name}$addressPart. '
         '${location.whySignificant}. '
         'Golden hour lighting, 4K cinematic quality, smooth camera movement, '
         'no text overlays, documentary style, National Geographic quality.';

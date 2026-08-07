@@ -98,6 +98,16 @@ class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_path == null || _path!.isEmpty) {
+      return const Scaffold(
+        body: Center(
+          child: Text(
+            'No video available. Generation may have failed.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
     final theme = Theme.of(context);
     final film = ref.watch(aiFilmProvider);
     final result = film.lastResult;
