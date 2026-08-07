@@ -79,7 +79,11 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
       }
       if (s.providerType == VideoProviderType.falAi) {
         final idx = _falModels.indexWhere((m) => m.$2 == s.modelId);
-        _falModelIndex = idx >= 0 ? idx : _falModels.length; // else custom
+        // Fresh setup (no model saved) → default to the first preset, Kling v3
+        // (best quality for a demo). A saved-but-unknown id → the custom field.
+        _falModelIndex = idx >= 0
+            ? idx
+            : (s.modelId.isEmpty ? 0 : _falModels.length);
       }
     });
   }
