@@ -8,8 +8,12 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/location.dart';
 import '../../models/tour_flow.dart';
+import '../../models/video_generation_result.dart';
+import '../../providers/ai_film_provider.dart';
 import '../../providers/ssh_provider.dart';
+import '../../providers/tour_draft_provider.dart';
 import '../../services/maps/map_sync_service.dart';
+import '../../services/video/video_provider_factory.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/film_dialog.dart';
 import '../../shared/widgets/sync_map_view.dart';
@@ -28,6 +32,18 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
   // The stop the map is focused on (set by tapping a location card). Null = the
   // opening "frame all stops" view.
   TourLocation? _focus;
+
+  @override
+  void initState() {
+    super.initState();
+    // Stash the generated tour so it survives the route being popped (phone
+    // back gesture, wandering off to Settings, etc.). The Home screen's
+    // "continue your tour" banner re-opens Preview from this draft.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(tourDraftProvider.notifier).set(widget.args);
+    });
+  }
 
   @override
   void dispose() {
@@ -54,6 +70,16 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
     final choice = await showFilmDialog(context);
     if (choice == null || !context.mounted) return; // cancelled
 
+    var generateFilm = choice;
+    if (choice == true) {
+      // Verify the AI Film connection BEFORE the tour starts. On failure the
+      // tour does NOT start — the user is offered the AI Film settings, the
+      // help docs, or to start the tour without a film.
+      final decision = await _verifyFilmConnection(context);
+      if (decision == null || !context.mounted) return; // abort start
+      generateFilm = decision; // true = verified ok; false = start without film
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('deploying_tour_to_lg'.tr())),
     );
@@ -70,7 +96,112 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
     if (!context.mounted) return;
     context.push(
       '/home/active',
-      extra: widget.args.copyWith(generateFilm: choice),
+      extra: widget.args.copyWith(generateFilm: generateFilm),
+    );
+  }
+
+  /// Runs a live connection test against the configured AI Film provider.
+  /// Returns:
+  ///  - `true`  → connection verified, start the tour WITH a film
+  ///  - `false` → user chose "start without film" from the error dialog
+  ///  - `null`  → abort the tour start (fix settings / view help / cancel)
+  Future<bool?> _verifyFilmConnection(BuildContext context) async {
+    final settings = ref.read(aiFilmProvider).settings;
+
+    // Not turned on → there's nothing to test; guide the user to set it up.
+    if (!settings.isEnabled) {
+      return _showFilmErrorDialog(context, 'ai_film_not_enabled_msg'.tr());
+    }
+
+    // Blocking spinner while we hit the provider.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _VerifyingDialog(),
+    );
+
+    var ok = false;
+    String? error;
+    try {
+      final provider = VideoProviderFactory.create(settings);
+      ok = await provider.testConnection();
+    } on VideoGenerationException catch (e) {
+      error = e.userMessage;
+    } catch (e) {
+      error = e.toString();
+    }
+
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop(); // close the spinner
+    }
+    if (!context.mounted) return null;
+
+    if (ok) return true;
+    return _showFilmErrorDialog(context, error ?? 'connection_failed'.tr());
+  }
+
+  /// Error dialog shown when the AI Film connection can't be verified. Returns
+  /// `false` if the user picks "start without film", otherwise `null` (abort).
+  Future<bool?> _showFilmErrorDialog(BuildContext context, String message) {
+    final theme = Theme.of(context);
+    return showDialog<bool?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(Icons.error_outline_rounded, color: theme.colorScheme.error),
+        title: Text('ai_film_connection_failed_title'.tr()),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message),
+            const SizedBox(height: 12),
+            Text(
+              'ai_film_help_suggestion'.tr(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        actions: [
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.pop(ctx); // abort start (null)
+                    context.push('/settings/ai-film?returnToTour=true');
+                  },
+                  child: Text('open_ai_film_settings'.tr()),
+                ),
+              ),
+              const SizedBox(height: 4),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx); // abort start (null)
+                    context.push('/settings/help');
+                  },
+                  child: Text('view_help'.tr()),
+                ),
+              ),
+              const SizedBox(height: 4),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false), // start w/o film
+                child: Text('start_without_film'.tr()),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx), // abort (null)
+                child: Text('cancel'.tr()),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -188,7 +319,12 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: () => context.pop(),
+                  onPressed: () {
+                    // Explicit discard → drop the saved draft so the Home
+                    // "continue your tour" banner doesn't offer it anymore.
+                    ref.read(tourDraftProvider.notifier).clear();
+                    context.pop();
+                  },
                   style: TextButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
                     minimumSize: const Size.fromHeight(48),
@@ -198,6 +334,27 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VerifyingDialog extends StatelessWidget {
+  const _VerifyingDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      content: Row(
+        children: [
+          const SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+          const SizedBox(width: 18),
+          Expanded(child: Text('verifying_ai_film'.tr())),
         ],
       ),
     );

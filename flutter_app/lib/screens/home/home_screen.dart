@@ -6,6 +6,8 @@ import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../models/tour_flow.dart';
+import '../../providers/tour_draft_provider.dart';
 import '../../providers/tour_state_provider.dart';
 import '../../services/gemini/llm_service.dart';
 import '../../shared/widgets/app_header.dart';
@@ -321,8 +323,101 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               if (args != null) context.push('/home/active', extra: args);
             },
           ),
+
+          // A generated-but-not-yet-started tour. Shown only when no tour is
+          // actively running (the running banner above takes priority). Lets the
+          // user return to Preview after the route was popped (phone back gesture
+          // / navigating away), instead of losing the generated tour.
+          _ContinueTourBanner(
+            draft: ref.watch(tourStateProvider.select((s) => s.isRunning))
+                ? null // running tour → its own banner above takes priority
+                : ref.watch(tourDraftProvider),
+            onTap: (args) => context.push('/home/preview', extra: args),
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _ContinueTourBanner extends StatelessWidget {
+  const _ContinueTourBanner({required this.draft, required this.onTap});
+
+  final TourFlowArgs? draft;
+  final void Function(TourFlowArgs args) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final args = draft;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      alignment: Alignment.bottomCenter,
+      child: args == null
+          ? const SizedBox(width: double.infinity)
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: Material(
+                color: AppColors.googleBlueBright,
+                elevation: 3,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => onTap(args),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.map_outlined,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'continue_your_tour'.tr(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                args.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: Colors.white24,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }

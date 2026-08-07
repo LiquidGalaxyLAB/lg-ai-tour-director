@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -31,14 +30,11 @@ class PostTourScreen extends ConsumerStatefulWidget {
 }
 
 class _PostTourScreenState extends ConsumerState<PostTourScreen> {
-  Timer? _timer;
   final FlutterTts _tts = FlutterTts();
-  double _filmProgress = 0;
   bool _saved = false;
   final String _tourId = const Uuid().v4();
 
   bool get _film => widget.args.generateFilm;
-  bool get _filmReady => _filmProgress >= 1.0;
 
   /// A REPLAY of a tour already in the library → no "Save Tour" (it would spawn
   /// a duplicate library entry on every replay).
@@ -50,16 +46,23 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _recordHistory();
-      if (!_film) _maybeShowAiFilm();
+      if (_film) {
+        // "Yes, make a film" → run the REAL generator (Veo/Kling). The
+        // connection was already verified on the Preview screen before the
+        // tour started, so this proceeds straight into generation.
+        _startRealFilm();
+      } else {
+        _maybeShowAiFilm();
+      }
     });
     _sayThankYou();
-    if (_film) {
-      // Simulate Veo producing the film in the background (~6s).
-      _timer = Timer.periodic(const Duration(milliseconds: 300), (t) {
-        setState(() => _filmProgress = (_filmProgress + 0.05).clamp(0.0, 1.0));
-        if (_filmReady) t.cancel();
-      });
-    }
+  }
+
+  /// Launch the real AI Film generator. The generator screen shows live
+  /// progress, handles errors/retries, stitches the clips, and on success
+  /// replaces itself with the result screen. On cancel it returns here.
+  void _startRealFilm() {
+    context.push('/tour/ai-film-progress', extra: widget.args.locations);
   }
 
   /// Offer AI Film after the tour. The sheet self-hides unless AI Film is
@@ -101,7 +104,6 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
 
   @override
   void dispose() {
-    _timer?.cancel();
     _tts.stop();
     super.dispose();
   }
@@ -190,10 +192,6 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
     ).showSnackBar(const SnackBar(content: Text('Tour saved to your library')));
   }
 
-  void _stub(String label) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text('$label — coming soon')));
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -221,27 +219,17 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
                 ],
                 const SizedBox(height: 4),
                 Text(
-                  _film && !_filmReady
-                      ? 'Explore the recap while your film is being produced.'
-                      : 'Your journey is complete.',
+                  'Your journey is complete.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                if (_film && _filmReady)
-                  _VideoPlayerCard(onPlay: () => _stub('Video playback'))
-                else
-                  const MapPlaceholder(
-                    height: 200,
-                    label: 'Recap · drag to explore',
-                  ),
-
-                if (_film && !_filmReady) ...[
-                  const SizedBox(height: 16),
-                  _ProducingCard(progress: _filmProgress),
-                ],
+                const MapPlaceholder(
+                  height: 200,
+                  label: 'Recap · drag to explore',
+                ),
 
                 const SizedBox(height: 20),
 
@@ -278,28 +266,6 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                  ),
-                ],
-
-                if (_film && _filmReady) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    'SHARE RECORDING',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      letterSpacing: 1,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _ShareRow(onTap: _stub),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: () => _stub('Download video'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF202124),
-                    ),
-                    icon: const Icon(Icons.download_rounded),
-                    label: const Text('Download Video'),
                   ),
                 ],
 
@@ -517,154 +483,3 @@ class _RibbonsPainter extends CustomPainter {
   bool shouldRepaint(_RibbonsPainter old) => old.t != t;
 }
 
-class _ProducingCard extends StatelessWidget {
-  const _ProducingCard({required this.progress});
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'Producing the film…',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${(progress * 100).round()}%',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(value: progress, minHeight: 5),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _VideoPlayerCard extends StatelessWidget {
-  const _VideoPlayerCard({required this.onPlay});
-  final VoidCallback onPlay;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        height: 200,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.googleBlue, AppColors.googleGreen],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Stack(
-          children: [
-            Center(
-              child: IconButton(
-                iconSize: 56,
-                onPressed: onPlay,
-                icon: const Icon(Icons.play_circle_fill, color: Colors.white),
-              ),
-            ),
-            const Positioned(left: 12, bottom: 12, child: _Pill(text: '02:38')),
-            const Positioned(
-              right: 12,
-              bottom: 12,
-              child: _Pill(text: '1080p'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  const _Pill({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(color: Colors.white, fontSize: 12),
-      ),
-    );
-  }
-}
-
-class _ShareRow extends StatelessWidget {
-  const _ShareRow({required this.onTap});
-  final void Function(String) onTap;
-
-  static const _items = <(String, IconData, Color)>[
-    ('WhatsApp', Icons.chat_rounded, Color(0xFF25D366)),
-    ('YouTube', Icons.smart_display_rounded, Color(0xFFFF0000)),
-    ('Drive', Icons.add_to_drive_rounded, AppColors.googleBlueBright),
-    ('Gmail', Icons.mail_rounded, AppColors.googleRed),
-    ('Share', Icons.share_rounded, AppColors.googleGreen),
-    ('More', Icons.more_horiz_rounded, Color(0xFF5F6368)),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Wrap(
-      spacing: 16,
-      runSpacing: 12,
-      alignment: WrapAlignment.spaceBetween,
-      children: [
-        for (final (label, icon, color) in _items)
-          GestureDetector(
-            onTap: () => onTap(label),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: color.withValues(alpha: 0.14),
-                  child: Icon(icon, color: color),
-                ),
-                const SizedBox(height: 4),
-                Text(label, style: theme.textTheme.labelSmall),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}

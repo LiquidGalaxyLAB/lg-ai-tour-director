@@ -234,7 +234,16 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
       margin: EdgeInsets.zero,
       child: SwitchListTile(
         value: _enabled,
-        onChanged: (v) => setState(() => _enabled = v),
+        onChanged: (v) async {
+          setState(() => _enabled = v);
+          // Persist the toggle immediately. The Save button lives inside the
+          // section that greys out (IgnorePointer) when disabled, so it can
+          // never write an OFF value — without this, turning AI Film off would
+          // silently revert to the last-saved ON state on the next visit.
+          await ref
+              .read(aiFilmProvider.notifier)
+              .saveSettings(_buildSettings());
+        },
         title: Text(
           'ai_film'.tr(),
           style: const TextStyle(fontWeight: FontWeight.w700),
