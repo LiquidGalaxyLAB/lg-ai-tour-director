@@ -24,6 +24,7 @@ env/
 CLAUDE.md
 **/CLAUDE.md
 LLM_INTEGRATION.md
+for-andreu.md
 
 # build artifacts
 build/

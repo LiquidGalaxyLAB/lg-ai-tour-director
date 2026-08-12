@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,14 +22,19 @@ class SavedScreen extends ConsumerStatefulWidget {
 
 class _SavedScreenState extends ConsumerState<SavedScreen> {
   int _filter = 0;
-  static const _filters = ['All Tours', 'Recent', 'Offline', 'Curated'];
+  static const _filters = [
+    'filter_all_tours',
+    'filter_recent',
+    'filter_offline',
+    'filter_curated',
+  ];
   static const _stubFilters = {2, 3}; // Offline, Curated
 
   static const _categories = <(String, IconData, Color)>[
-    ('Museums', Icons.account_balance_rounded, AppColors.googleBlueBright),
-    ('Temples', Icons.temple_hindu_rounded, AppColors.tileSetRefresh),
-    ('Food Walks', Icons.restaurant_rounded, AppColors.googleRed),
-    ('Nature', Icons.forest_rounded, AppColors.googleGreen),
+    ('category_museums', Icons.account_balance_rounded, AppColors.googleBlueBright),
+    ('category_temples', Icons.temple_hindu_rounded, AppColors.tileSetRefresh),
+    ('category_food_walks', Icons.restaurant_rounded, AppColors.googleRed),
+    ('category_nature', Icons.forest_rounded, AppColors.googleGreen),
   ];
 
   @override
@@ -47,14 +53,14 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
               children: [
                 Center(
                   child: Text(
-                    'Saved Tours',
+                    'saved_tours_title'.tr(),
                     style: theme.textTheme.headlineMedium,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Center(
                   child: Text(
-                    'Your personal library of tours saved for replay.',
+                    'saved_tours_subtitle'.tr(),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -87,7 +93,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                         Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: ChoiceChip(
-                            label: Text(_filters[i]),
+                            label: Text(_filters[i].tr()),
                             selected: _filter == i,
                             onSelected: _stubFilters.contains(i)
                                 ? null
@@ -98,7 +104,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                _SectionLabel('PLAYLIST CATEGORIES'),
+                _SectionLabel('playlist_categories'.tr()),
                 const SizedBox(height: 12),
                 GridView.count(
                   crossAxisCount: 2,
@@ -113,14 +119,13 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _SectionLabel('SAVED TOUR LIBRARY'),
+                _SectionLabel('saved_tour_library'.tr()),
                 const SizedBox(height: 12),
                 if (tours.isEmpty)
-                  const EmptyState(
+                  EmptyState(
                     icon: Icons.bookmark_border_rounded,
-                    title: 'No saved tours yet',
-                    message:
-                        'Save a tour after it finishes to keep it here for replay.',
+                    title: 'no_saved_tours_yet'.tr(),
+                    message: 'no_saved_tours_message'.tr(),
                   )
                 else ...[
                   for (final t in tours)
@@ -211,7 +216,7 @@ class _CategoryTile extends StatelessWidget {
           Icon(icon, color: color, size: 22),
           const SizedBox(width: 10),
           Text(
-            label,
+            label.tr(),
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -311,7 +316,7 @@ class _SavedCard extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'Saved tour',
+                          'saved_tour'.tr(),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),

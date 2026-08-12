@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,83 +10,41 @@ class HelpScreen extends StatelessWidget {
 
   static const _guides = <(String, String, IconData, String)>[
     (
-      'Getting Started',
-      'Learn the basics of navigating the interface and setting up your first view.',
+      'help_guide_getting_started_title',
+      'help_guide_getting_started_subtitle',
       Icons.rocket_launch_outlined,
-      'AI Tour Director turns a simple text prompt into a cinematic geographic '
-          'tour on your Liquid Galaxy rig.\n'
-          '\n'
-          '1. **Connect** to your rig using the settings gear icon (see '
-          '"Connecting to Liquid Galaxy").\n'
-          '2. On the home screen, **type a destination or theme**, such as '
-          '"ancient temples of India" or "wonders of the world".\n'
-          '3. Tap **Generate Tour** and wait a few seconds while the AI '
-          'discovers locations.\n'
-          '4. Tap **Start Tour** to launch the experience on the rig.',
+      'help_guide_getting_started_body',
     ),
     (
-      'Connecting to Liquid Galaxy',
-      'Step by step instructions to link your device to the rig via IP or QR code.',
+      'help_guide_connecting_title',
+      'help_guide_connecting_subtitle',
       Icons.cable_rounded,
-      'You only need to do this once. Connection details are saved '
-          'automatically.\n'
-          '\n'
-          '1. Tap the **gear icon** on the home screen and open **LG Connection '
-          'Settings**.\n'
-          "2. Enter your rig's **IP address**, **SSH port** (default **22**), "
-          '**username** (default **lg**), and **password**.\n'
-          '3. Choose how many **screens** your rig has: **3, 5, or 7**.\n'
-          '4. Tap **Connect**. The status dot in the top bar turns **green** '
-          'when the link is live.',
+      'help_guide_connecting_body',
     ),
     (
-      'Generating AI Films',
-      'How to opt into an AI film and share your journey as a reusable tour.',
+      'help_guide_ai_films_title',
+      'help_guide_ai_films_subtitle',
       Icons.movie_filter_outlined,
-      'After generating a tour, tap **Start Tour** on the preview screen. Then:\n'
-          '\n'
-          '- The app **narrates each location** with AI generated commentary.\n'
-          '- The rig **flies through the landmarks** automatically.\n'
-          '- Each stop shows an **info panel on the rightmost screen** with an '
-          'image and description.\n'
-          '- Tours are **saved to your library** after completion and can be '
-          '**replayed anytime** without regenerating.',
+      'help_guide_ai_films_body',
     ),
   ];
 
   static const _troubleshooting = <(String, String)>[
-    (
-      'Liquid Galaxy not connecting',
-      '- Make sure your phone and the LG rig are on the **same WiFi '
-          'network**.\n'
-          '- **Double check the IP address**. Find it by running **hostname -I** '
-          'on the LG master machine.\n'
-          '- Confirm the **SSH port is 22** and the **username is lg**.\n'
-          '- If it times out, tap **Relaunch LG** from Advanced Controls, then '
-          'reconnect.\n'
-          '- If it still fails, restart **Google Earth** on the rig manually.',
-    ),
-    (
-      'Tour not starting on the rig',
-      '- Confirm the connection **status dot is green**.\n'
-          '- Tap **Clear KML** from Advanced LG Controls, then launch the tour '
-          'again.\n'
-          '- Make sure **Set Refresh** has been tapped at least once this '
-          'session, the rig needs it to load new KML live.\n'
-          '- If the rig is blank, tap **Relaunch LG**, wait about 30 seconds for '
-          'Google Earth to restart, then try again.',
-    ),
-    (
-      'Tour generation fails',
-      '- Set up an **AI model** in **Settings → AI Configuration**: a base URL, '
-          'API key and model ID (or a local model).\n'
-          '- Check that it works with **Test Connection**.\n'
-          '- For a cloud provider, make sure your account has **available '
-          'credit or quota**. A free or local model avoids credit limits.\n'
-          '- If it fails mid tour, tap **retry**, or try a **simpler prompt** '
-          'with fewer locations.',
-    ),
+    ('help_trouble_connecting_title', 'help_trouble_connecting_body'),
+    ('help_trouble_tour_start_title', 'help_trouble_tour_start_body'),
+    ('help_trouble_generation_title', 'help_trouble_generation_body'),
   ];
+
+  static const _aiFilmGuides = <(String, String)>[
+    ('help_aifilm_falai_title', 'help_aifilm_falai_body'),
+    ('help_aifilm_veo_title', 'help_aifilm_veo_body'),
+    ('help_aifilm_kling_title', 'help_aifilm_kling_body'),
+    ('help_aifilm_runway_title', 'help_aifilm_runway_body'),
+    ('help_aifilm_local_title', 'help_aifilm_local_body'),
+    ('help_aifilm_custom_title', 'help_aifilm_custom_body'),
+  ];
+
+  static const _supportedProvidersList = 'help_supported_providers_list';
 
   void _showGuide(BuildContext context, String title, String body) {
     showModalBottomSheet<void>(
@@ -133,12 +92,12 @@ class HelpScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Help & Support')),
+      appBar: AppBar(title: Text('help_title'.tr())),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            'Guides and troubleshooting for using Tour Director with Liquid Galaxy.',
+            'help_subtitle'.tr(),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -159,20 +118,20 @@ class HelpScreen extends StatelessWidget {
                 ),
               ),
               title: Text(
-                'AI Model Setup',
+                'help_ai_model_setup'.tr(),
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              subtitle: const Text(
-                'Connect any OpenAI-compatible model: cloud or local.',
+              subtitle: Text(
+                'help_ai_model_setup_desc'.tr(),
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/help/ai-setup'),
             ),
           ),
           Text(
-            'QUICK GUIDES',
+            'help_quick_guides'.tr(),
             style: theme.textTheme.labelMedium?.copyWith(
               color: theme.colorScheme.primary,
               letterSpacing: 1,
@@ -195,18 +154,18 @@ class HelpScreen extends StatelessWidget {
                   child: Icon(icon, color: theme.colorScheme.primary),
                 ),
                 title: Text(
-                  title,
+                  title.tr(),
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                subtitle: Text(subtitle),
-                onTap: () => _showGuide(context, title, body),
+                subtitle: Text(subtitle.tr()),
+                onTap: () => _showGuide(context, title.tr(), body.tr()),
               ),
             ),
           const SizedBox(height: 12),
           Text(
-            'TROUBLESHOOTING',
+            'help_troubleshooting'.tr(),
             style: theme.textTheme.labelMedium?.copyWith(
               color: theme.colorScheme.primary,
               letterSpacing: 1,
@@ -218,11 +177,64 @@ class HelpScreen extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 8),
               child: ExpansionTile(
                 shape: const Border(),
-                title: Text(title, style: theme.textTheme.titleSmall),
+                title: Text(title.tr(), style: theme.textTheme.titleSmall),
                 childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                children: [_HelpBody(markdown: body)],
+                children: [_HelpBody(markdown: body.tr())],
               ),
             ),
+          const SizedBox(height: 16),
+          Text(
+            'help_ai_film_setup_guides'.tr(),
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.primary,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final (title, body) in _aiFilmGuides)
+            Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ExpansionTile(
+                shape: const Border(),
+                title: Text(title.tr(), style: theme.textTheme.titleSmall),
+                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                children: [_HelpBody(markdown: body.tr())],
+              ),
+            ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'help_supported_platforms'.tr(),
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'help_supported_platforms_desc'.tr(),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _HelpBody(markdown: _supportedProvidersList.tr()),
+                const SizedBox(height: 10),
+                Text(
+                  'help_new_providers_note'.tr(),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
@@ -233,11 +245,11 @@ class HelpScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('More Resources', style: theme.textTheme.titleMedium),
+                Text('help_more_resources'.tr(),
+                    style: theme.textTheme.titleMedium),
                 const SizedBox(height: 4),
                 Text(
-                  "Can't find what you're looking for? Explore our external "
-                  'documentation or join the community.',
+                  'help_more_resources_desc'.tr(),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -245,12 +257,12 @@ class HelpScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 _Link(
                   icon: Icons.public,
-                  label: 'Official Website',
+                  label: 'help_official_website'.tr(),
                   onTap: () => _open(context, 'https://www.liquidgalaxy.eu/'),
                 ),
                 _Link(
                   icon: Icons.smart_display_rounded,
-                  label: 'YouTube',
+                  label: 'help_youtube'.tr(),
                   onTap: () => _open(
                     context,
                     'https://www.youtube.com/@AndreuIb%C3%A1%C3%B1ez',
@@ -258,7 +270,7 @@ class HelpScreen extends StatelessWidget {
                 ),
                 _Link(
                   icon: Icons.forum,
-                  label: 'Discord',
+                  label: 'help_discord'.tr(),
                   onTap: () =>
                       _open(context, 'https://discord.com/invite/peGA5K8tJU'),
                 ),
@@ -269,7 +281,7 @@ class HelpScreen extends StatelessWidget {
                     'https://www.liquidgalaxy.eu/2024/05/lg-wiki.html',
                   ),
                   icon: const Icon(Icons.menu_book),
-                  label: const Text('Open Documentation'),
+                  label: Text('help_open_documentation'.tr()),
                 ),
               ],
             ),

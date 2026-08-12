@@ -327,7 +327,12 @@ $flyToBlocks      </gx:Playlist>
 
   // ── Glowing landmark highlight ring ─────────────────────────────────────────
 
-  static String _ringCoordinates(double lat, double lng, double radiusMetres) {
+  static String _ringCoordinates(
+    double lat,
+    double lng,
+    double radiusMetres, {
+    int altitude = 0,
+  }) {
     final latRad = lat * math.pi / 180;
     final metresPerDegLng = 111320 * math.cos(latRad);
     final buffer = StringBuffer();
@@ -335,7 +340,9 @@ $flyToBlocks      </gx:Playlist>
       final t = deg * math.pi / 180;
       final pLat = lat + (radiusMetres / 111320) * math.cos(t);
       final pLng = lng + (radiusMetres / metresPerDegLng) * math.sin(t);
-      buffer.write('${pLng.toStringAsFixed(7)},${pLat.toStringAsFixed(7)},0 ');
+      buffer.write(
+        '${pLng.toStringAsFixed(7)},${pLat.toStringAsFixed(7)},$altitude ',
+      );
     }
     return buffer.toString().trim();
   }
@@ -350,35 +357,57 @@ $flyToBlocks      </gx:Playlist>
     return '''
     <Placemark>
       <name>$id</name>
-      <Style><LineStyle><color>$color</color><width>$width</width></LineStyle></Style>
+      <Style><LineStyle><color>$color</color><width>$width</width></LineStyle><PolyStyle><fill>0</fill><outline>1</outline></PolyStyle></Style>
       <LineString>
+        <extrude>1</extrude>
         <tessellate>1</tessellate>
-        <altitudeMode>clampToGround</altitudeMode>
+        <altitudeMode>relativeToGround</altitudeMode>
         <coordinates>$coords</coordinates>
       </LineString>
     </Placemark>''';
   }
 
   static const List<(double, String)> _ringGlowLayers = [
-    (48.0, '1FF48542'), // ~12% — widest soft halo
-    (32.0, '40F48542'), // ~25%
-    (20.0, '73F48542'), // ~45%
-    (11.0, 'B3F48542'), // ~70%
-    (5.0, 'FFF48542'), //  100% — bright core
+    (48.0, '1F'), // ~12% — widest soft halo
+    (32.0, '40'), // ~25%
+    (20.0, '73'), // ~45%
+    (11.0, 'B3'), // ~70%
+    (5.0, 'FF'), //  100% — bright core
   ];
+
+  static const List<(String, String)> _ringColors = [
+    ('yellow', '00FFFF'), // RGB #FFFF00
+    ('red', '0000FF'), // RGB #FF0000
+    ('green', '00FF00'), // RGB #00FF00
+    ('orange', '00A5FF'), // RGB #FFA500
+    ('cyan', 'FFFF00'), // RGB #00FFFF
+    ('magenta', 'FF00FF'), // RGB #FF00FF
+  ];
+
+  static String ringColorName(int colorIndex) =>
+      _ringColors[colorIndex % _ringColors.length].$1;
+
+  /// Number of ring colours available — for random per-landmark selection.
+  static int get ringColorCount => _ringColors.length;
 
   static String buildLandmarkRingKml(
     double lat,
     double lng, {
     double innerRadius = 150,
     double outerRadius = 200,
+    int colorIndex = 0,
   }) {
     final radius = (innerRadius + outerRadius) / 2;
-    final coords = _ringCoordinates(lat, lng, radius);
+
+    final wallHeight = (radius / 3).round();
+    final coords = _ringCoordinates(lat, lng, radius, altitude: wallHeight);
+    final (_, bgr) = _ringColors[colorIndex % _ringColors.length];
     final strokes = StringBuffer();
     for (var i = 0; i < _ringGlowLayers.length; i++) {
-      final (width, color) = _ringGlowLayers[i];
-      strokes.writeln(_ringStroke('landmark-ring-$i', coords, color, width));
+      final (width, alpha) = _ringGlowLayers[i];
+      strokes.writeln(
+        _ringStroke('landmark-ring-$i', coords, '$alpha$bgr', width),
+      );
     }
     return '''<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">

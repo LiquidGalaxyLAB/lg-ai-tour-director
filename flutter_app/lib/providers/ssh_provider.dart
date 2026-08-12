@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -11,6 +12,7 @@ import '../lg/lg_service.dart';
 import '../models/lg_connection.dart';
 import '../models/location.dart';
 import '../models/rig_config.dart';
+import '../services/maps/map_sync_service.dart';
 import '../services/media/location_media_resolver.dart';
 import 'tour_state_provider.dart';
 
@@ -56,6 +58,14 @@ class SshState {
 @Riverpod(keepAlive: true)
 class SshConnection extends _$SshConnection {
   static const String _prefsKey = 'lg_connection';
+
+  // Google Earth rewrites ~/.googleearth/myplaces.kml on exit, wiping the
+  // injected live-refresh — so ensureMasterLiveRefresh's own probe can think it
+  // "still needs" enabling and relaunch lg1 on EVERY (re)connect. This guard
+  // makes the auto-relaunch happen at most ONCE per app launch — it is set on
+  // the first connect and NEVER reset (not even on disconnect), so reconnects
+  // on a flaky rig VM can't trigger a relaunch storm.
+  bool _ringRefreshAttempted = false;
 
   @override
   SshState build() {
@@ -126,12 +136,22 @@ class SshConnection extends _$SshConnection {
   }
 
   Future<void> disconnect() async {
+    // Leave the rig calm WITHOUT another relaunch. Clear the overlays and strip
+    // the refresh from disk (relaunch:false) so it won't survive GE's next
+    // restart; GE keeps reloading an EMPTY master.kml until then (invisible).
+    // NOTE: we deliberately do NOT reset _ringRefreshAttempted — the enable
+    // relaunch happens at most ONCE per app launch, never again on reconnect,
+    // so a flaky VM can't trigger a relaunch storm.
     try {
+      await LGService.instance.clearLandmarkRing();
+      await LGService.instance.clearBalloon();
       await LGService.instance.clearLogos();
+      await LGService.instance.disableMasterLiveRefresh(relaunch: false);
     } catch (e) {
-      debugPrint('SSH: clearLogos on disconnect failed: $e');
+      debugPrint('SSH: disconnect cleanup failed: $e');
     }
     await LGService.instance.disconnect();
+    MapSyncService.instance.disable(); // no rig → stop mirroring the phone map
     state = state.copyWith(status: SshStatus.disconnected, errorMessage: null);
   }
 
@@ -319,6 +339,10 @@ class SshConnection extends _$SshConnection {
   }
 
   Future<void> _ensureRingRefresh() async {
+    // Once per app launch only — see [_ringRefreshAttempted]. Prevents the
+    // relaunch-on-every-connect loop that made the rig unusable.
+    if (_ringRefreshAttempted) return;
+    _ringRefreshAttempted = true;
     try {
       await LGService.instance.ensureMasterLiveRefresh();
     } catch (e) {
@@ -416,7 +440,15 @@ class SshConnection extends _$SshConnection {
       for (var j = 0; j < geocoded.length && !_stopRequested; j++) {
         final l = geocoded[j];
         final lat = l.latitude!, lng = l.longitude!;
-        final frameQuery = KmlGenerator.orbitFrameQuery(lat, lng);
+        // Fly-in / reframe view: 45° tilt + closer 600 m range so the landmark
+        // is seen obliquely (3D buildings + the extruded ring), not cenital.
+        // The ORBIT keeps its own tuned orbitTilt/orbitRange — untouched.
+        final frameQuery = KmlGenerator.orbitFrameQuery(
+          lat,
+          lng,
+          tilt: 45,
+          range: 600,
+        );
 
         // Boundary: hold here if paused, BEFORE flying to this landmark (so a
         // pause keeps you on the previous stop, not mid-transition).
@@ -439,7 +471,15 @@ class SshConnection extends _$SshConnection {
 
         // Arrived — narration + ring (both persist through the orbit + settle).
         tour.enterScene(j);
-        unawaited(LGService.instance.showLandmarkRing(lat, lng));
+        // Random colour per landmark (repeats allowed) so it's not always
+        // yellow-first; picked once here so it stays stable for this stop.
+        unawaited(
+          LGService.instance.showLandmarkRing(
+            lat,
+            lng,
+            colorIndex: Random().nextInt(KmlGenerator.ringColorCount),
+          ),
+        );
 
         // ORBIT — normally a single UNINTERRUPTIBLE server-side loop, but the
         // user can now Pause/Next/End it via the SAME stop-sentinel End Tour

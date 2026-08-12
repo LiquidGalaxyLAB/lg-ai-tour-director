@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -45,7 +46,7 @@ class _SettingsSheet extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Settings', style: theme.textTheme.headlineSmall),
+                      Text('settings'.tr(), style: theme.textTheme.headlineSmall),
                       Text(
                         'Liquid Galaxy configuration',
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -64,37 +65,42 @@ class _SettingsSheet extends ConsumerWidget {
             const SizedBox(height: 8),
             _SettingsRow(
               icon: Icons.cable_rounded,
-              title: 'LG Connection Settings',
-              subtitle: 'Configure LG rig connection',
+              title: 'lg_connection_settings'.tr(),
+              subtitle: 'lg_connection_settings_sub'.tr(),
               onTap: () => go('/settings/lg'),
             ),
             _SettingsRow(
               icon: Icons.tune_rounded,
-              title: 'Advanced LG Controls',
-              subtitle: 'System commands for the rig',
+              title: 'advanced_lg_controls'.tr(),
+              subtitle: 'advanced_lg_controls_sub'.tr(),
               onTap: () => go('/settings/advanced'),
             ),
             _SettingsRow(
               icon: Icons.smart_toy_outlined,
-              title: 'AI Configuration',
-              subtitle: 'Connect any AI model, cloud or local',
+              title: 'ai_configuration'.tr(),
+              subtitle: 'ai_configuration_sub'.tr(),
               onTap: () => go('/settings/ai'),
             ),
             _SettingsRow(
+              icon: Icons.movie_creation_outlined,
+              title: 'ai_film'.tr(),
+              subtitle: 'ai_film_sub'.tr(),
+              onTap: () => go('/settings/ai-film'),
+            ),
+            _SettingsRow(
               icon: Icons.movie_filter_outlined,
-              title: 'Tour Preferences',
-              subtitle: 'Narration and film settings',
+              title: 'tour_preferences'.tr(),
+              subtitle: 'tour_preferences_sub'.tr(),
               onTap: () => go('/settings/preferences'),
             ),
             _SettingsRow(
               icon: Icons.language_rounded,
-              title: 'App Language',
-              trailing: 'English',
+              title: 'app_language'.tr(),
               onTap: () => go('/settings/language'),
             ),
             _SettingsRow(
               icon: Icons.palette_outlined,
-              title: 'App Theme',
+              title: 'app_theme'.tr(),
               trailing: _themeLabel(themeMode),
               onTap: () => go('/settings/theme'),
             ),

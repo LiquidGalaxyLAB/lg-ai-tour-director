@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -49,7 +50,8 @@ class AppHeader extends ConsumerWidget {
                     ConnectionDot(connected: connected, size: 7),
                     const SizedBox(width: 5),
                     Text(
-                      connected ? 'CONNECTED' : 'DISCONNECTED',
+                      (connected ? 'connected'.tr() : 'disconnected'.tr())
+                          .toUpperCase(),
                       style: theme.textTheme.labelSmall?.copyWith(
                         letterSpacing: 0.5,
                         fontWeight: FontWeight.w600,

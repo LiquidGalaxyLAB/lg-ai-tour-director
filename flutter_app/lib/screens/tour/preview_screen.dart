@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,17 +8,60 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/location.dart';
 import '../../models/tour_flow.dart';
+import '../../models/video_generation_result.dart';
+import '../../providers/ai_film_provider.dart';
 import '../../providers/ssh_provider.dart';
+import '../../providers/tour_draft_provider.dart';
+import '../../services/maps/map_sync_service.dart';
+import '../../services/video/video_provider_factory.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/film_dialog.dart';
-import '../../shared/widgets/map_placeholder.dart';
+import '../../shared/widgets/sync_map_view.dart';
+import 'fullscreen_map_screen.dart';
 
-class PreviewScreen extends ConsumerWidget {
+class PreviewScreen extends ConsumerStatefulWidget {
   const PreviewScreen({super.key, required this.args});
 
   final TourFlowArgs args;
 
-  Future<void> _start(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<PreviewScreen> createState() => _PreviewScreenState();
+}
+
+class _PreviewScreenState extends ConsumerState<PreviewScreen> {
+  // The stop the map is focused on (set by tapping a location card). Null = the
+  // opening "frame all stops" view.
+  TourLocation? _focus;
+
+  @override
+  void initState() {
+    super.initState();
+    // Stash the generated tour so it survives the route being popped (phone
+    // back gesture, wandering off to Settings, etc.). The Home screen's
+    // "continue your tour" banner re-opens Preview from this draft.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(tourDraftProvider.notifier).set(widget.args);
+    });
+  }
+
+  @override
+  void dispose() {
+    // Leaving the preview → stop mirroring the phone map to the rig.
+    MapSyncService.instance.disable();
+    super.dispose();
+  }
+
+  /// Preview must NOT mirror to the rig (Andreu: pre-tour exploration stays on
+  /// the phone). The map still pans/animates locally — MapSyncService simply
+  /// stays disabled, so its idle handler is a silent no-op and nothing reaches
+  /// LG. We proactively turn it off here in case a previous screen (e.g.
+  /// Inspection) left it enabled.
+  void _ensureSyncOff() {
+    if (MapSyncService.instance.isEnabled) MapSyncService.instance.disable();
+  }
+
+  Future<void> _start(BuildContext context) async {
     if (!ref.read(sshConnectionProvider).isConnected) {
       await _showConnectDialog(context);
       return;
@@ -26,13 +70,23 @@ class PreviewScreen extends ConsumerWidget {
     final choice = await showFilmDialog(context);
     if (choice == null || !context.mounted) return; // cancelled
 
+    var generateFilm = choice;
+    if (choice == true) {
+      // Verify the AI Film connection BEFORE the tour starts. On failure the
+      // tour does NOT start — the user is offered the AI Film settings, the
+      // help docs, or to start the tour without a film.
+      final decision = await _verifyFilmConnection(context);
+      if (decision == null || !context.mounted) return; // abort start
+      generateFilm = decision; // true = verified ok; false = start without film
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Deploying tour to Liquid Galaxy…')),
+      SnackBar(content: Text('deploying_tour_to_lg'.tr())),
     );
     unawaited(
       ref
           .read(sshConnectionProvider.notifier)
-          .flyGeneratedTour(args.locations)
+          .flyGeneratedTour(widget.args.locations)
           .catchError((Object e) {
             debugPrint('Preview: rig flight error: $e');
             return 0;
@@ -40,7 +94,115 @@ class PreviewScreen extends ConsumerWidget {
     );
 
     if (!context.mounted) return;
-    context.push('/home/active', extra: args.copyWith(generateFilm: choice));
+    context.push(
+      '/home/active',
+      extra: widget.args.copyWith(generateFilm: generateFilm),
+    );
+  }
+
+  /// Runs a live connection test against the configured AI Film provider.
+  /// Returns:
+  ///  - `true`  → connection verified, start the tour WITH a film
+  ///  - `false` → user chose "start without film" from the error dialog
+  ///  - `null`  → abort the tour start (fix settings / view help / cancel)
+  Future<bool?> _verifyFilmConnection(BuildContext context) async {
+    final settings = ref.read(aiFilmProvider).settings;
+
+    // Not turned on → there's nothing to test; guide the user to set it up.
+    if (!settings.isEnabled) {
+      return _showFilmErrorDialog(context, 'ai_film_not_enabled_msg'.tr());
+    }
+
+    // Blocking spinner while we hit the provider.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _VerifyingDialog(),
+    );
+
+    var ok = false;
+    String? error;
+    try {
+      final provider = VideoProviderFactory.create(settings);
+      ok = await provider.testConnection();
+    } on VideoGenerationException catch (e) {
+      error = e.userMessage;
+    } catch (e) {
+      error = e.toString();
+    }
+
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop(); // close the spinner
+    }
+    if (!context.mounted) return null;
+
+    if (ok) return true;
+    return _showFilmErrorDialog(context, error ?? 'connection_failed'.tr());
+  }
+
+  /// Error dialog shown when the AI Film connection can't be verified. Returns
+  /// `false` if the user picks "start without film", otherwise `null` (abort).
+  Future<bool?> _showFilmErrorDialog(BuildContext context, String message) {
+    final theme = Theme.of(context);
+    return showDialog<bool?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(Icons.error_outline_rounded, color: theme.colorScheme.error),
+        title: Text('ai_film_connection_failed_title'.tr()),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message),
+            const SizedBox(height: 12),
+            Text(
+              'ai_film_help_suggestion'.tr(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        actions: [
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.pop(ctx); // abort start (null)
+                    context.push('/settings/ai-film?returnToTour=true');
+                  },
+                  child: Text('open_ai_film_settings'.tr()),
+                ),
+              ),
+              const SizedBox(height: 4),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx); // abort start (null)
+                    context.push('/settings/help');
+                  },
+                  child: Text('view_help'.tr()),
+                ),
+              ),
+              const SizedBox(height: 4),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false), // start w/o film
+                child: Text('start_without_film'.tr()),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx), // abort (null)
+                child: Text('cancel'.tr()),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showConnectDialog(BuildContext context) {
@@ -48,11 +210,8 @@ class PreviewScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.cast_connected_rounded),
-        title: const Text('Connect to Liquid Galaxy'),
-        content: const Text(
-          'Connect to your Liquid Galaxy rig first via LG Connection Settings '
-          'to start the immersive tour.',
-        ),
+        title: Text('connect_to_liquid_galaxy'.tr()),
+        content: Text('connect_to_lg_rig_first'.tr()),
         actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
         actions: [
           Column(
@@ -65,13 +224,13 @@ class PreviewScreen extends ConsumerWidget {
                     Navigator.pop(ctx);
                     context.push('/settings/lg');
                   },
-                  child: const Text('LG Connection Settings'),
+                  child: Text('lg_connection_settings'.tr()),
                 ),
               ),
               const SizedBox(height: 4),
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
+                child: Text('cancel'.tr()),
               ),
             ],
           ),
@@ -81,9 +240,10 @@ class PreviewScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final locations = args.locations;
+    final locations = widget.args.locations;
+    _ensureSyncOff();
 
     return Scaffold(
       body: Column(
@@ -94,24 +254,41 @@ class PreviewScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               children: [
                 Text(
-                  'Your tour is ready',
+                  'your_tour_is_ready'.tr(),
                   style: theme.textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Preview the journey before launching it on Liquid Galaxy.',
+                  'preview_journey_before_launching'.tr(),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 16),
-                InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => context.push('/home/inspection', extra: args),
-                  child: MapPlaceholder(
-                    height: 200,
-                    markerCount: locations.length,
-                    label: 'Tap to inspect',
+                SyncMapView(
+                  locations: locations,
+                  height: 200,
+                  focusLocation: _focus,
+                  showSyncChip: false, // preview doesn't mirror to LG
+                  onExpand: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => FullscreenMapScreen(
+                        locations: locations,
+                        focus: _focus,
+                        syncToLg: false, // stay on the phone during preview
+                        title: 'explore_locations'.tr(),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () =>
+                        context.push('/home/inspection', extra: widget.args),
+                    icon: const Icon(Icons.travel_explore_rounded, size: 18),
+                    label: Text('inspect_locations'.tr()),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -125,23 +302,34 @@ class PreviewScreen extends ConsumerWidget {
                     childAspectRatio: 1.45,
                   ),
                   itemCount: locations.length,
-                  itemBuilder: (_, i) =>
-                      _LocationCard(index: i + 1, location: locations[i]),
+                  itemBuilder: (_, i) => _LocationCard(
+                    index: i + 1,
+                    location: locations[i],
+                    selected: identical(_focus, locations[i]),
+                    onTap: locations[i].latitude == null
+                        ? null
+                        : () => setState(() => _focus = locations[i]),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 FilledButton.icon(
-                  onPressed: () => _start(context, ref),
+                  onPressed: () => _start(context),
                   icon: const Icon(Icons.rocket_launch_rounded, size: 20),
-                  label: const Text('Start Immersive Tour'),
+                  label: Text('start_immersive_tour'.tr()),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: () => context.pop(),
+                  onPressed: () {
+                    // Explicit discard → drop the saved draft so the Home
+                    // "continue your tour" banner doesn't offer it anymore.
+                    ref.read(tourDraftProvider.notifier).clear();
+                    context.pop();
+                  },
                   style: TextButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
                     minimumSize: const Size.fromHeight(48),
                   ),
-                  child: const Text('Cancel'),
+                  child: Text('cancel'.tr()),
                 ),
               ],
             ),
@@ -152,11 +340,39 @@ class PreviewScreen extends ConsumerWidget {
   }
 }
 
+class _VerifyingDialog extends StatelessWidget {
+  const _VerifyingDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      content: Row(
+        children: [
+          const SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+          const SizedBox(width: 18),
+          Expanded(child: Text('verifying_ai_film'.tr())),
+        ],
+      ),
+    );
+  }
+}
+
 class _LocationCard extends StatelessWidget {
-  const _LocationCard({required this.index, required this.location});
+  const _LocationCard({
+    required this.index,
+    required this.location,
+    this.onTap,
+    this.selected = false,
+  });
 
   final int index;
   final TourLocation location;
+  final VoidCallback? onTap;
+  final bool selected;
 
   static const _colors = [
     AppColors.googleRed,
@@ -170,14 +386,22 @@ class _LocationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = _colors[(index - 1) % _colors.length];
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Column(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outlineVariant,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.place, color: color),
@@ -205,7 +429,8 @@ class _LocationCard extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

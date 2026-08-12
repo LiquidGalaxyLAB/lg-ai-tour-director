@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import 'services/gemini/llm_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await EasyLocalization.ensureInitialized();
 
   try {
     await dotenv.load(fileName: '.env');
@@ -18,7 +20,23 @@ Future<void> main() async {
 
   await LLMService.migrateLegacyKeys();
 
-  runApp(const ProviderScope(child: AITourDirectorApp()));
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [
+        Locale('en'),
+        Locale('es'),
+        Locale('fr'),
+        Locale('hi'),
+        Locale('ar'),
+        Locale('de'),
+        Locale('pt'),
+        Locale('zh'),
+      ],
+      path: 'assets/translations',
+      fallbackLocale: const Locale('en'),
+      child: const ProviderScope(child: AITourDirectorApp()),
+    ),
+  );
 }
 
 class AITourDirectorApp extends ConsumerWidget {
@@ -33,7 +51,18 @@ class AITourDirectorApp extends ConsumerWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: themeMode,
+      localizationsDelegates: context.localizationDelegates,
+      supportedLocales: context.supportedLocales,
+      locale: context.locale,
       routerConfig: appRouter,
+      builder: (context, child) {
+        // RTL for Arabic only; every other language is LTR.
+        final isRtl = context.locale.languageCode == 'ar';
+        return Directionality(
+          textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

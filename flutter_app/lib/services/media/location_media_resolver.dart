@@ -17,8 +17,9 @@ class LocationMediaResolver {
   static final LocationMediaResolver instance = LocationMediaResolver._();
 
   /// Chain: cache → Wikipedia (sanitise retry) → Unsplash → generation-time
-  /// image → text-only. Description prefers Wikipedia's extract, else the AI's
-  /// significance text. Never throws.
+  /// image → text-only. Description is ALWAYS the location's unified AI
+  /// narration (whySignificant), independent of the image source — so the
+  /// balloon card text matches the spoken narration exactly. Never throws.
   Future<({String imageUrl, String description})> resolve(
     TourLocation location,
   ) async {
@@ -29,7 +30,9 @@ class LocationMediaResolver {
     }
 
     var imageUrl = '';
-    var description = location.whySignificant; // body falls back to AI text
+    // Unified: the balloon description is ALWAYS the AI narration, so it matches
+    // the spoken TTS. The Wikipedia/Unsplash chain below only resolves the IMAGE.
+    final description = location.whySignificant;
     String source;
 
     final wiki = await WikimediaService.instance.fetchLocationMedia(
@@ -37,7 +40,6 @@ class LocationMediaResolver {
     );
     if (wiki != null && wiki.imageUrl.isNotEmpty) {
       imageUrl = wiki.imageUrl;
-      description = wiki.description;
       source = 'wikipedia';
     } else {
       final unsplash = await UnsplashService.instance.fetchPhotoUrl(
@@ -64,6 +66,7 @@ class LocationMediaResolver {
     }
 
     debugPrint('[Media] source: $source for "${location.name}"');
+    debugPrint('[Narration] using unified description for ${location.name}');
     await MediaCacheService.instance.put(
       location.name,
       imageUrl: imageUrl,

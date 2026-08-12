@@ -15,7 +15,9 @@ import '../../models/tour_flow.dart';
 import '../../providers/library_provider.dart';
 import '../../providers/ssh_provider.dart';
 import '../../shared/widgets/location_image.dart';
-import '../../shared/widgets/map_placeholder.dart';
+import '../../shared/widgets/sync_map_view.dart';
+import '../tour/fullscreen_map_screen.dart';
+import 'virtual_replay_screen.dart';
 
 /// Saved tour detail (mockups 15 & 16): hero, replay, highlights album, route
 /// path, and Share / Export KML / Remove. Replay re-sends the saved KML to LG
@@ -24,10 +26,6 @@ class SavedDetailScreen extends ConsumerWidget {
   const SavedDetailScreen({super.key, required this.tour});
 
   final SavedTour tour;
-
-  void _stub(BuildContext context, String label) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text('$label — coming soon')));
 
   static String _category(SavedTour tour) {
     final counts = <String, int>{};
@@ -258,7 +256,14 @@ class SavedDetailScreen extends ConsumerWidget {
             sliver: SliverList.list(
               children: [
                 FilledButton.icon(
-                  onPressed: () => _stub(context, 'Virtual replay'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => VirtualReplayScreen(
+                        title: tour.title,
+                        locations: tour.locations,
+                      ),
+                    ),
+                  ),
                   icon: const Icon(Icons.play_circle_outline),
                   label: const Text('Start Virtual Replay'),
                 ),
@@ -300,7 +305,21 @@ class SavedDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
                 Text('Route Path', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 12),
-                MapPlaceholder(height: 180, markerCount: tour.stopCount),
+                SyncMapView(
+                  locations: tour.locations,
+                  height: 180,
+                  // A static route overview — sync happens in the fullscreen
+                  // explore (expand) or Start Virtual Replay, so no chip here.
+                  showSyncChip: false,
+                  onExpand: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => FullscreenMapScreen(
+                        locations: tour.locations,
+                        title: tour.title,
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,

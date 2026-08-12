@@ -3,7 +3,9 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  ffmpeg_kit_flutter_new
   flutter_tts
+  permission_handler_windows
   share_plus
   speech_to_text_windows
   url_launcher_windows

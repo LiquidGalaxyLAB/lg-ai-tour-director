@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -5,13 +6,16 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../kml/generator.dart';
 import '../../models/location.dart';
 import '../../models/tour_flow.dart';
 import '../../providers/ssh_provider.dart';
 import '../../providers/tour_state_provider.dart';
+import '../../services/maps/map_sync_service.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/location_image.dart';
-import '../../shared/widgets/map_placeholder.dart';
+import '../../shared/widgets/sync_map_view.dart';
+import 'fullscreen_map_screen.dart';
 
 class ActiveTourScreen extends ConsumerStatefulWidget {
   const ActiveTourScreen({super.key, required this.args});
@@ -29,6 +33,18 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
   int _spokenIndex = -1;
   bool _ending = false;
 
+  // Subtitle-language name (from Tour Preferences) → BCP-47 locale for TTS.
+  static const _ttsBcp47 = {
+    'English': 'en-US',
+    'Spanish': 'es-ES',
+    'French': 'fr-FR',
+    'Hindi': 'hi-IN',
+    'Arabic': 'ar-SA',
+    'German': 'de-DE',
+    'Portuguese': 'pt-BR',
+    'Chinese': 'zh-CN',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -36,8 +52,19 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
   }
 
   Future<void> _init() async {
+    // During the tour the RIG owns the camera (fly-in → orbit → settle), so map
+    // sync starts OFF. It's turned on only while PAUSED (see the Pause button),
+    // where the rig loop is holding and free exploration is safe — which also
+    // means it's never on during the orbit. Nothing here touches the tour loop.
+    MapSyncService.instance.disable();
+
     final prefs = await SharedPreferences.getInstance();
     _voiceNarration = prefs.getBool('pref_voice_narration') ?? true;
+    // Speak narration in the chosen subtitle language (best-effort per device).
+    final lang = prefs.getString('pref_subtitle_language') ?? 'English';
+    try {
+      await _tts.setLanguage(_ttsBcp47[lang] ?? 'en-US');
+    } catch (_) {}
     if (!mounted) return;
 
     final notifier = ref.read(tourStateProvider.notifier);
@@ -100,7 +127,34 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
   @override
   void dispose() {
     _tts.stop();
+    MapSyncService.instance.disable();
     super.dispose();
+  }
+
+  /// Enable map→rig sync (used while paused). Pulls the rig's screen count so
+  /// the altitude conversion matches this rig.
+  void _enableSync() {
+    MapSyncService.instance.updateRigCount(
+      ref.read(sshConnectionProvider).config.totalScreens,
+    );
+    MapSyncService.instance.enable();
+  }
+
+  Future<void> _setNarration(bool on) async {
+    setState(() => _voiceNarration = on);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('pref_voice_narration', on);
+    } catch (_) {}
+    if (!mounted) return;
+    if (on) {
+      // Pick up the current scene's voice mid-tour.
+      final total = widget.args.locations.length;
+      final idx = ref.read(tourStateProvider).currentIndex.clamp(0, total - 1);
+      _speak(idx);
+    } else {
+      await _tts.stop(); // silence now; the subtitle card stays visible
+    }
   }
 
   @override
@@ -153,11 +207,14 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                       Expanded(
                         child: _InfoCard(
                           icon: Icons.center_focus_strong,
-                          title: 'LOOKAT TARGET',
-                          rows: const [
-                            ('RANGE', '600m'),
-                            ('TILT', '60°'),
-                            ('HEADING', '0°'),
+                          title: 'lookat_target'.tr(),
+                          rows: [
+                            (
+                              'range'.tr(),
+                              '${KmlGenerator.orbitRange.toInt()}m',
+                            ),
+                            ('tilt'.tr(), '${KmlGenerator.orbitTilt.toInt()}°'),
+                            ('heading'.tr(), '0°'),
                           ],
                         ),
                       ),
@@ -165,18 +222,36 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                       Expanded(
                         child: _InfoCard(
                           icon: Icons.threesixty,
-                          title: 'CAMERA ORBIT',
-                          rows: const [
-                            ('RADIUS', '250m'),
-                            ('ALTITUDE', '400m'),
-                            ('TILT', '65°'),
+                          title: 'camera_orbit'.tr(),
+                          // Real server-side orbit loop (orbitLoopCommand).
+                          rows: [
+                            ('sweep'.tr(), '360°'),
+                            (
+                              'step'.tr(),
+                              '${KmlGenerator.orbitLoopStepDegrees}°',
+                            ),
+                            ('tilt'.tr(), '${KmlGenerator.orbitTilt.toInt()}°'),
                           ],
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  const MapPlaceholder(height: 160, synced: true),
+                  SyncMapView(
+                    locations: widget.args.locations,
+                    height: 160,
+                    frameAllLocations: false,
+                    focusLocation: loc,
+                    onExpand: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => FullscreenMapScreen(
+                          locations: widget.args.locations,
+                          focus: loc,
+                          pauseTour: true, // pause the flight while exploring
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -187,9 +262,12 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                             if (view.paused) {
                               n.resume();
                               _speak(sceneIndex); // restart current narration
+                              MapSyncService.instance.disable();
                             } else {
                               n.pause();
                               _tts.stop();
+                              // Paused → free to explore; mirror pans to the rig.
+                              _enableSync();
                             }
                           },
                           icon: Icon(
@@ -197,7 +275,9 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                                 ? Icons.play_arrow_rounded
                                 : Icons.pause_rounded,
                           ),
-                          label: Text(view.paused ? 'Resume' : 'Pause'),
+                          label: Text(
+                            view.paused ? 'resume'.tr() : 'pause'.tr(),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -210,12 +290,29 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                                       .read(tourStateProvider.notifier)
                                       .requestNext();
                                   _tts.stop();
+                                  // Skipping resumes the flight → rig owns the
+                                  // camera again, so stop mirroring.
+                                  MapSyncService.instance.disable();
                                 },
                           icon: const Icon(Icons.skip_next_rounded),
-                          label: const Text('Next Scene'),
+                          label: Text('next_scene'.tr()),
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _setNarration(!_voiceNarration),
+                    icon: Icon(
+                      _voiceNarration
+                          ? Icons.volume_up_rounded
+                          : Icons.volume_off_rounded,
+                    ),
+                    label: Text(
+                      _voiceNarration
+                          ? 'narration_on'.tr()
+                          : 'narration_off'.tr(),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   FilledButton.icon(
@@ -224,7 +321,7 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
                       backgroundColor: theme.colorScheme.error,
                     ),
                     icon: const Icon(Icons.stop_circle_outlined),
-                    label: const Text('End Tour'),
+                    label: Text('end_tour'.tr()),
                   ),
                 ],
               ),
@@ -325,9 +422,9 @@ class _SceneCard extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text(
-                      'CURRENT SCENE',
-                      style: TextStyle(
+                    child: Text(
+                      'current_scene'.tr(),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
                         letterSpacing: 1,
@@ -377,13 +474,17 @@ class _SubtitleCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.subtitles_outlined, color: Colors.white, size: 16),
-              SizedBox(width: 6),
+              const Icon(
+                Icons.subtitles_outlined,
+                color: Colors.white,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
               Text(
-                'NARRATION SUBTITLES',
-                style: TextStyle(
+                'narration_subtitles'.tr(),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 11,
                   letterSpacing: 1,

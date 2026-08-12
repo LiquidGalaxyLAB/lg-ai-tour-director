@@ -155,11 +155,22 @@ class LGService {
     }
   }
 
+  /// Strip the auto live-refresh + relaunch lg1 (inverse of the above), so the
+  /// rig stops reloading master.kml when the app disconnects.
+  Future<void> disableMasterLiveRefresh({bool relaunch = true}) async {
+    try {
+      await _ssh.disableMasterLiveRefresh(relaunch: relaunch);
+    } catch (e) {
+      debugPrint('[LandmarkRing] disableMasterLiveRefresh failed: $e');
+    }
+  }
+
   Future<void> showLandmarkRing(
     double lat,
     double lng, {
     double innerRadius = 150,
     double outerRadius = 200,
+    int colorIndex = 0,
   }) async {
     try {
       final kml = KmlGenerator.buildLandmarkRingKml(
@@ -167,8 +178,13 @@ class LGService {
         lng,
         innerRadius: innerRadius,
         outerRadius: outerRadius,
+        colorIndex: colorIndex,
       );
       await _ssh.sendCommand("echo '$kml' > $_masterKmlPath");
+      debugPrint(
+        '[LandmarkRing] location $colorIndex color: '
+        '${KmlGenerator.ringColorName(colorIndex)}',
+      );
       debugPrint('[LandmarkRing] show ($lat, $lng) → master.kml');
     } catch (e) {
       debugPrint('[LandmarkRing] error (show): $e');

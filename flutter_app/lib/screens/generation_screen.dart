@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -123,21 +124,16 @@ class _GenerationScreenState extends State<GenerationScreen> {
       for (var loc in initialLocations) {
         final coords = await GeocodingService.instance.getCoordinates(loc.name);
 
-        // No Gemini alternative-name fallback for now (saves API credits).
-        // If geocoding fails, keep the location but log that it has no coords.
         if (coords == null) {
           debugPrint(
             'Generation: no coordinates for "${loc.name}" — keeping it un-geocoded',
           );
         }
 
-        // Keep every Gemini location. Attach coords/place/image when available,
-        // but don't drop a location just because geocoding failed.
         final placeDetails = coords != null
             ? await PlacesService.instance.getPlaceDetails(loc.name)
             : null;
-        // Full media chain (Wikipedia → Unsplash → text-only), cached by name
-        // so the rig balloon and in-app images reuse it with no repeat calls.
+
         final media = await LocationMediaResolver.instance.resolve(loc);
         final imageUrl = media.imageUrl.isEmpty ? null : media.imageUrl;
 
@@ -152,9 +148,6 @@ class _GenerationScreenState extends State<GenerationScreen> {
         );
       }
 
-      // TODO: Auditing temporarily skipped — geocoding is unreliable right now.
-      // Re-enable AuditorService.instance.validateLocations() once geocoding
-      // consistently returns coordinates.
       final validLocations = enrichedLocations;
 
       if (validLocations.isEmpty) {
@@ -245,7 +238,7 @@ class _GenerationScreenState extends State<GenerationScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
                     children: [
                       Text(
-                        'Generating your immersive tour',
+                        'generating_your_immersive_tour'.tr(),
                         style: theme.textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 4),
@@ -275,22 +268,22 @@ class _GenerationScreenState extends State<GenerationScreen> {
                       ),
                       const SizedBox(height: 20),
                       _Step(
-                        label: 'Selecting meaningful landmarks',
+                        label: 'selecting_meaningful_landmarks'.tr(),
                         done: _step > 1,
                         active: _step == 1,
                       ),
                       _Step(
-                        label: 'Fetching geographic coordinates',
+                        label: 'fetching_geographic_coordinates'.tr(),
                         done: _step > 2,
                         active: _step == 2,
                       ),
                       _Step(
-                        label: 'Constructing immersive tour',
+                        label: 'constructing_immersive_tour'.tr(),
                         done: _step > 2,
                         active: _step == 2,
                       ),
                       _Step(
-                        label: 'Preparing map preview',
+                        label: 'preparing_map_preview'.tr(),
                         done: _step >= 4,
                         active: false,
                       ),
@@ -310,7 +303,7 @@ class _GenerationScreenState extends State<GenerationScreen> {
                     foregroundColor: theme.colorScheme.error,
                     minimumSize: const Size.fromHeight(48),
                   ),
-                  child: const Text('Cancel tour generation'),
+                  child: Text('cancel_tour_generation'.tr()),
                 ),
               ),
             ),
@@ -404,12 +397,12 @@ class _ErrorView extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onSetupGuide,
                 icon: const Icon(Icons.menu_book_outlined),
-                label: const Text('Open Setup Guide'),
+                label: Text('open_setup_guide'.tr()),
               ),
               const SizedBox(height: 12),
-              OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
+              OutlinedButton(onPressed: onRetry, child: Text('retry'.tr())),
             ] else
-              FilledButton(onPressed: onRetry, child: const Text('Retry')),
+              FilledButton(onPressed: onRetry, child: Text('retry'.tr())),
           ],
         ),
       ),
