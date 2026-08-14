@@ -17,6 +17,7 @@ import '../../providers/ssh_provider.dart';
 import '../../shared/widgets/location_image.dart';
 import '../../shared/widgets/sync_map_view.dart';
 import '../tour/fullscreen_map_screen.dart';
+import 'highlights_gallery_screen.dart';
 import 'virtual_replay_screen.dart';
 
 /// Saved tour detail (mockups 15 & 16): hero, replay, highlights album, route
@@ -26,6 +27,19 @@ class SavedDetailScreen extends ConsumerWidget {
   const SavedDetailScreen({super.key, required this.tour});
 
   final SavedTour tour;
+
+  void _openGallery(BuildContext context, int initialIndex) {
+    if (tour.locations.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => HighlightsGalleryScreen(
+          title: tour.title,
+          locations: tour.locations,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
 
   static String _category(SavedTour tour) {
     final counts = <String, int>{};
@@ -281,12 +295,24 @@ class SavedDetailScreen extends ConsumerWidget {
                       'Highlights Album',
                       style: theme.textTheme.titleMedium,
                     ),
-                    Text(
-                      'View All (${tour.stopCount})',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.primary,
+                    if (tour.locations.isNotEmpty)
+                      InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => _openGallery(context, 0),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 4,
+                          ),
+                          child: Text(
+                            'View All (${tour.stopCount})',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -299,6 +325,7 @@ class SavedDetailScreen extends ConsumerWidget {
                     itemBuilder: (_, i) => _HighlightCard(
                       index: i + 1,
                       location: tour.locations[i],
+                      onTap: () => _openGallery(context, i),
                     ),
                   ),
                 ),
@@ -358,35 +385,44 @@ class SavedDetailScreen extends ConsumerWidget {
 }
 
 class _HighlightCard extends StatelessWidget {
-  const _HighlightCard({required this.index, required this.location});
+  const _HighlightCard({
+    required this.index,
+    required this.location,
+    this.onTap,
+  });
   final int index;
   final TourLocation location;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SizedBox(
-      width: 140,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          LocationImage(location: location, height: 100, width: 140),
-          const SizedBox(height: 6),
-          Text(
-            'STOP ${index.toString().padLeft(2, '0')}',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.primary,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 140,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            LocationImage(location: location, height: 100, width: 140),
+            const SizedBox(height: 6),
+            Text(
+              'STOP ${index.toString().padLeft(2, '0')}',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+              ),
             ),
-          ),
-          Text(
-            location.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
+            Text(
+              location.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -214,8 +214,9 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                   validator: (v) {
                     final port = int.tryParse((v ?? '').trim());
                     if (port == null) return 'port_must_be_number'.tr();
-                    if (port < 1 || port > 65535)
+                    if (port < 1 || port > 65535) {
                       return 'port_range_invalid'.tr();
+                    }
                     return null;
                   },
                 ),
