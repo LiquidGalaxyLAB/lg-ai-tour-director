@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/lg_connection.dart';
 import '../../providers/ssh_provider.dart';
+import 'qr_scan_screen.dart';
 
 class LgConnectionScreen extends ConsumerStatefulWidget {
   const LgConnectionScreen({super.key});
@@ -64,12 +67,11 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     if (ok) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('connected_to_lg'.tr())),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('connected_to_lg'.tr())));
     } else {
       final error =
-          ref.read(sshConnectionProvider).errorMessage ?? 'connection_failed'.tr();
+          ref.read(sshConnectionProvider).errorMessage ??
+          'connection_failed'.tr();
       messenger.showSnackBar(
         SnackBar(
           content: Text(error),
@@ -86,9 +88,77 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
     if (!mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text('disconnected_from_lg'.tr())),
+      ..showSnackBar(SnackBar(content: Text('disconnected_from_lg'.tr())));
+  }
+
+  Future<void> _scanQr() async {
+    FocusScope.of(context).unfocus();
+    final raw = await Navigator.of(
+      context,
+    ).push<String>(MaterialPageRoute(builder: (_) => const QrScanScreen()));
+    if (raw == null || !mounted) return;
+
+    final conn = _parseQr(raw);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    if (conn == null) {
+      messenger.showSnackBar(SnackBar(content: Text('qr_invalid'.tr())));
+      return;
+    }
+    setState(() {
+      _hostController.text = conn.host;
+      _portController.text = conn.port.toString();
+      _usernameController.text = conn.username;
+      _passwordController.text = conn.password;
+      _screenCount = conn.screenCount;
+    });
+    messenger.showSnackBar(SnackBar(content: Text('qr_scanned_ok'.tr())));
+  }
+
+  LGConnection? _parseQr(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty) return null;
+
+    if (text.startsWith('{')) {
+      try {
+        final m = jsonDecode(text) as Map<String, dynamic>;
+        final host = (m['host'] ?? m['ip'] ?? '').toString().trim();
+        if (host.isEmpty) return null;
+        return LGConnection(
+          host: host,
+          port: int.tryParse('${m['port'] ?? 22}') ?? 22,
+          username: (m['username'] ?? m['user'] ?? 'lg').toString().trim(),
+          password: (m['password'] ?? m['pass'] ?? 'lg').toString(),
+          screenCount:
+              int.tryParse(
+                '${m['screenCount'] ?? m['screens'] ?? _screenCount}',
+              ) ??
+              _screenCount,
+        );
+      } catch (_) {
+        return null;
+      }
+    }
+
+    final parts = text
+        .split(RegExp(r'[\n;,]'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (parts.length >= 4) {
+      final host = parts[2];
+      if (host.isEmpty) return null;
+      return LGConnection(
+        username: parts[0],
+        password: parts[1],
+        host: host,
+        port: int.tryParse(parts[3]) ?? 22,
+        screenCount: parts.length >= 5
+            ? (int.tryParse(parts[4]) ?? _screenCount)
+            : _screenCount,
       );
+    }
+    return null;
   }
 
   @override
@@ -144,7 +214,8 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                   validator: (v) {
                     final port = int.tryParse((v ?? '').trim());
                     if (port == null) return 'port_must_be_number'.tr();
-                    if (port < 1 || port > 65535) return 'port_range_invalid'.tr();
+                    if (port < 1 || port > 65535)
+                      return 'port_range_invalid'.tr();
                     return null;
                   },
                 ),
@@ -205,7 +276,9 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.link),
-                  label: Text(isConnecting ? 'connecting'.tr() : 'connect_to_lg'.tr()),
+                  label: Text(
+                    isConnecting ? 'connecting'.tr() : 'connect_to_lg'.tr(),
+                  ),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -231,8 +304,11 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
                         'or'.tr(),
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                       ),
                     ),
@@ -241,9 +317,7 @@ class _LgConnectionScreenState extends ConsumerState<LgConnectionScreen> {
                 ),
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('qr_connect_coming_soon'.tr())),
-                  ),
+                  onPressed: _scanQr,
                   icon: const Icon(Icons.qr_code_scanner),
                   label: Text('scan_qr_to_connect'.tr()),
                   style: OutlinedButton.styleFrom(

@@ -63,6 +63,7 @@ dependencies:
   video_player: ^2.9.2 # AI Film playback
   permission_handler: ^11.3.1 # MANAGE_EXTERNAL_STORAGE for saving film to Downloads (Android 13+)
   saver_gallery: ^4.1.2
+  mobile_scanner: ^7.4.0
 
 dev_dependencies:
   flutter_test:
