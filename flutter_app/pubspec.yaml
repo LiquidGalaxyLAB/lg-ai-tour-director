@@ -64,6 +64,7 @@ dependencies:
   saver_gallery: ^4.1.2
   mobile_scanner: ^7.4.0
   open_filex: ^4.7.0
+  video_player: ^2.11.1
 
 dev_dependencies:
   flutter_test:
@@ -115,6 +116,7 @@ flutter:
     - .env
     - assets/logos/
     - assets/translations/
+    - assets/video/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

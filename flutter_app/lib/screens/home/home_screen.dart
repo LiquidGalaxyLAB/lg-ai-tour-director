@@ -12,6 +12,7 @@ import '../../providers/tour_state_provider.dart';
 import '../../services/gemini/llm_service.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/quick_tips_sheet.dart';
+import '../../shared/widgets/showcase_video_card.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -304,6 +305,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                   ],
                 ),
+                const SizedBox(height: 28),
+                Text(
+                  'showcase_label'.tr(),
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    letterSpacing: 1,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const ShowcaseVideoCard(),
               ],
             ),
           ),
