@@ -9,23 +9,14 @@ class RigConfig {
   final int totalScreens;
   final int centerScreen;
 
-  /// Left wing screens ordered nearest to center first
-  /// eg 5-screen : [2, 1]
+  /// Left wing screens, nearest to center first (5-screen: [2, 1]).
   final List<int> leftScreens;
 
-  /// Right wing screens ordered nearest to center first
-  /// eg 5-screen : [4, 5]
+  /// Right wing screens, nearest to center first (5-screen: [4, 5]).
   final List<int> rightScreens;
 
-  /// Computes the layout for an odd screen count (3, 5, 7, ...).
-  ///
-  /// The center screen is the middle one: `(n / 2).ceil()`.
-  /// Left wing fans out from center toward screen 1; right wing fans out
-  /// from center toward screen N — both ordered nearest-to-center first.
-  ///
-  ///  - 3 → center=2, left=[1],     right=[3]
-  ///  - 5 → center=3, left=[2,1],   right=[4,5]
-  ///  - 7 → center=4, left=[3,2,1], right=[5,6,7]
+  /// Layout for an odd screen count (3/5/7): center is the middle screen,
+  /// wings fan out to each edge, ordered nearest-to-center first.
   factory RigConfig.fromScreenCount(int n) {
     assert(n > 0 && n.isOdd, 'LG rigs use an odd number of screens (3/5/7).');
     final center = (n / 2).ceil();

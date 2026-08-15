@@ -9,9 +9,8 @@ import '../../providers/ai_film_provider.dart';
 import '../../providers/ssh_provider.dart';
 import 'map_sync_test_screen.dart';
 
-// Advanced LG Controls (mockup 19): the 2×3 grid of rig commands, moved out of
-// Home. Relaunch/Reboot/Shutdown/Clear are wired to the SSH provider; Send
-// Logos and Set Refresh are stubbed until those LG commands are implemented
+// Advanced LG Controls: the grid of rig commands wired to the SSH provider,
+// plus a testing section (debug builds show extra rig test tools).
 class AdvancedLgControlsScreen extends ConsumerWidget {
   const AdvancedLgControlsScreen({super.key});
 
@@ -61,9 +60,8 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
       toast('$action sent');
     }
 
-    // Runs the FULL AI Film pipeline on 3 hardcoded locations — same code path
-    // as a real tour (generateFilm → providers → FFmpeg stitch → result screen),
-    // just without generating a tour first. Does NOT require the rig.
+    // Runs the full AI Film pipeline on 3 hardcoded locations (same code path
+    // as a real tour), without generating a tour or needing the rig.
     void testAiFilm() {
       if (!ref.read(aiFilmProvider).settings.isConfigured) {
         toast('Configure AI Film in Settings first');
@@ -94,8 +92,8 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
           address: 'Delhi, India',
         ),
       ];
-      // The progress screen owns generateFilm() + error handling + navigation to
-      // the result screen — identical to the real post-tour flow.
+      // The progress screen owns generateFilm(), errors, and navigation,
+      // identical to the real post-tour flow.
       context.push('/tour/ai-film-progress', extra: testLocations);
     }
 
@@ -183,14 +181,14 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              // Always available — the documented way to test AI Film cheaply
+              // Always available: the documented way to test AI Film cheaply
               // without generating a full tour (see handoff docs).
               OutlinedButton.icon(
                 onPressed: testAiFilm,
                 icon: const Icon(Icons.movie_creation_outlined),
                 label: const Text('Test AI Film (3 clips)'),
               ),
-              // Rig-level test tools — debug builds only, hidden in release.
+              // Rig-level test tools: debug builds only, hidden in release.
               if (kDebugMode) ...[
                 const SizedBox(height: 10),
                 OutlinedButton.icon(

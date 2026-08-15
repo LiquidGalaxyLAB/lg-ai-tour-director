@@ -98,8 +98,7 @@ class AiFilmNotifier extends Notifier<AiFilmState> {
       final totalClips = locations.length * chunksPerLocation;
       state = state.copyWith(totalClips: totalClips);
 
-      // Set if a clip fails mid-run (e.g. out of credits). We stop immediately
-      // so we don't keep spending, then stitch whatever already succeeded.
+      // Set if a clip fails mid-run; we stop spending and stitch what succeeded.
       VideoGenerationException? clipError;
       outer:
       for (var li = 0; li < locations.length; li++) {
@@ -147,15 +146,14 @@ class AiFilmNotifier extends Notifier<AiFilmState> {
               ),
             );
           } on VideoGenerationException catch (e) {
-            // Pull the plug on further generation, but keep the clips already
-            // produced so they can still be stitched below.
+            // Stop further generation but keep the clips already produced.
             clipError = e;
             break outer;
           }
         }
       }
 
-      // Nothing usable → surface the real error, or a clean cancel with no spend.
+      // Nothing usable: surface the real error, or a clean cancel.
       if (allClips.isEmpty) {
         if (clipError != null) {
           state = state.copyWith(
@@ -177,8 +175,7 @@ class AiFilmNotifier extends Notifier<AiFilmState> {
         return result;
       }
 
-      // At least one clip exists — stitch what we have, even if the run was cut
-      // short by an error or a cancel. This is the "3 of 5" partial film.
+      // At least one clip exists: stitch what we have (the "3 of 5" partial).
       final partial =
           clipError != null ||
           state.isCancelled ||

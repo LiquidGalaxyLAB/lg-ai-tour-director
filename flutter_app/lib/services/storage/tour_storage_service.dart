@@ -5,12 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/saved_tour.dart';
 import '../../models/tour_history_entry.dart';
 
-/// Persists Tours history and the Saved library.
-///
-/// Backed by SharedPreferences (JSON) rather than sqflite: it works on every
-/// platform the app runs on — including web, where sqflite needs extra wasm
-/// setup — and the data volume (a handful of tours) is tiny. Swap to sqflite
-/// later if scale ever demands it; the model `toMap`/`fromMap` already match.
+/// Persists Tours history and the Saved library via SharedPreferences (JSON),
+/// which works on every platform including web. Models already carry
+/// `toMap`/`fromMap` for a later swap to sqflite if scale demands it.
 class TourStorageService {
   TourStorageService._();
   static final TourStorageService instance = TourStorageService._();
@@ -20,7 +17,7 @@ class TourStorageService {
 
   Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
 
-  // ── Tours history ─────────────────────────────────────────────────────────
+  // Tours history
 
   Future<List<TourHistoryEntry>> getHistory() async {
     try {
@@ -61,7 +58,7 @@ class TourStorageService {
     );
   }
 
-  // ── Saved library ─────────────────────────────────────────────────────────
+  // Saved library
 
   Future<List<SavedTour>> getSavedTours() async {
     try {

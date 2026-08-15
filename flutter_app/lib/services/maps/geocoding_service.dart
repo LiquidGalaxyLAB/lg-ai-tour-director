@@ -11,8 +11,7 @@ class GeocodingService {
   GeocodingService._();
   static final GeocodingService instance = GeocodingService._();
 
-  // Nominatim asks every client to send an identifying User-Agent and to keep
-  // to ~1 request/sec (our pipeline is sequential, so we're well within that)
+  // Nominatim requires an identifying User-Agent and ~1 request/sec.
   static const String _nominatimBase = 'https://nominatim.openstreetmap.org';
   static const String _userAgent =
       'AITourDirector/1.0 (Liquid Galaxy GSoC; tour-director)';
@@ -26,11 +25,8 @@ class GeocodingService {
     ),
   );
 
-  /// Returns `{'lat': ..., 'lng': ...}` or `null` if the lookup fails.
-  ///
-  /// Tries the original name first, then progressively cleaned-up variants
-  /// (parenthetical stripped, etc. — see [locationQueryVariants]) so near-misses
-  /// like `"Old Fort (Purana Qila), Delhi"` still resolve. Stops at the first hit.
+  /// Returns `{'lat': ..., 'lng': ...}` or null. Tries the original name, then
+  /// cleaned-up variants ([locationQueryVariants]), stopping at the first hit.
   Future<Map<String, double>?> getCoordinates(String locationName) async {
     final variants = locationQueryVariants(locationName);
     for (final query in variants) {
@@ -50,16 +46,13 @@ class GeocodingService {
     return null;
   }
 
-  // The `geocoding` plugin only ships native implementations for Android and
-  // iOS. On web/Windows/macOS/Linux there's no platform code, so the call just
-  // throws — don't bother trying it there (avoids futile calls + log noise).
+  // The `geocoding` plugin is native-only (Android/iOS); skip it elsewhere.
   static bool get _nativeGeocodingSupported =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS);
 
-  // One query string through the two free backends: the native (Google/Apple)
-  // geocoder first where supported, then the OpenStreetMap Nominatim fallback.
+  // One query through the native geocoder first, then Nominatim as fallback.
   Future<Map<String, double>?> _lookup(String query) async {
     if (_nativeGeocodingSupported) {
       final native = await _nativeLookup(query);
@@ -83,8 +76,7 @@ class GeocodingService {
     } on NoResultFoundException {
       return null;
     } catch (e) {
-      // MissingPluginException (unsupported platform) / native errors — fall
-      // through to the HTTP backend instead of crashing the pipeline.
+      // Native error / unsupported platform: fall through to the HTTP backend.
       debugPrint('Geocoding: native lookup failed for "$locationName" — $e');
       return null;
     }

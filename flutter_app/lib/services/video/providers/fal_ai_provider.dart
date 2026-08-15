@@ -60,11 +60,8 @@ class FalAiProvider extends VideoProvider {
           modelId: modelId,
         );
       }
-      // fal's status/result live UNDER the model path — and for sub-path models
-      // (e.g. Kling) the base is the app id, not the full endpoint. So use the
-      // response_url fal returns rather than constructing it ourselves (building
-      // it as .../requests/{id} without the model prefix causes a 405). Returned
-      // as the "jobId" the poll methods below GET directly.
+      // Use the response_url fal returns as the jobId; building the poll URL
+      // ourselves omits the model prefix and 405s.
       final responseUrl = (data['response_url'] as String?)?.trim();
       debugPrint('[FalAi] submitted job $id');
       return (responseUrl != null && responseUrl.isNotEmpty)
@@ -77,8 +74,7 @@ class FalAiProvider extends VideoProvider {
 
   @override
   Future<bool> isJobComplete(String jobId) async {
-    // [jobId] is the full response_url returned by submitJob; status is at
-    // "<response_url>/status".
+    // [jobId] is the response_url from submitJob; status is at "<jobId>/status".
     try {
       final r = await _dio.get('$jobId/status', options: _opts);
       final status = ((r.data as Map)['status'] as String?)?.toUpperCase();
@@ -126,8 +122,8 @@ class FalAiProvider extends VideoProvider {
 
   @override
   Future<bool> testConnection() async {
-    // fal.ai has no key-only validation endpoint; submit a minimal job and
-    // treat a returned request_id as a valid key + reachable model.
+    // No key-only validation endpoint; submit a minimal job and treat a
+    // returned request_id as a valid key + reachable model.
     final path = modelId.isNotEmpty ? modelId : 'wan/v2.6/text-to-video';
     try {
       final r = await _dio.post(

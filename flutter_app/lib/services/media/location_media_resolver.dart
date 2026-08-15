@@ -5,21 +5,15 @@ import 'media_cache_service.dart';
 import 'unsplash_service.dart';
 import 'wikimedia_service.dart';
 
-/// Single source of truth for a location's media (image URL + description),
-/// shared by the on-rig info balloon AND the in-app image widgets so both show
-/// the same picture.
-///
-/// Resolution happens once per location name and is cached persistently
-/// ([MediaCacheService]) — so the app, the live tour, and any later replay all
-/// reuse the result instead of re-querying Wikipedia/Unsplash.
+/// Single source of truth for a location's media (image + description), shared
+/// by the rig balloon and the in-app widgets. Resolved once per name and cached
+/// persistently ([MediaCacheService]) so replays reuse the result.
 class LocationMediaResolver {
   LocationMediaResolver._();
   static final LocationMediaResolver instance = LocationMediaResolver._();
 
-  /// Chain: cache → Wikipedia (sanitise retry) → Unsplash → generation-time
-  /// image → text-only. Description is ALWAYS the location's unified AI
-  /// narration (whySignificant), independent of the image source — so the
-  /// balloon card text matches the spoken narration exactly. Never throws.
+  /// Image chain: cache, Wikipedia, Unsplash, generation-time image, text-only.
+  /// Description is always the AI narration (whySignificant). Never throws.
   Future<({String imageUrl, String description})> resolve(
     TourLocation location,
   ) async {
@@ -30,8 +24,7 @@ class LocationMediaResolver {
     }
 
     var imageUrl = '';
-    // Unified: the balloon description is ALWAYS the AI narration, so it matches
-    // the spoken TTS. The Wikipedia/Unsplash chain below only resolves the IMAGE.
+    // Description is always the AI narration; the chain below resolves the image.
     final description = location.whySignificant;
     String source;
 

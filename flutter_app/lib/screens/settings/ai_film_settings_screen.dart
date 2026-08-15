@@ -19,9 +19,9 @@ class AiFilmSettingsScreen extends ConsumerStatefulWidget {
       _AiFilmSettingsScreenState();
 }
 
-// Current, live fal.ai text-to-video endpoints (verified Aug 2026). Ordered
-// best-quality → cheapest. Approx pay-as-you-go pricing at 720p / audio off:
-//   Kling v3  ~$0.084/s · WAN 2.2 ~$0.08/s · Hailuo 02 ~$0.045/s · LTX ~$0.02/clip
+// Live fal.ai text-to-video endpoints (verified Aug 2026), best quality first.
+// Approx 720p pricing: Kling v3 ~$0.084/s, WAN 2.2 ~$0.08/s,
+// Hailuo 02 ~$0.045/s, LTX ~$0.02/clip.
 const _falModels = <(String, String)>[
   ('Kling v3', 'fal-ai/kling-video/v3/standard/text-to-video'),
   ('WAN 2.2', 'fal-ai/wan/v2.2-a14b/text-to-video'),
@@ -79,8 +79,8 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
       }
       if (s.providerType == VideoProviderType.falAi) {
         final idx = _falModels.indexWhere((m) => m.$2 == s.modelId);
-        // Fresh setup (no model saved) → default to the first preset, Kling v3
-        // (best quality for a demo). A saved-but-unknown id → the custom field.
+        // Fresh setup defaults to the first preset (Kling v3); an unknown saved
+        // id falls to the custom field.
         _falModelIndex = idx >= 0
             ? idx
             : (s.modelId.isEmpty ? 0 : _falModels.length);
@@ -243,10 +243,8 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
         value: _enabled,
         onChanged: (v) async {
           setState(() => _enabled = v);
-          // Persist the toggle immediately. The Save button lives inside the
-          // section that greys out (IgnorePointer) when disabled, so it can
-          // never write an OFF value — without this, turning AI Film off would
-          // silently revert to the last-saved ON state on the next visit.
+          // Persist the toggle immediately; the Save button greys out when
+          // disabled, so it can't write the OFF value itself.
           await ref
               .read(aiFilmProvider.notifier)
               .saveSettings(_buildSettings());
@@ -627,7 +625,7 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
     );
   }
 
-  // ── Small shared pieces ─────────────────────────────────────────────────────
+  // Small shared pieces
 
   Widget _card({required Widget child}) {
     final theme = Theme.of(context);

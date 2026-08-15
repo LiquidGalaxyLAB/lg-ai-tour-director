@@ -16,10 +16,8 @@ import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/map_placeholder.dart';
 import '../../widgets/ai_film_popup.dart';
 
-/// Post-tour (mockups 10 & 11). If an AI film was requested it "produces" while
-/// the user explores the recap, then reveals the player. Either way the user is
-/// offered **Save Tour (KML)**. Veo + real video are stubbed; persistence is via
-/// the library providers.
+/// Post-tour recap. If an AI film was requested it generates in the background,
+/// then reveals the result. Either way the user is offered Save Tour (KML).
 class PostTourScreen extends ConsumerStatefulWidget {
   const PostTourScreen({super.key, required this.args});
 
@@ -36,8 +34,7 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
 
   bool get _film => widget.args.generateFilm;
 
-  /// A REPLAY of a tour already in the library → no "Save Tour" (it would spawn
-  /// a duplicate library entry on every replay).
+  /// A replay of a library tour hides "Save Tour" to avoid duplicate entries.
   bool get _alreadyInLibrary => widget.args.savedTourId != null;
 
   @override
@@ -47,9 +44,8 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _recordHistory();
       if (_film) {
-        // "Yes, make a film" → run the REAL generator (Veo/Kling). The
-        // connection was already verified on the Preview screen before the
-        // tour started, so this proceeds straight into generation.
+        // "Yes, make a film": the connection was verified on Preview, so this
+        // goes straight into generation.
         _startRealFilm();
       } else {
         _maybeShowAiFilm();
@@ -58,9 +54,8 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
     _sayThankYou();
   }
 
-  /// Launch the real AI Film generator. The generator screen shows live
-  /// progress, handles errors/retries, stitches the clips, and on success
-  /// replaces itself with the result screen. On cancel it returns here.
+  /// Launch the AI Film generator screen (progress, stitch, result). Cancel
+  /// returns here.
   void _startRealFilm() {
     context.push('/tour/ai-film-progress', extra: widget.args.locations);
   }
@@ -86,8 +81,7 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
     }
   }
 
-  /// Hardcoded closing narration (not from the LLM). Respects the Voice
-  /// Narration preference so it stays consistent with the tour.
+  /// Fixed closing narration; respects the Voice Narration preference.
   Future<void> _sayThankYou() async {
     try {
       final prefs = await SharedPreferences.getInstance();

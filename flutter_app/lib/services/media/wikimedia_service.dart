@@ -19,15 +19,13 @@ class WikimediaService {
         'User-Agent':
             'LGAITourDirector/1.0 (GSoC 2026; kabirkhanuja@gmail.com)',
       },
-      // Treat 404 (no such page) as a normal response, not an exception, so a
-      // miss is handled quietly via a null thumbnail instead of a stack trace.
+      // Treat 404 as a normal miss (null thumbnail), not an exception.
       validateStatus: (status) => status != null && status < 500,
     ),
   );
 
-  /// Looks up [locationName] on Wikipedia. Tries the exact name first, then a
-  /// sanitised variant (drops a trailing ", City" qualifier and noisy suffixes
-  /// like "Tower"/"Experience") that commonly cause exact-match misses.
+  /// Looks up [locationName] on Wikipedia: exact name first, then a sanitised
+  /// variant that drops qualifiers causing exact-match misses.
   Future<WikimediaResult?> fetchLocationMedia(String locationName) async {
     final name = locationName.trim();
     if (name.isEmpty) {
@@ -82,11 +80,8 @@ class WikimediaService {
   }
 
   /// Strips qualifiers that cause Wikipedia exact-match misses, then re-cases.
-  /// e.g. "Shaniwar Wada, Pune" → "Shaniwar Wada";
-  ///      "Bellagio Conservatory" → "Bellagio".
   String _sanitiseName(String name) {
-    // Drop a trailing ", City"/", State" qualifier and any "(parenthetical)"
-    // alias (e.g. "Bandra Fort (Castella de Aguada)" → "Bandra Fort").
+    // Drop a trailing ", City"/", State" qualifier and any "(parenthetical)".
     var cleaned = name
         .split(',')
         .first

@@ -3,12 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Persistent cache of resolved balloon media (image URL + description) keyed by
-/// location name, so a location's Wikipedia/Unsplash lookup happens **once**.
-///
-/// This is what makes replaying a saved tour free of repeat API calls: the
-/// first flight resolves + stores each stop's media here, and every later
-/// replay (even after an app restart) reads it back instead of re-querying.
+/// Persistent cache of resolved media (image + description) keyed by location
+/// name, so each Wikipedia/Unsplash lookup happens once and replays are free.
 class MediaCacheService {
   MediaCacheService._();
   static final MediaCacheService instance = MediaCacheService._();
@@ -34,8 +30,7 @@ class MediaCacheService {
     }
   }
 
-  /// Stores the resolved media for [name] (including an empty [imageUrl] for a
-  /// text-only stop, so replays don't keep retrying a known miss).
+  /// Stores resolved media for [name] (an empty [imageUrl] caches a known miss).
   Future<void> put(
     String name, {
     required String imageUrl,

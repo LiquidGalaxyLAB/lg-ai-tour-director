@@ -105,26 +105,16 @@ class VideoStitcher {
   }
 
   /// Persists the finished film and returns a File()-readable path for playback
-  /// and sharing. On Android it ALSO best-effort exports to the public Downloads
-  /// via MediaStore (so it appears in Files/Gallery) — but if that fails, the
-  /// film is NOT lost: it's already stitched, so we keep a guaranteed-readable
-  /// copy in app storage and return that. Saving must never destroy the film.
+  /// and sharing. On Android it also best-effort exports to the Gallery; if that
+  /// fails the film is kept in app storage, so saving never loses it.
   static Future<String> saveToDownloads(String sourcePath) async {
     final ts = DateTime.now().millisecondsSinceEpoch;
     final name = 'TourDirectorFilm_$ts.mp4';
 
     if (Platform.isAndroid) {
-      // Best-effort MediaStore export so the film shows in the Gallery / Files
-      // apps — no MANAGE_EXTERNAL_STORAGE needed on Android 13+.
-      //
-      // IMPORTANT: the MediaStore *Video* collection only accepts RELATIVE_PATH
-      // under Movies/ (or DCIM/Pictures). Passing 'Download' throws
-      // IllegalArgumentException on EVERY Android 13+ device → no URI → "Failed
-      // to create file URI". So videos must go under Movies/. We use a branded
-      // subfolder; it appears in the Gallery and in Files › Movies.
-      //
-      // Still wrapped defensively — a MediaStore failure must never lose the
-      // film, since the app-storage copy below is what we play and share.
+      // MediaStore's Video collection only accepts RELATIVE_PATH under Movies/
+      // (Download throws on Android 13+), so we export under Movies/TourDirector.
+      // Wrapped defensively: a failure must not lose the app-storage copy below.
       try {
         final result = await SaverGallery.saveFile(
           filePath: sourcePath,
@@ -146,9 +136,7 @@ class VideoStitcher {
       }
     }
 
-    // Always keep a readable copy in app storage for playback + sharing. This is
-    // what we return, so the result screen works whether or not the public
-    // export above succeeded.
+    // Always keep a readable app-storage copy for playback + sharing.
     final dir = await getApplicationDocumentsDirectory();
     final destPath = '${dir.path}/$name';
     await File(sourcePath).copy(destPath);

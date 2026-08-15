@@ -5,18 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'llm_exception.dart';
 import 'llm_prompts.dart';
 
-/// Calls ANY OpenAI-compatible chat-completions endpoint : OpenRouter, a local
-/// Ollama / LM Studio server etc speaking in same format
-///
-/// Configured purely by [baseUrl] + [apiKey] + [model]; there's no provider specific logic
-///
-/// The endpoint hit is always `{baseUrl}/chat/completions`
-///
-/// https://openrouter.ai/api/v1   (OpenRouter)
-/// http://localhost:11434/v1      (Ollama)
-/// http://localhost:1234/v1       (LM Studio)
-/// https://api.groq.com/openai/v1 (Groq)
-/// https://api.together.xyz/v1    (Together.ai)
+/// Calls any OpenAI-compatible `{baseUrl}/chat/completions` endpoint
+/// (OpenRouter, Ollama, LM Studio, Groq, Together), configured purely by
+/// [baseUrl] + [apiKey] + [model] with no provider-specific logic.
 
 class LLMClient {
   LLMClient({
