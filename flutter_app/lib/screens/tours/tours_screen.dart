@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/tour_history_entry.dart';
 import '../../providers/library_provider.dart';
@@ -105,6 +106,18 @@ class _HistoryCard extends StatelessWidget {
     return '${_months[d.month - 1]} ${d.day}, ${d.year} · $h:$m $ampm';
   }
 
+  void _showDetails(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => _HistoryDetailsSheet(
+        entry: entry,
+        formatDate: _formatDate,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -129,7 +142,14 @@ class _HistoryCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(Icons.more_vert, color: theme.colorScheme.onSurfaceVariant),
+              IconButton(
+                icon: Icon(
+                  Icons.more_vert,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                tooltip: 'View details',
+                onPressed: () => _showDetails(context),
+              ),
             ],
           ),
           Text(
@@ -156,11 +176,140 @@ class _HistoryCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {},
+              onPressed: () => _showDetails(context),
               child: const Text('View Details →'),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Bottom sheet showing the full details of a history entry, plus a shortcut to
+/// regenerate the same tour from its original prompt. History is lightweight (no
+/// KML), so this is read-only detail — replaying on the rig happens from Saved.
+class _HistoryDetailsSheet extends StatelessWidget {
+  const _HistoryDetailsSheet({
+    required this.entry,
+    required this.formatDate,
+  });
+
+  final TourHistoryEntry entry;
+  final String Function(DateTime) formatDate;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              entry.title,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              formatDate(entry.createdAt),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _StatChip(
+                  icon: Icons.place_outlined,
+                  label: '${entry.stopCount} Stops',
+                ),
+                _StatChip(
+                  icon: Icons.straighten,
+                  label: '${entry.distanceKm} km',
+                ),
+                _StatChip(
+                  icon: Icons.schedule,
+                  label: '${entry.durationMin} min',
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'PROMPT',
+              style: theme.textTheme.labelMedium?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(entry.prompt, style: theme.textTheme.bodyLarge),
+            const SizedBox(height: 20),
+            Text(
+              'STOPS',
+              style: theme.textTheme.labelMedium?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < entry.locationNames.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 12,
+                              backgroundColor:
+                                  theme.colorScheme.primary.withValues(alpha: 0.12),
+                              child: Text(
+                                '${i + 1}',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                entry.locationNames[i],
+                                style: theme.textTheme.bodyLarge,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.refresh),
+                label: const Text('Generate this tour again'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  context.push('/home/generation', extra: entry.prompt);
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

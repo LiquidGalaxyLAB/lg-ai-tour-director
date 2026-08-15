@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:video_player/video_player.dart';
 
 import '../../kml/assembler.dart';
 import '../../models/location.dart';
@@ -22,33 +22,12 @@ class AiFilmResultScreen extends ConsumerStatefulWidget {
 }
 
 class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
-  VideoPlayerController? _controller;
   String? _path;
-  bool _playError = false; // video_player couldn't open the stitched file
 
   @override
   void initState() {
     super.initState();
     _path = ref.read(aiFilmProvider).lastResult?.finalVideoPath;
-    final path = _path;
-    if (path != null) {
-      final c = VideoPlayerController.file(File(path));
-      _controller = c;
-      c.initialize().then((_) {
-        if (mounted) setState(() {});
-      }).catchError((Object e) {
-        // Don't spin forever on an unplayable file — show a message and keep
-        // Share working (the file is still saved on the device).
-        debugPrint('[AIFilm] player init failed: $e');
-        if (mounted) setState(() => _playError = true);
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
   }
 
   void _snack(String msg) {
@@ -56,6 +35,17 @@ class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
     );
+  }
+
+  /// Opens the stitched MP4 in the device's native video player (Google Photos,
+  /// MX Player, VLC, …) via an intent — no embedded player, any format.
+  Future<void> _playVideo() async {
+    final path = _path;
+    if (path == null) return;
+    final result = await OpenFilex.open(path, type: 'video/mp4');
+    if (result.type != ResultType.done) {
+      _snack('Could not open a video player: ${result.message}');
+    }
   }
 
   Future<void> _share() async {
@@ -123,7 +113,6 @@ class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
     final providerName = VideoProviderFactory.create(
       film.settings,
     ).providerName;
-    final c = _controller;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Your AI Film is Ready')),
@@ -161,61 +150,28 @@ class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          // Player
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              color: Colors.black,
-              child: (c != null && c.value.isInitialized)
-                  ? AspectRatio(
-                      aspectRatio: c.value.aspectRatio == 0
-                          ? 16 / 9
-                          : c.value.aspectRatio,
-                      child: Stack(
-                        alignment: Alignment.bottomCenter,
-                        children: [
-                          GestureDetector(
-                            onTap: () => setState(
-                              () => c.value.isPlaying ? c.pause() : c.play(),
-                            ),
-                            child: VideoPlayer(c),
-                          ),
-                          VideoProgressIndicator(c, allowScrubbing: true),
-                          if (!c.value.isPlaying)
-                            const Center(
-                              child: Icon(
-                                Icons.play_circle_fill_rounded,
-                                size: 56,
-                                color: Colors.white,
-                              ),
-                            ),
-                        ],
-                      ),
-                    )
-                  : _playError
-                  ? const AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text(
-                            "Saved, but this device can't preview it here. "
-                            'Use Share to open or save it elsewhere.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                        ),
-                      ),
-                    )
-                  : const AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: Center(
-                        child: CircularProgressIndicator(color: Colors.white),
-                      ),
-                    ),
+
+          // Hero: film generated.
+          const SizedBox(height: 8),
+          const Center(
+            child: Icon(
+              Icons.movie_creation_rounded,
+              size: 80,
+              color: Color(0xFF4285F4),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Text(
+              'AI Film Generated!',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
             ),
           ),
           const SizedBox(height: 20),
+
           // Details
           Container(
             padding: const EdgeInsets.all(16),
@@ -235,16 +191,48 @@ class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
             ),
           ),
           const SizedBox(height: 20),
+
+          // Primary action: play in the native video player.
           FilledButton.icon(
-            onPressed: _share,
-            icon: const Icon(Icons.share_rounded),
-            label: const Text('Share'),
+            onPressed: _playVideo,
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: const Text('Play Video'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+            ),
           ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: () => _snack('Saved to Downloads: ${_path ?? ''}'),
-            icon: const Icon(Icons.photo_library_outlined),
-            label: const Text('Open in Gallery'),
+          const SizedBox(height: 8),
+          Center(
+            child: Text(
+              'Opens in your device video player',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 8),
+
+          // Secondary actions.
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _share,
+                  icon: const Icon(Icons.share_rounded),
+                  label: const Text('Share'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _playVideo,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Gallery'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
@@ -252,7 +240,7 @@ class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
             icon: const Icon(Icons.download_rounded),
             label: const Text('Save Tour KML'),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           TextButton(
             onPressed: () => context.go('/home'),
             child: const Text('Generate Another'),

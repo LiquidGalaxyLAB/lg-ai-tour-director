@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -164,7 +165,7 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
               const Divider(),
               const SizedBox(height: 12),
               Text(
-                'DEVELOPER TESTS',
+                kDebugMode ? 'DEVELOPER TESTS' : 'TESTING',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   letterSpacing: 1,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -172,64 +173,73 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Send a sample KML / camera move to verify the rig connection.',
+                kDebugMode
+                    ? 'Send a sample KML / camera move to verify the rig '
+                          'connection.'
+                    : 'Run the AI Film pipeline on 3 sample locations '
+                          '(no rig needed).',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => run('Send Test KML', notifier.sendTestKml),
-                icon: const Icon(Icons.description_outlined),
-                label: const Text('Send Test KML (Shaniwar Wada)'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () => run('FlyTo Pune', notifier.flyToPune),
-                icon: const Icon(Icons.flight_takeoff_rounded),
-                label: const Text('FlyTo Pune'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () => run('Test Orbit', notifier.testOrbit),
-                icon: const Icon(Icons.threesixty_rounded),
-                label: const Text('Test Orbit (Shaniwar Wada)'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () =>
-                    run('Test Landmark Ring', notifier.testLandmarkRing),
-                icon: const Icon(Icons.blur_circular_rounded),
-                label: const Text('Test Landmark Ring (Shaniwar Wada)'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () => run('Test Balloon', notifier.testBalloon),
-                icon: const Icon(Icons.web_asset_rounded),
-                label: const Text('Test Balloon (auto-clears in 10s)'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const MapSyncTestScreen(),
-                  ),
-                ),
-                icon: const Icon(Icons.sync_alt_rounded),
-                label: const Text('Test Map Sync'),
-              ),
-              const SizedBox(height: 10),
+              // Always available — the documented way to test AI Film cheaply
+              // without generating a full tour (see handoff docs).
               OutlinedButton.icon(
                 onPressed: testAiFilm,
                 icon: const Icon(Icons.movie_creation_outlined),
                 label: const Text('Test AI Film (3 clips)'),
               ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () => run('Clean up', notifier.cleanup),
-                icon: const Icon(Icons.cleaning_services_outlined),
-                label: const Text('Clear KML files'),
-              ),
+              // Rig-level test tools — debug builds only, hidden in release.
+              if (kDebugMode) ...[
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => run('Send Test KML', notifier.sendTestKml),
+                  icon: const Icon(Icons.description_outlined),
+                  label: const Text('Send Test KML (Shaniwar Wada)'),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => run('FlyTo Pune', notifier.flyToPune),
+                  icon: const Icon(Icons.flight_takeoff_rounded),
+                  label: const Text('FlyTo Pune'),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => run('Test Orbit', notifier.testOrbit),
+                  icon: const Icon(Icons.threesixty_rounded),
+                  label: const Text('Test Orbit (Shaniwar Wada)'),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () =>
+                      run('Test Landmark Ring', notifier.testLandmarkRing),
+                  icon: const Icon(Icons.blur_circular_rounded),
+                  label: const Text('Test Landmark Ring (Shaniwar Wada)'),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => run('Test Balloon', notifier.testBalloon),
+                  icon: const Icon(Icons.web_asset_rounded),
+                  label: const Text('Test Balloon (auto-clears in 10s)'),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const MapSyncTestScreen(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.sync_alt_rounded),
+                  label: const Text('Test Map Sync'),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => run('Clean up', notifier.cleanup),
+                  icon: const Icon(Icons.cleaning_services_outlined),
+                  label: const Text('Clear KML files'),
+                ),
+              ],
             ],
           ),
         ),

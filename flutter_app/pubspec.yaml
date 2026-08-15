@@ -60,9 +60,11 @@ dependencies:
   # deleted from Maven, so the -min package fails to build. This fork re-hosts
   # the binaries (same API). MP4 concat stitching (min build, no re-encode).
   ffmpeg_kit_flutter_new: ^4.6.2
-  video_player: ^2.9.2 # AI Film playback
   permission_handler: ^11.3.1 # MANAGE_EXTERNAL_STORAGE for saving film to Downloads (Android 13+)
   saver_gallery: ^4.1.2
+  mobile_scanner: ^7.4.0
+  open_filex: ^4.7.0
+  video_player: ^2.11.1
 
 dev_dependencies:
   flutter_test:
@@ -114,6 +116,7 @@ flutter:
     - .env
     - assets/logos/
     - assets/translations/
+    - assets/video/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
