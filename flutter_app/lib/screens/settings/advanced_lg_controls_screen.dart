@@ -20,14 +20,23 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
           builder: (ctx) => AlertDialog(
             title: Text('$action Liquid Galaxy?'),
             content: Text('Are you sure you want to $action the rig?'),
+            actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(action),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(action),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel'),
+                  ),
+                ],
               ),
             ],
           ),
