@@ -9,13 +9,8 @@ class BalloonImageMaker {
   static const double w = 494;
   static const double imageH = 260;
   static const double pad = 26;
-  // Canvas height grows to fit the full (untruncated) description, then is
-  // clamped. On the rig the card is shown at width fraction 0.71, so on-screen
-  //   heightFraction = 0.71 * (canvasH / w) * (screenW / screenH).
-  // For a portrait 1080x1920 screen centred at screenXY y=0.55, maxH=860 keeps
-  // the card at ~70% of screen height (bottom at ~90% → ~10% margin) so it can
-  // NEVER touch/cross the top, bottom, or side borders. The narration prompt is
-  // capped (~70 words) so 5 sentences fit inside this height without clipping.
+  // Canvas height grows to fit the full description, then clamps to maxH so the
+  // card stays at ~70% of a portrait screen and never touches any border.
   static const double minH = 720;
   static const double maxH = 860;
 
@@ -31,17 +26,14 @@ class BalloonImageMaker {
     required String locationSubtitle,
     required String description,
     Uint8List? imageBytes,
-    // Supersample factor: the PNG is rendered at scale× the logical 380×500 so
-    // it stays crisp when Google Earth scales the (now larger, fraction-sized)
-    // overlay up on a high-res rig.
+    // Supersample so the PNG stays crisp when Google Earth scales it up.
     double scale = 3,
   }) async {
     final image = imageBytes == null ? null : await _decode(imageBytes);
 
     const contentWidth = w - pad * 2;
 
-    // Lay text out FIRST so we can size the canvas to fit the full, untruncated
-    // description (no maxLines / no ellipsis on the body).
+    // Lay text out first so the canvas can size to the full description.
     final name = _paragraph(
       locationName,
       size: 29,

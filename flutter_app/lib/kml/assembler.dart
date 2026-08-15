@@ -1,13 +1,8 @@
 import '../models/location.dart';
 import 'generator.dart';
 
-/// Assembles a complete, playable KML document containing a single `<gx:Tour>`
-/// that flies the rig through every geocoded stop, plus numbered markers.
-///
-/// Deploy the returned string with `LGService.sendKml(kml, fileName: 'tour.kml')`
-/// then play it on the rig with `playtour=<tourName>` (see
-/// `SshConnection.flyGeneratedTour`). The tour's `<name>` MUST match the name
-/// passed to `playtour=`.
+/// Builds a playable KML with one `<gx:Tour>` flying every geocoded stop, plus
+/// numbered markers. The tour's `<name>` must match the `playtour=` name.
 class KmlAssembler {
   KmlAssembler._();
 
@@ -27,9 +22,9 @@ class KmlAssembler {
     if (geocoded.isEmpty) return null;
 
     final playlist = StringBuffer();
-    // 1. Opening establishing shot framing every stop.
+    // Opening establishing shot framing every stop.
     playlist.writeln(KmlGenerator.openingOverview(geocoded));
-    // 2. One cinematic beat per stop.
+    // One cinematic beat per stop.
     for (final loc in geocoded) {
       playlist.writeln(
         KmlGenerator.lookAtScene(loc, holdSeconds: holdSecondsPerStop),

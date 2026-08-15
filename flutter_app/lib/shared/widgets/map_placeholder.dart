@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 
-/// A styled stand-in for the interactive map. The real `google_maps_flutter`
-/// view needs a Maps-SDK key configured per platform (Android manifest +
-/// web/index.html); until that's wired this conveys "map with a numbered route"
+/// Styled stand-in for the interactive map, used where the real
+/// `google_maps_flutter` view isn't available (e.g. web without a Maps SDK key).
 /// so the screens stay faithful and runnable everywhere.
 class MapPlaceholder extends StatelessWidget {
   const MapPlaceholder({

@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// First screen after the OS-level native splash. Shows the single composite
-/// brand image (`assets/logos/logo.png` — title + globe + all partner logos),
-/// the SAME image the app overlays on the Liquid Galaxy left screen, so the app
-/// splash and the rig branding match exactly (per Andreu). Holds ~5.5s, then
-/// hands off to the home tab. Minimal motion: a gentle fade-in plus a soft
-/// up-and-down float — the image already carries all the branding.
+/// First screen after the OS native splash. Shows the composite brand image
+/// (the same one overlaid on the rig's left screen) for ~5.5s with a gentle
+/// fade and float, then hands off to Home.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -48,8 +45,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // White to match the composite image's own white background — no coloured
-    // box behind it, so it reads as one clean brand board.
+    // White to match the composite image's own white background.
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(

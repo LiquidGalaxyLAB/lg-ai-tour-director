@@ -5,10 +5,8 @@ class AppConstants {
   static const String geminiBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/';
 
-  // Gemini model fallback chain. Cheapest/lightest first — extracting ~5
-  // locations does not need a top-tier model. If one model is unavailable
-  // (404/quota), the service falls through to the next. Stable (non-preview)
-  // models only, so the app does not break when a preview is retired.
+  // Gemini model fallback chain, cheapest first; falls through on 404/quota.
+  // Stable (non-preview) models only, so a retired preview never breaks it.
   static const List<String> geminiModels = [
     'gemini-2.5-flash-lite',
     'gemini-2.0-flash-lite',
@@ -34,8 +32,7 @@ class AppConstants {
 
   // Logo overlay shown on the left-most screen (top-left corner)
   static const String logoAssetPath = 'assets/logos/logo.png';
-  // Overlay width as a fraction of the screen; height auto-scales to keep the
-  // image's native aspect ratio (KML size y=0 preserves aspect ratio)
+  // Overlay width as a screen fraction; height auto-scales (KML size y=0).
   static const double logoOverlayWidthFraction = 0.64;
 
   // Tour generation tuning

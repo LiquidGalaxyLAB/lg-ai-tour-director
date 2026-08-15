@@ -4,13 +4,9 @@ import 'package:geocoding/geocoding.dart';
 
 import 'location_name_utils.dart';
 
-// Returns human-readable place details for a location name
-//  1. Native geocoder** (`geocoding` package) :Android / iOS / macOS only
-//  2. OpenStreetMap Nominatim** over HTTP : fallback that works on web too
-
-// google places api needs billing so not worth also we just need the coordinates
-
-//dont touch the generation pipeline keeps calling it byte-for-byte.
+// Place details for a location name: native geocoder first (Android/iOS/macOS),
+// then Nominatim over HTTP (works on web too). No paid Google Places API.
+// Don't touch: the generation pipeline calls this byte-for-byte.
 class PlacesService {
   PlacesService._();
   static final PlacesService instance = PlacesService._();
@@ -47,16 +43,13 @@ class PlacesService {
     return null;
   }
 
-  // The `geocoding` plugin only ships native implementations for Android and
-  // iOS. On web/Windows/macOS/Linux there's no platform code, so skip native
-  // there (avoids futile calls + log noise) and go straight to Nominatim.
+  // The `geocoding` plugin is native-only; skip it elsewhere and use Nominatim.
   static bool get _nativeGeocodingSupported =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS);
 
-  /// One query string through the two free backends: the native (Google/Apple)
-  /// geocoder first where supported, then the OpenStreetMap Nominatim fallback.
+  /// One query through the native geocoder first, then Nominatim as fallback.
   Future<Map<String, dynamic>?> _lookup(String query) async {
     if (_nativeGeocodingSupported) {
       final native = await _nativeLookup(query);

@@ -2,9 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-/// Image fallback for locations Wikipedia has no photo for (modern venues,
-/// districts, generic place names). Uses the Unsplash Search API and returns a
-/// single landscape 'regular'-size photo URL, or null on miss / no key / error.
+/// Image fallback when Wikipedia has no photo. Uses the Unsplash Search API,
+/// returning a single landscape photo URL or null on miss/no key/error.
 class UnsplashService {
   UnsplashService._();
   static final UnsplashService instance = UnsplashService._();
@@ -13,12 +12,9 @@ class UnsplashService {
 
   final Dio _dio = Dio();
 
-  /// Searches Unsplash for [query], trying progressively broader variants so a
-  /// place like "Central Museum, Nagpur" (which returns nothing verbatim) still
-  /// resolves via "Central Museum Nagpur" → "Central Museum".
+  /// Searches Unsplash for [query], trying progressively broader variants.
   Future<String?> fetchPhotoUrl(String query) async {
-    // Search API authenticates with the Access Key as client_id (the Secret
-    // Key is only for OAuth user-auth, which this app doesn't use).
+    // Search API authenticates with the Access Key as client_id.
     final key = dotenv.env['UNSPLASH_ACCESS_KEY'] ?? '';
     if (key.isEmpty) {
       debugPrint('[UnsplashService] No access key configured');
@@ -36,10 +32,8 @@ class UnsplashService {
     return null;
   }
 
-  /// Ordered, de-duplicated search terms, broadening on each step. Strips any
-  /// "(parenthetical)" alias (which Unsplash returns nothing for) and the
-  /// trailing ", City": e.g. "Bandra Fort (Castella de Aguada), Mumbai" →
-  /// ["Bandra Fort Mumbai", "Bandra Fort", …].
+  /// Ordered, de-duplicated search terms, broadening on each step (strips any
+  /// "(parenthetical)" alias and the trailing ", City").
   List<String> _queryVariants(String name) {
     String flatten(String s) =>
         s.replaceAll(',', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();

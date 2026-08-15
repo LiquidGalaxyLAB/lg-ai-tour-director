@@ -52,10 +52,8 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
   }
 
   Future<void> _init() async {
-    // During the tour the RIG owns the camera (fly-in → orbit → settle), so map
-    // sync starts OFF. It's turned on only while PAUSED (see the Pause button),
-    // where the rig loop is holding and free exploration is safe — which also
-    // means it's never on during the orbit. Nothing here touches the tour loop.
+    // The rig owns the camera during the tour, so map sync starts off and is
+    // enabled only while paused (never during the orbit).
     MapSyncService.instance.disable();
 
     final prefs = await SharedPreferences.getInstance();
@@ -76,14 +74,13 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
       _spokenIndex = tour.currentIndex;
       if (!tour.isPaused) _speak(tour.currentIndex); // stay silent if paused
     } else if (rigDriven) {
-      // The LG flight drives scene changes (enterScene) as it arrives at each
-      // landmark, so narration stays locked to the real camera. Nothing to time
-      // here — just wait for the flight's first enterScene(0).
+      // The LG flight drives scene changes (enterScene) on arrival, so
+      // narration stays locked to the camera; just await the first enterScene(0).
       _spokenIndex = -1;
       notifier.start(widget.args, rigDriven: true);
     } else {
-      // No rig connected (companion-only, e.g. web preview): fall back to the
-      // fixed rig-matched timer so the UI still advances on its own.
+      // No rig connected (companion-only): fall back to the timer so the UI
+      // still advances.
       _spokenIndex = 0;
       notifier.start(widget.args);
       await Future<void>.delayed(TourStateNotifier.overviewDelay);
@@ -131,8 +128,7 @@ class _ActiveTourScreenState extends ConsumerState<ActiveTourScreen> {
     super.dispose();
   }
 
-  /// Enable map→rig sync (used while paused). Pulls the rig's screen count so
-  /// the altitude conversion matches this rig.
+  /// Enable map to rig sync (while paused), matching the rig's screen count.
   void _enableSync() {
     MapSyncService.instance.updateRigCount(
       ref.read(sshConnectionProvider).config.totalScreens,

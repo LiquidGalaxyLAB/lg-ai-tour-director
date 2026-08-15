@@ -31,8 +31,7 @@ class SyncMapView extends ConsumerStatefulWidget {
 
   final bool showSyncChip;
 
-  /// When set, a fullscreen button is shown (bottom-left). Tapping it should
-  /// open a full-screen explore map (see FullscreenMapScreen).
+  /// When set, a fullscreen button (bottom-left) opens a full-screen map.
   final VoidCallback? onExpand;
 
   @override
@@ -74,8 +73,7 @@ class _SyncMapViewState extends ConsumerState<SyncMapView> {
           icon: BitmapDescriptor.defaultMarkerWithHue(
             BitmapDescriptor.hueAzure,
           ),
-          // Tapping a marker flies the phone camera there — which then syncs to
-          // the rig on idle (Screen C "interactive recap" behaviour).
+          // Tapping a marker flies the camera there, which syncs to the rig on idle.
           onTap: () => _animateTo(pts[i]),
         ),
     };
@@ -135,9 +133,7 @@ class _SyncMapViewState extends ConsumerState<SyncMapView> {
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
       compassEnabled: true,
-      // Claim drag gestures so an embedding scroll view (e.g. the Preview /
-      // Saved lists) can't swallow the pan before the map sees it — otherwise
-      // the camera never moves and nothing syncs to the rig.
+      // Claim drag gestures so an embedding scroll view can't swallow the pan.
       gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
         Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
       },

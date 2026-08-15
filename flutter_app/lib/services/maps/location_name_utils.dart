@@ -1,3 +1,6 @@
+// Builds an ordered, de-duped list of geocoder queries for one location name.
+// Every variant keeps the city+country context so a near-miss never flies to
+// the wrong place, and a bare city/country is never emitted on its own.
 List<String> locationQueryVariants(String name) {
   final variants = <String>[];
 
@@ -40,22 +43,19 @@ List<String> locationQueryVariants(String name) {
       .toList();
   if (segments.isEmpty) return variants;
 
-  // Drop a leading article ("The Stratosphere Tower" → "Stratosphere Tower"),
-  // otherwise a stripped fragment can collapse to the bare word "The".
+  // Drop a leading article so a fragment can't collapse to the bare word "The".
   final head = segments.first.replaceFirst(
     RegExp(r'^the\s+', caseSensitive: false),
     '',
   );
-  // Everything after the landmark = geographic context, e.g. "Las Vegas, USA".
-  // ALWAYS reattached so a rescue stays anchored to the requested city.
+  // Geographic context (city, country), always reattached to keep the anchor.
   final context = segments.length > 1 ? segments.sublist(1).join(', ') : null;
-  // The city is the segment just before the country — the best anchor.
+  // City is the segment just before the country, the best anchor.
   final city = segments.length >= 2 ? segments[segments.length - 2] : null;
 
   String withContext(String core) => context != null ? '$core, $context' : core;
 
-  // A one-word fragment this short (or a bare article/conjunction) is not a
-  // landmark — searching it just matches a random nearby point. Skip it.
+  // Skip a too-short one-word fragment or bare article; it matches random points.
   const stop = {'the', 'a', 'an', 'of', 'and', 'de', 'la', 'el'};
   bool tooGeneric(String core) {
     final words = core.split(' ');
@@ -64,8 +64,7 @@ List<String> locationQueryVariants(String name) {
     return w.length <= 3 || stop.contains(w);
   }
 
-  // The de-articled full name with context — the single most likely rescue,
-  // e.g. "Stratosphere Tower, Las Vegas, USA". Tried before any fragment.
+  // De-articled full name with context: the single most likely rescue.
   add(withContext(head));
 
   final headWords = head
@@ -73,14 +72,12 @@ List<String> locationQueryVariants(String name) {
       .where((w) => w.isNotEmpty)
       .toList();
 
-  // Drop TRAILING generic words first ("High Roller Observation Wheel" →
-  // "High Roller"), keeping the leading proper noun — usually the real signal.
+  // Drop trailing generic words, keeping the leading proper noun.
   for (var keep = headWords.length - 1; keep >= 1; keep--) {
     final core = headWords.sublist(0, keep).join(' ');
     if (!tooGeneric(core)) add(withContext(core));
   }
-  // Then drop LEADING words ("Red Rock Canyon National Conservation Area" →
-  // "Conservation Area"), still anchored to the city/country context.
+  // Then drop leading words, still anchored to city/country context.
   for (var drop = 1; drop < headWords.length; drop++) {
     final core = headWords.sublist(drop).join(' ');
     if (!tooGeneric(core)) add(withContext(core));
@@ -90,33 +87,9 @@ List<String> locationQueryVariants(String name) {
   if (city != null && city.toLowerCase() != head.toLowerCase()) {
     add('$head, $city');
   }
-  // Landmark name alone — a global search, last resort for world-famous names.
+  // Landmark name alone: last-resort global search.
   add(head);
 
-  // Safety cap: a real match almost always lands in the first few variants;
-  // this keeps a very long name from hammering the geocoder (and its rate
-  // limits) with a dozen low-value fragments.
+  // Cap variants so a long name doesn't hammer the geocoder's rate limit.
   return variants.length > 8 ? variants.sublist(0, 8) : variants;
 }
-
-// Builds an ordered, de-duped list of query strings to try for one location
-// name, so a near-miss like "High Roller Observation Wheel, Las Vegas, USA"
-// still geocodes to the RIGHT place.
-//
-// Two hard rules keep a rescue from flying to the wrong spot:
-//   1. Every stripped variant keeps the geographic context (city + country), so
-//      a search can never wander to another state. Dropping words but keeping
-//      only "USA" is what once matched "Observation Wheel, USA" to Wyoming.
-//   2. We NEVER emit a bare city or country as a query. Searching "USA" or
-//      "Las Vegas" for a specific landmark returns a centroid far from the real
-//      place (that bug flew "Omnia Nightclub" to the centre of the USA).
-//
-// The caller tries these in order and stops at the first that resolves. If none
-// resolve, returning no coordinates is correct — far better than a confident
-// wrong location.
-//
-// Example: "High Roller Observation Wheel, Las Vegas, USA" →
-//   1. High Roller Observation Wheel, Las Vegas, USA   (original)
-//   2. High Roller Observation, Las Vegas, USA         (trailing word dropped)
-//   3. High Roller, Las Vegas, USA                     (matches the wheel)
-//   ... leading-word drops, then "landmark, city", then the bare landmark name.

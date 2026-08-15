@@ -29,15 +29,13 @@ class PreviewScreen extends ConsumerStatefulWidget {
 }
 
 class _PreviewScreenState extends ConsumerState<PreviewScreen> {
-  // The stop the map is focused on (set by tapping a location card). Null = the
-  // opening "frame all stops" view.
+  // Stop the map is focused on; null = the "frame all stops" view.
   TourLocation? _focus;
 
   @override
   void initState() {
     super.initState();
-    // Stash the generated tour so it survives the route being popped (phone
-    // back gesture, wandering off to Settings, etc.). The Home screen's
+    // Stash the generated tour so it survives the route being popped; Home's
     // "continue your tour" banner re-opens Preview from this draft.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -52,11 +50,8 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
     super.dispose();
   }
 
-  /// Preview must NOT mirror to the rig (Andreu: pre-tour exploration stays on
-  /// the phone). The map still pans/animates locally — MapSyncService simply
-  /// stays disabled, so its idle handler is a silent no-op and nothing reaches
-  /// LG. We proactively turn it off here in case a previous screen (e.g.
-  /// Inspection) left it enabled.
+  /// Preview must not mirror to the rig (pre-tour exploration stays on the
+  /// phone), so sync is proactively disabled here.
   void _ensureSyncOff() {
     if (MapSyncService.instance.isEnabled) MapSyncService.instance.disable();
   }
@@ -72,9 +67,8 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
 
     var generateFilm = choice;
     if (choice == true) {
-      // Verify the AI Film connection BEFORE the tour starts. On failure the
-      // tour does NOT start — the user is offered the AI Film settings, the
-      // help docs, or to start the tour without a film.
+      // Verify the AI Film connection before the tour starts; on failure the
+      // user can fix settings, view help, or start without a film.
       final decision = await _verifyFilmConnection(context);
       if (decision == null || !context.mounted) return; // abort start
       generateFilm = decision; // true = verified ok; false = start without film
@@ -100,11 +94,8 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
     );
   }
 
-  /// Runs a live connection test against the configured AI Film provider.
-  /// Returns:
-  ///  - `true`  → connection verified, start the tour WITH a film
-  ///  - `false` → user chose "start without film" from the error dialog
-  ///  - `null`  → abort the tour start (fix settings / view help / cancel)
+  /// Live connection test for the AI Film provider. Returns true (start with
+  /// film), false (start without film), or null (abort the tour start).
   Future<bool?> _verifyFilmConnection(BuildContext context) async {
     final settings = ref.read(aiFilmProvider).settings;
 
@@ -140,8 +131,8 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
     return _showFilmErrorDialog(context, error ?? 'connection_failed'.tr());
   }
 
-  /// Error dialog shown when the AI Film connection can't be verified. Returns
-  /// `false` if the user picks "start without film", otherwise `null` (abort).
+  /// Error dialog when the AI Film connection can't be verified. Returns false
+  /// for "start without film", otherwise null (abort).
   Future<bool?> _showFilmErrorDialog(BuildContext context, String message) {
     final theme = Theme.of(context);
     return showDialog<bool?>(
@@ -320,8 +311,8 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () {
-                    // Explicit discard → drop the saved draft so the Home
-                    // "continue your tour" banner doesn't offer it anymore.
+                    // Explicit discard: drop the saved draft so Home stops
+                    // offering the "continue your tour" banner.
                     ref.read(tourDraftProvider.notifier).clear();
                     context.pop();
                   },

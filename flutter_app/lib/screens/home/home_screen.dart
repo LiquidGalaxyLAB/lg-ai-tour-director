@@ -120,9 +120,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
-  /// Confirmation gate for the typed prompt: pressing Enter or tapping Generate
-  /// Tour both land here, ask "Start with the tour?", and only generate on Yes.
-  /// (Quick Launch chips stay one-tap — they call [_generate] directly.)
+  /// Confirmation gate for the typed prompt: Enter or Generate Tour ask first,
+  /// then generate on Yes. (Quick Launch chips call [_generate] directly.)
   Future<void> _confirmAndGenerate() async {
     final prompt = _promptController.text.trim();
     if (prompt.isEmpty) {
@@ -146,9 +145,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             'generate_immersive_prompt'.tr(),
           ),
           actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-          // Same stacked, full-width layout as the film / setup dialogs — the
-          // affirmative is an emphasised FilledButton, dismiss is a plain
-          // TextButton. Full-width means the actions never wrap out of line.
+          // Stacked full-width actions so they never wrap out of line.
           actions: [
             Column(
               mainAxisSize: MainAxisSize.min,
@@ -182,8 +179,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
       return;
     }
-    // Gate on AI setup so testers get a clear prompt instead of a mid-tour
-    // failure when no model / key is configured.
+    // Gate on AI setup so a missing model/key is caught before generating.
     if (!await LLMService.isConfigured()) {
       if (!mounted) return;
       _showSetupRequiredDialog();
@@ -274,8 +270,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onSubmit: _confirmAndGenerate,
                 ),
                 const SizedBox(height: 16),
-                // Sits right under the prompt so typing → generating needs no
-                // scroll. Quick Launch cards below each self-generate on tap.
+                // Right under the prompt so typing to generating needs no scroll.
                 FilledButton.icon(
                   onPressed: _confirmAndGenerate,
                   icon: const Icon(Icons.rocket_launch_rounded, size: 20),
@@ -335,10 +330,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             },
           ),
 
-          // A generated-but-not-yet-started tour. Shown only when no tour is
-          // actively running (the running banner above takes priority). Lets the
-          // user return to Preview after the route was popped (phone back gesture
-          // / navigating away), instead of losing the generated tour.
+          // A generated-but-not-yet-started tour, shown only when none is
+          // running, to return to Preview after the route was popped.
           _ContinueTourBanner(
             draft: ref.watch(tourStateProvider.select((s) => s.isRunning))
                 ? null // running tour → its own banner above takes priority
@@ -559,9 +552,7 @@ class _PromptCard extends StatelessWidget {
                   controller: controller,
                   minLines: 3,
                   maxLines: 5,
-                  // Enter submits (asks to start the tour) rather than adding a
-                  // newline — a tour prompt is a single line and this saves the
-                  // reach for the Generate button. Text still soft-wraps.
+                  // Enter submits instead of adding a newline; text soft-wraps.
                   textInputAction: TextInputAction.go,
                   onSubmitted: (_) => onSubmit(),
                   decoration: InputDecoration(
