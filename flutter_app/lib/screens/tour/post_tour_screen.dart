@@ -54,8 +54,6 @@ class _PostTourScreenState extends ConsumerState<PostTourScreen> {
       }
       _recordHistory();
       if (_film) {
-        // "Yes, make a film": the connection was verified on Preview, so this
-        // goes straight into generation.
         _startRealFilm();
       } else {
         _maybeShowAiFilm();
@@ -486,4 +484,3 @@ class _RibbonsPainter extends CustomPainter {
   @override
   bool shouldRepaint(_RibbonsPainter old) => old.t != t;
 }
-
