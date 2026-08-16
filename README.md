@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Banner.png" alt="AI Tour Director" width="100%"/>
+  <img src="screenshots/Banner.png" alt="AI Tour Director" width="100%"/>
 </p>
 
 <p align="center">
@@ -364,7 +364,7 @@ Planned / in-progress work:
 
 ## Author
 
-**Kabir Khanuja** — [github.com/KabirKhanuja](https://github.com/KabirKhanuja)
+**Kabir Khanuja** — [github.com/KabirKhanuja](https://github.com/KabirKhanuja) || https://www.linkedin.com/in/kabirkhanuja/
 
 ## Acknowledgements
 
