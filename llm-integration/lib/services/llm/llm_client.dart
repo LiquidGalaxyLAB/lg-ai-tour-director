@@ -2,10 +2,11 @@ import 'package:dio/dio.dart';
 
 import 'llm_exception.dart';
 
-/// Calls ANY OpenAI-compatible chat-completions endpoint: OpenRouter, Groq,
-/// Together.ai, OpenAI, or a local Ollama / LM Studio server — they all speak
-/// the same format.
-///
+// calls any OpenAI compatible chat completions endpoint: OpenRouter, Groq,
+// Together.ai, OpenAI, or a local Ollama / LM Studio server
+
+//they all speak the same format
+
 /// Configured purely by [baseUrl] + [apiKey] + [model]; there is no
 /// provider-specific logic. The endpoint hit is always
 /// `{baseUrl}/chat/completions`.

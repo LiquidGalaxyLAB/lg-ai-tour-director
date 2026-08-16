@@ -4,12 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/llm/llm_client.dart';
 import '../../services/llm/llm_exception.dart';
 
-/// A ready-made settings screen where the user enters their Base URL, API Key
-/// and Model ID, taps **Test Connection**, and saves. Reuse it as-is.
-///
-/// The three values are stored with `shared_preferences` under the keys below.
-/// Read them back anywhere to build an [LLMClient]:
-///
+// a ready made settings screen where the user enters their Base URL, API Key
+// and model ID, tap test connection, and saves
+// reuse it as is
+
+// the three values are stored with shared_preferences under the keys below
+
+// read them back anywhere to build an [LLMClient]:
+
 /// ```dart
 /// final prefs = await SharedPreferences.getInstance();
 /// final client = LLMClient(

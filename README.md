@@ -68,22 +68,9 @@ the device.
 
 ## How It Works
 
-```
-Prompt  ─▶  AI model        ─▶  Geocoding        ─▶  Media           ─▶  KML + camera
- "..."      (locations +        (coordinates for      (Wikipedia →        (fly-to views,
-            a tour title)        each landmark)        Unsplash →          info balloons)
-                                                       themed fallback)
-                                                                             │
-                                       On-device companion  ◀────────────────┤
-                                       (scene stepping,                      ▼
-                                        narration, subtitles)         Liquid Galaxy rig
-                                                                      (Google Earth flight
-                                                                       + logo + info card)
-                                                                             │
-                                                            Optional ▼
-                                                       AI Film (per-location clips →
-                                                       FFmpeg stitch → save + play)
-```
+<p align="center">
+  <img src="screenshots/diagram.png" alt="Tour Director pipeline: Prompt → AI Model → Geocoding → Media → KML + Camera → Liquid Galaxy rig, with On-device Companion and optional AI Film branches" width="100%"/>
+</p>
 
 1. **Prompt → locations.** The prompt is sent to a configured LLM, which infers the
    *intent* behind it (fun / historical / scenic / foodie …) and returns 4–6 fitting,
