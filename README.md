@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>AI-powered cinematic geographic tours for the Liquid Galaxy rig.</b><br/>
-  Type a prompt, get a narrated, flown-through tour on Google Earth — and an optional AI-generated film of it — all on-device.
+  Type a prompt, get a narrated, flown-through tour on Google Earth with AI-generated film of it, all on-device.
 </p>
 
 <p align="center">
