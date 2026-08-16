@@ -230,7 +230,8 @@ class SSHConnection {
       final sftp = await getSftp();
       final remoteFile = await sftp.open(
         '/var/www/html/$remoteFileName',
-        mode: SftpFileOpenMode.create |
+        mode:
+            SftpFileOpenMode.create |
             SftpFileOpenMode.write |
             SftpFileOpenMode.truncate,
       );
@@ -436,7 +437,9 @@ class SSHConnection {
       debugPrint('SSH: master.kml live-refresh already enabled');
       return false;
     }
-    debugPrint('SSH: enabling master.kml live-refresh (one-time) + relaunch lg1');
+    debugPrint(
+      'SSH: enabling master.kml live-refresh (one-time) + relaunch lg1',
+    );
     await sendCommand(
       "sed -i -e '${_masterStripExpr()}' -e '${_masterInjectExpr(seconds)}' "
       '~/.googleearth/myplaces.kml',

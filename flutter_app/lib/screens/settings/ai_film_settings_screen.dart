@@ -254,9 +254,7 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
-          _enabled
-              ? 'ai_film_on_desc'.tr()
-              : 'ai_film_off_desc'.tr(),
+          _enabled ? 'ai_film_on_desc'.tr() : 'ai_film_off_desc'.tr(),
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -281,10 +279,7 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            'ai_film_description'.tr(),
-            style: theme.textTheme.bodyMedium,
-          ),
+          Text('ai_film_description'.tr(), style: theme.textTheme.bodyMedium),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
@@ -391,25 +386,15 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
         ];
       case VideoProviderType.veo3:
         return [
-          _keyField(
-            'gemini_api_key'.tr(),
-            'AIza...',
-            'get_key_aistudio'.tr(),
-          ),
+          _keyField('gemini_api_key'.tr(), 'AIza...', 'get_key_aistudio'.tr()),
           const SizedBox(height: 12),
-          _note(
-            const Color(0xFF1A73E8),
-            'veo3_note'.tr(),
-          ),
+          _note(const Color(0xFF1A73E8), 'veo3_note'.tr()),
         ];
       case VideoProviderType.runway:
         return [
           _keyField('api_key'.tr(), 'key_...', 'get_key_runway'.tr()),
           const SizedBox(height: 12),
-          _note(
-            theme.colorScheme.primary,
-            'runway_note'.tr(),
-          ),
+          _note(theme.colorScheme.primary, 'runway_note'.tr()),
         ];
       case VideoProviderType.klingDirect:
         return [
@@ -424,10 +409,7 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
             onToggle: () => setState(() => _obscureSecret = !_obscureSecret),
           ),
           const SizedBox(height: 12),
-          _note(
-            theme.colorScheme.primary,
-            'kling_note'.tr(),
-          ),
+          _note(theme.colorScheme.primary, 'kling_note'.tr()),
         ];
       case VideoProviderType.vllmOmni:
         return [
@@ -438,10 +420,7 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
             _baseUrlController,
           ),
           const SizedBox(height: 12),
-          _note(
-            const Color(0xFF34A853),
-            'vllm_note'.tr(),
-          ),
+          _note(const Color(0xFF34A853), 'vllm_note'.tr()),
         ];
       case VideoProviderType.custom:
         return [
@@ -460,10 +439,7 @@ class _AiFilmSettingsScreenState extends ConsumerState<AiFilmSettingsScreen> {
           const SizedBox(height: 12),
           _urlField('model_id'.tr(), 'model-name', null, _modelController),
           const SizedBox(height: 12),
-          _note(
-            const Color(0xFFF29900),
-            'custom_endpoint_note'.tr(),
-          ),
+          _note(const Color(0xFFF29900), 'custom_endpoint_note'.tr()),
         ];
     }
   }

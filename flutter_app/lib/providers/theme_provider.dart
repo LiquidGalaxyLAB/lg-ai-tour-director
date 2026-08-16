@@ -5,8 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Holds the app's [ThemeMode] (system / light / dark), persisted to
 /// SharedPreferences so the choice survives restarts. Read by `main` to drive
 /// `MaterialApp.themeMode`; set from the App Theme settings screen.
-final themeModeProvider =
-    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
+  ThemeModeNotifier.new,
+);
 
 class ThemeModeNotifier extends Notifier<ThemeMode> {
   static const String _key = 'app_theme_mode';

@@ -166,7 +166,10 @@ class AiFilmNotifier extends Notifier<AiFilmState> {
           );
           throw clipError;
         }
-        const result = VideoGenerationResult(success: false, generatedClips: []);
+        const result = VideoGenerationResult(
+          success: false,
+          generatedClips: [],
+        );
         state = state.copyWith(
           isGenerating: false,
           currentStatus: 'Cancelled',

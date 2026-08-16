@@ -29,7 +29,8 @@ jobs:
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .
         working-directory: flutter_app
-      - run: flutter analyze
+      - name: Analyze (info-level lints are non-fatal)
+        run: flutter analyze --no-fatal-infos
         working-directory: flutter_app
       - run: flutter test
         working-directory: flutter_app

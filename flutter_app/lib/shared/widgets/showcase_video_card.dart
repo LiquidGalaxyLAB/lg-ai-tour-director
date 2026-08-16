@@ -168,7 +168,10 @@ class _ShowcaseVideoCardState extends State<ShowcaseVideoCard> {
             const Positioned(
               top: 12,
               left: 12,
-              child: _Badge(icon: Icons.movie_creation_rounded, label: 'AI FILM'),
+              child: _Badge(
+                icon: Icons.movie_creation_rounded,
+                label: 'AI FILM',
+              ),
             ),
 
             // Top-right controls: mute + fullscreen.

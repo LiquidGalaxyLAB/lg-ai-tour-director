@@ -123,9 +123,7 @@ class HelpScreen extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              subtitle: Text(
-                'help_ai_model_setup_desc'.tr(),
-              ),
+              subtitle: Text('help_ai_model_setup_desc'.tr()),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/help/ai-setup'),
             ),
@@ -245,8 +243,10 @@ class HelpScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('help_more_resources'.tr(),
-                    style: theme.textTheme.titleMedium),
+                Text(
+                  'help_more_resources'.tr(),
+                  style: theme.textTheme.titleMedium,
+                ),
                 const SizedBox(height: 4),
                 Text(
                   'help_more_resources_desc'.tr(),

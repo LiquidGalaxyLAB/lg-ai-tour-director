@@ -51,16 +51,23 @@ class ProfileScreen extends ConsumerWidget {
                       CircleAvatar(
                         radius: 26,
                         backgroundColor: theme.colorScheme.primary,
-                        child: const Icon(Icons.person, color: Colors.white, size: 30),
+                        child: const Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: 30,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Liquid Galaxy User',
-                                style: theme.textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w700)),
+                            Text(
+                              'Liquid Galaxy User',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                             const SizedBox(height: 2),
                             Text(
                               connected
@@ -100,27 +107,38 @@ class ProfileScreen extends ConsumerWidget {
                 Center(
                   child: Column(
                     children: [
-                      Text('Tour Director',
-                          style: theme.textTheme.titleSmall
-                              ?.copyWith(color: theme.colorScheme.primary)),
-                      Text('Made by Kabir Khanuja',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          )),
-                      Text('Powered by Liquid Galaxy',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          )),
+                      Text(
+                        'Tour Director',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      Text(
+                        'Made by Kabir Khanuja',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        'Powered by Liquid Galaxy',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text('VERSION 1.0.0 · STABLE',
-                            style: theme.textTheme.labelSmall),
+                        child: Text(
+                          'VERSION 1.0.0 · STABLE',
+                          style: theme.textTheme.labelSmall,
+                        ),
                       ),
                     ],
                   ),
@@ -135,7 +153,11 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 class _ProfileRow extends StatelessWidget {
-  const _ProfileRow({required this.icon, required this.label, required this.onTap});
+  const _ProfileRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -160,9 +182,12 @@ class _ProfileRow extends StatelessWidget {
               Icon(icon, color: theme.colorScheme.onSurface),
               const SizedBox(width: 16),
               Expanded(
-                child: Text(label,
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w600)),
+                child: Text(
+                  label,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               const Icon(Icons.chevron_right),
             ],

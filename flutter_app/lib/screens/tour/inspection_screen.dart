@@ -52,7 +52,10 @@ class _InspectionScreenState extends ConsumerState<InspectionScreen> {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primary.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(20),
@@ -66,9 +69,12 @@ class _InspectionScreenState extends ConsumerState<InspectionScreen> {
                         letterSpacing: 1,
                       ),
                     ),
-                    Text(loc.name,
-                        style: theme.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(
+                      loc.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -81,10 +87,8 @@ class _InspectionScreenState extends ConsumerState<InspectionScreen> {
                   showSyncChip: false,
                   onExpand: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => FullscreenMapScreen(
-                        locations: locations,
-                        focus: loc,
-                      ),
+                      builder: (_) =>
+                          FullscreenMapScreen(locations: locations, focus: loc),
                     ),
                   ),
                 ),
@@ -114,13 +118,16 @@ class _InspectionScreenState extends ConsumerState<InspectionScreen> {
                         children: [
                           Text(
                             '${(_index + 1).toString().padLeft(2, '0')} ${loc.name}',
-                            style: theme.textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w700),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                          Text(loc.type,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              )),
+                          Text(
+                            loc.type,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
                         ],
                       ),
                     ),

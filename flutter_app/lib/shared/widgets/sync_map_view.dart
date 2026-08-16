@@ -169,7 +169,11 @@ class _SyncMapViewState extends ConsumerState<SyncMapView> {
                 onTap: widget.onExpand,
                 child: const Padding(
                   padding: EdgeInsets.all(8),
-                  child: Icon(Icons.fullscreen, size: 22, color: Colors.black87),
+                  child: Icon(
+                    Icons.fullscreen,
+                    size: 22,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
             ),

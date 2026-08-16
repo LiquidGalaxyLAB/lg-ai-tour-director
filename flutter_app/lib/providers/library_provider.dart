@@ -7,8 +7,8 @@ import '../services/storage/tour_storage_service.dart';
 /// The Saved library (persisted). Backs the Saved tab + detail.
 final savedToursProvider =
     AsyncNotifierProvider<SavedToursNotifier, List<SavedTour>>(
-  SavedToursNotifier.new,
-);
+      SavedToursNotifier.new,
+    );
 
 class SavedToursNotifier extends AsyncNotifier<List<SavedTour>> {
   @override
@@ -31,8 +31,8 @@ class SavedToursNotifier extends AsyncNotifier<List<SavedTour>> {
 /// The Tours history (persisted). A row is recorded for every tour that runs.
 final tourHistoryProvider =
     AsyncNotifierProvider<TourHistoryNotifier, List<TourHistoryEntry>>(
-  TourHistoryNotifier.new,
-);
+      TourHistoryNotifier.new,
+    );
 
 class TourHistoryNotifier extends AsyncNotifier<List<TourHistoryEntry>> {
   @override

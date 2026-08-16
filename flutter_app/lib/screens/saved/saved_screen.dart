@@ -31,7 +31,11 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
   static const _stubFilters = {2, 3}; // Offline, Curated
 
   static const _categories = <(String, IconData, Color)>[
-    ('category_museums', Icons.account_balance_rounded, AppColors.googleBlueBright),
+    (
+      'category_museums',
+      Icons.account_balance_rounded,
+      AppColors.googleBlueBright,
+    ),
     ('category_temples', Icons.temple_hindu_rounded, AppColors.tileSetRefresh),
     ('category_food_walks', Icons.restaurant_rounded, AppColors.googleRed),
     ('category_nature', Icons.forest_rounded, AppColors.googleGreen),

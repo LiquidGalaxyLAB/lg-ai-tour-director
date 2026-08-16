@@ -11,8 +11,11 @@ Future<bool?> showFilmDialog(BuildContext context) {
     builder: (ctx) {
       final theme = Theme.of(ctx);
       return AlertDialog(
-        icon: Icon(Icons.movie_filter_outlined,
-            color: theme.colorScheme.primary, size: 32),
+        icon: Icon(
+          Icons.movie_filter_outlined,
+          color: theme.colorScheme.primary,
+          size: 32,
+        ),
         title: const Text('Generate an AI film?'),
         content: const Text(
           'We can create a shareable cinematic film of this tour while you watch '

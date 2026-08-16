@@ -46,10 +46,22 @@ class _ThemePreviewScreenState extends State<ThemePreviewScreen> {
               selectedIndex: _navIndex,
               onDestinationSelected: (i) => setState(() => _navIndex = i),
               destinations: const [
-                NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-                NavigationDestination(icon: Icon(Icons.favorite_border), label: 'Saved'),
-                NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Tours'),
-                NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
+                NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.favorite_border),
+                  label: 'Saved',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.map_outlined),
+                  label: 'Tours',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_outline),
+                  label: 'Profile',
+                ),
               ],
             ),
             body: ListView(
@@ -97,9 +109,15 @@ class _ThemePreviewScreenState extends State<ThemePreviewScreen> {
                 const SizedBox(height: 24),
 
                 _section('Buttons'),
-                FilledButton(onPressed: () {}, child: const Text('Generate Tour')),
+                FilledButton(
+                  onPressed: () {},
+                  child: const Text('Generate Tour'),
+                ),
                 const SizedBox(height: 12),
-                OutlinedButton(onPressed: () {}, child: const Text('Generate AI Film')),
+                OutlinedButton(
+                  onPressed: () {},
+                  child: const Text('Generate AI Film'),
+                ),
                 const SizedBox(height: 12),
                 FilledButton(
                   style: FilledButton.styleFrom(backgroundColor: scheme.error),

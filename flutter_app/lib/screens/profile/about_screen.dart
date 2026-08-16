@@ -115,8 +115,11 @@ class _CreditsCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [
-                  Icon(Icons.link_rounded,
-                      size: 18, color: theme.colorScheme.primary),
+                  Icon(
+                    Icons.link_rounded,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'github.com/KabirKhanuja',

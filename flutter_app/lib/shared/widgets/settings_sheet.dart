@@ -46,7 +46,10 @@ class _SettingsSheet extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('settings'.tr(), style: theme.textTheme.headlineSmall),
+                      Text(
+                        'settings'.tr(),
+                        style: theme.textTheme.headlineSmall,
+                      ),
                       Text(
                         'Liquid Galaxy configuration',
                         style: theme.textTheme.bodySmall?.copyWith(

@@ -27,7 +27,8 @@ class JsonParser {
     // Prose around the JSON: slice from the first [ or { to the last ] or }.
     final firstArray = trimmed.indexOf('[');
     final firstObject = trimmed.indexOf('{');
-    final start = (firstArray != -1 && (firstObject == -1 || firstArray < firstObject))
+    final start =
+        (firstArray != -1 && (firstObject == -1 || firstArray < firstObject))
         ? firstArray
         : firstObject;
 

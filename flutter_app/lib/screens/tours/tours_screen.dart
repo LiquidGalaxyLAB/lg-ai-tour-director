@@ -78,8 +78,9 @@ class _ToursScreenState extends ConsumerState<ToursScreen> {
                     message:
                         'Tours you generate will appear here as a timeline.',
                   )
-                else
-                  ...[for (final e in entries) _HistoryCard(entry: e)],
+                else ...[
+                  for (final e in entries) _HistoryCard(entry: e),
+                ],
               ],
             ),
           ),
@@ -95,8 +96,18 @@ class _HistoryCard extends StatelessWidget {
   final TourHistoryEntry entry;
 
   static const _months = [
-    'Jan', 'Feb', 'March', 'April', 'May', 'June',
-    'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'Aug',
+    'Sept',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   String _formatDate(DateTime d) {
@@ -111,10 +122,8 @@ class _HistoryCard extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (sheetContext) => _HistoryDetailsSheet(
-        entry: entry,
-        formatDate: _formatDate,
-      ),
+      builder: (sheetContext) =>
+          _HistoryDetailsSheet(entry: entry, formatDate: _formatDate),
     );
   }
 
@@ -162,9 +171,18 @@ class _HistoryCard extends StatelessWidget {
           Wrap(
             spacing: 8,
             children: [
-              _StatChip(icon: Icons.place_outlined, label: '${entry.stopCount} Stops'),
-              _StatChip(icon: Icons.straighten, label: '${entry.distanceKm} km'),
-              _StatChip(icon: Icons.schedule, label: '${entry.durationMin} min'),
+              _StatChip(
+                icon: Icons.place_outlined,
+                label: '${entry.stopCount} Stops',
+              ),
+              _StatChip(
+                icon: Icons.straighten,
+                label: '${entry.distanceKm} km',
+              ),
+              _StatChip(
+                icon: Icons.schedule,
+                label: '${entry.durationMin} min',
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -190,10 +208,7 @@ class _HistoryCard extends StatelessWidget {
 /// regenerate the same tour from its original prompt. History is lightweight (no
 /// KML), so this is read-only detail — replaying on the rig happens from Saved.
 class _HistoryDetailsSheet extends StatelessWidget {
-  const _HistoryDetailsSheet({
-    required this.entry,
-    required this.formatDate,
-  });
+  const _HistoryDetailsSheet({required this.entry, required this.formatDate});
 
   final TourHistoryEntry entry;
   final String Function(DateTime) formatDate;
@@ -272,8 +287,8 @@ class _HistoryDetailsSheet extends StatelessWidget {
                           children: [
                             CircleAvatar(
                               radius: 12,
-                              backgroundColor:
-                                  theme.colorScheme.primary.withValues(alpha: 0.12),
+                              backgroundColor: theme.colorScheme.primary
+                                  .withValues(alpha: 0.12),
                               child: Text(
                                 '${i + 1}',
                                 style: theme.textTheme.labelSmall?.copyWith(

@@ -51,8 +51,7 @@ class MapPlaceholder extends StatelessWidget {
                   spacing: 18,
                   runSpacing: 14,
                   children: [
-                    for (var i = 1; i <= markerCount; i++)
-                      _PinChip(number: i),
+                    for (var i = 1; i <= markerCount; i++) _PinChip(number: i),
                   ],
                 ),
               ),
@@ -61,8 +60,11 @@ class MapPlaceholder extends StatelessWidget {
               bottom: 12,
               child: Row(
                 children: [
-                  Icon(Icons.map_outlined,
-                      size: 16, color: theme.colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.map_outlined,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     label ?? 'Map preview',
@@ -78,8 +80,10 @@ class MapPlaceholder extends StatelessWidget {
                 right: 12,
                 top: 12,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
@@ -96,8 +100,10 @@ class MapPlaceholder extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Text('Synced with Liquid Galaxy',
-                          style: theme.textTheme.labelSmall),
+                      Text(
+                        'Synced with Liquid Galaxy',
+                        style: theme.textTheme.labelSmall,
+                      ),
                     ],
                   ),
                 ),
@@ -169,12 +175,21 @@ class _GridPainter extends CustomPainter {
       ..color = Colors.white.withValues(alpha: 0.5)
       ..strokeWidth = 6;
     // A couple of diagonal "roads".
-    canvas.drawLine(Offset(0, size.height * 0.7),
-        Offset(size.width * 0.6, size.height * 0.2), paint);
-    canvas.drawLine(Offset(size.width * 0.3, size.height),
-        Offset(size.width, size.height * 0.5), paint);
-    canvas.drawLine(Offset(size.width * 0.1, size.height * 0.3),
-        Offset(size.width, size.height * 0.8), paint..strokeWidth = 4);
+    canvas.drawLine(
+      Offset(0, size.height * 0.7),
+      Offset(size.width * 0.6, size.height * 0.2),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.3, size.height),
+      Offset(size.width, size.height * 0.5),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.1, size.height * 0.3),
+      Offset(size.width, size.height * 0.8),
+      paint..strokeWidth = 4,
+    );
   }
 
   @override

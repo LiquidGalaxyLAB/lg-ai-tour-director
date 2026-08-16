@@ -59,9 +59,9 @@ class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
     await p.setString('pref_voice', _voice);
     await p.setString('pref_subtitle_language', _language);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('preferences_saved'.tr())),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('preferences_saved'.tr())));
   }
 
   @override
@@ -87,8 +87,9 @@ class _TourPreferencesScreenState extends State<TourPreferencesScreen> {
                     leading: const Icon(Icons.movie_creation_outlined),
                     title: Text(
                       'ai_film'.tr(),
-                      style: Theme.of(context).textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     subtitle: Text('ai_film_pref_subtitle'.tr()),
                     trailing: const Icon(Icons.chevron_right),
@@ -169,8 +170,9 @@ class _TitleWithBadge extends StatelessWidget {
         Flexible(
           child: Text(
             title,
-            style: theme.textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         if (comingSoon) ...[
@@ -218,10 +220,12 @@ class _DropdownTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _TitleWithBadge(title: title, comingSoon: comingSoon),
-        Text(subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            )),
+        Text(
+          subtitle,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           initialValue: value,

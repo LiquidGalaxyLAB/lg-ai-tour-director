@@ -24,7 +24,8 @@ class VideoCost {
           return const VideoCostRate(0.045, 'Hailuo 02');
         }
         // LTX bills a flat ~$0.02/clip; expressed per-second for the estimate.
-        if (m.contains('ltx')) return const VideoCostRate(0.004, 'LTX ~\$0.02/clip');
+        if (m.contains('ltx'))
+          return const VideoCostRate(0.004, 'LTX ~\$0.02/clip');
         return const VideoCostRate(0.06, 'fal.ai');
       case VideoProviderType.veo3:
         return const VideoCostRate(0.40, 'Veo 3 (Fast \$0.15)');

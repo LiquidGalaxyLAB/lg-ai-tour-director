@@ -8,9 +8,24 @@ class ThemeScreen extends ConsumerWidget {
   const ThemeScreen({super.key});
 
   static const _options = <(ThemeMode, String, String, IconData)>[
-    (ThemeMode.system, 'System Default', 'Match your device setting', Icons.brightness_auto_rounded),
-    (ThemeMode.light, 'Light Mode', 'Always use the light theme', Icons.light_mode_rounded),
-    (ThemeMode.dark, 'Dark Mode', 'Always use the dark theme', Icons.dark_mode_rounded),
+    (
+      ThemeMode.system,
+      'System Default',
+      'Match your device setting',
+      Icons.brightness_auto_rounded,
+    ),
+    (
+      ThemeMode.light,
+      'Light Mode',
+      'Always use the light theme',
+      Icons.light_mode_rounded,
+    ),
+    (
+      ThemeMode.dark,
+      'Dark Mode',
+      'Always use the dark theme',
+      Icons.dark_mode_rounded,
+    ),
   ];
 
   @override
@@ -46,8 +61,9 @@ class ThemeScreen extends ConsumerWidget {
                   secondary: Icon(icon, color: theme.colorScheme.primary),
                   title: Text(
                     title,
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   subtitle: Text(subtitle),
                 ),

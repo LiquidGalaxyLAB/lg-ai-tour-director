@@ -90,11 +90,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _speechReady = await _speech.initialize();
       if (!_speechReady) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('speech_unavailable'.tr()),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('speech_unavailable'.tr())));
         return;
       }
     }
@@ -125,9 +123,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _confirmAndGenerate() async {
     final prompt = _promptController.text.trim();
     if (prompt.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('describe_place_to_begin'.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('describe_place_to_begin'.tr())));
       return;
     }
     final start = await showDialog<bool>(
@@ -141,9 +139,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             size: 32,
           ),
           title: Text('start_with_tour_q'.tr()),
-          content: Text(
-            'generate_immersive_prompt'.tr(),
-          ),
+          content: Text('generate_immersive_prompt'.tr()),
           actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
           // Stacked full-width actions so they never wrap out of line.
           actions: [
@@ -174,9 +170,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _generate([String? preset]) async {
     final prompt = (preset ?? _promptController.text).trim();
     if (prompt.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('describe_place_to_begin'.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('describe_place_to_begin'.tr())));
       return;
     }
     // Gate on AI setup so a missing model/key is caught before generating.
@@ -196,9 +192,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       builder: (dialogContext) => AlertDialog(
         icon: const Icon(Icons.smart_toy_outlined),
         title: Text('setup_ai_first'.tr()),
-        content: Text(
-          'setup_ai_body'.tr(),
-        ),
+        content: Text('setup_ai_body'.tr()),
         actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
         actions: [
           Column(
@@ -237,7 +231,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
               children: [
-                Text('where_to_next'.tr(), style: theme.textTheme.headlineMedium),
+                Text(
+                  'where_to_next'.tr(),
+                  style: theme.textTheme.headlineMedium,
+                ),
                 const SizedBox(height: 4),
                 Text(
                   'describe_dream_journey'.tr(),

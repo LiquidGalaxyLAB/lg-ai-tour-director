@@ -46,7 +46,7 @@
 ## About
 
 **Tour Director** is a **pure-Flutter** application that turns a single natural-language
-prompt — for example *"historical places in Pune"* or *"exciting spots to visit in Dubai"* —
+prompt, for example *"historical places in Pune"* or *"exciting spots to visit in Dubai"*
 into an **immersive, narrated, cinematic tour** on a **Liquid Galaxy** rig, and can then
 generate an **AI film** of that tour.
 
@@ -56,8 +56,8 @@ rig's Google Earth through each landmark while narrating the journey on the devi
 **on-device companion** view keeps the phone in sync with the rig, and every tour can be
 **saved, replayed, exported as KML**, or turned into a short **AI-generated cinematic film**.
 
-There is **no backend**. Everything — the AI calls, geocoding, image resolution, KML,
-SSH control of the rig, and on-device video stitching — runs inside the Flutter app. The
+There is **no backend**. Everything, the AI calls, geocoding, image resolution, KML,
+SSH control of the rig, and on-device video stitching, runs inside the Flutter app. The
 app talks directly to the LLM provider, the mapping/imagery services, the video provider,
 and the Liquid Galaxy master over SSH. Users bring their own API keys, which never leave
 the device.
@@ -84,7 +84,7 @@ the device.
 5. **Companion + narration.** The phone mirrors the tour scene-by-scene with narration
    (text-to-speech) and subtitles, paced to stay in sync with the rig.
 6. **After the tour.** Save it to your library, replay it on the rig later, export/share the
-   KML — or generate an **AI film** of the tour and play it in your device's video player.
+   KML, or generate an **AI film** of the tour and play it in your device's video player.
 
 ---
 
@@ -92,13 +92,13 @@ the device.
 
 **AI tour generation**
 - Natural-language prompt → curated, intent-aware set of real landmarks + a short tour title.
-- **Bring-your-own model** — works with **any OpenAI-compatible endpoint**: OpenRouter,
+- **Bring-your-own model**, works with **any OpenAI-compatible endpoint**: OpenRouter,
   a local **Ollama** / **LM Studio** server, **Groq**, **Together.ai**, and more. One-tap
   presets and a "Test Connection" check.
-- Rich, unified narration — the same text is spoken on the phone and shown on the rig's info card.
+- Rich, unified narration, the same text is spoken on the phone and shown on the rig's info card.
 - Clear, actionable error messages (bad key, out of credit, wrong model, rate limit) with
   an in-app **AI Setup Guide**.
-- Voice input — dictate the prompt with on-device speech-to-text.
+- Voice input, dictate the prompt with on-device speech-to-text.
 
 **Location & media**
 - Geocoding via the platform's native geocoder with an OpenStreetMap (Nominatim) fallback.
@@ -119,7 +119,7 @@ the device.
 
 **On-device experience**
 - Companion tour view (current scene, narration subtitles, live progress) paced to the rig.
-- **"Return to tour" banner** — leave the tour screen and the tour keeps running on the rig;
+- **"Return to tour" banner**, leave the tour screen and the tour keeps running on the rig;
   a persistent banner with live progress brings you back. A separate banner restores a
   *generated-but-not-yet-started* tour if you navigate away.
 - **Saved** library (persisted) and **Tours** history (every run).
@@ -132,35 +132,35 @@ the device.
 - Light and dark themes, branded app icon and splash.
 
 **AI Film (AI-generated video)**
-- Turns a completed tour into a short cinematic video — one AI clip per location, stitched
+- Turns a completed tour into a short cinematic video, one AI clip per location, stitched
   together on-device with FFmpeg.
-- **Multiple providers**, bring-your-own key — see [The AI Film Pipeline](#the-ai-film-pipeline).
+- **Multiple providers**, bring-your-own key, see [The AI Film Pipeline](#the-ai-film-pipeline).
 - **Robust to failures**: if a provider runs out of credits mid-way, it stops spending and
   still stitches the clips it produced, with a clear message. Cancelling never keeps spending.
 - Saves to the phone Gallery and plays back in the device's **native video player** (any format).
-- A one-tap **"Test AI Film"** runs the whole pipeline on 3 sample locations — no rig needed.
+- A one-tap **"Test AI Film"** runs the whole pipeline on 3 sample locations, no rig needed.
 
 ---
 
 ## The AI Film Pipeline
 
 The AI Film feature generates a short cinematic clip for each location, then stitches them
-into a single film — entirely on-device.
+into a single film, entirely on-device.
 
 - **Bring-your-own API key.** The user supplies their own video-provider key; it stays on
   the device and any cost is billed directly by the provider.
-- **On-device stitching** with FFmpeg (no re-encode) — no server involved.
-- **Native playback** — the finished film opens in whatever video app the device has
+- **On-device stitching** with FFmpeg (no re-encode), no server involved.
+- **Native playback**, the finished film opens in whatever video app the device has
   (Google Photos, MX Player, VLC), full-screen with proper controls.
 
-**Supported providers** (approx. cost, 720p, verified Aug 2026 — billed by the provider):
+**Supported providers** (approx. cost, 720p, verified Aug 2026, billed by the provider):
 
 | Provider / model | Approx. cost | Notes |
 |---|---|---|
-| **fal.ai — LTX Video** | ~$0.02 / clip | Cheapest — best for testing |
-| **fal.ai — MiniMax Hailuo 02** | ~$0.045 / s | Good balance |
-| **fal.ai — WAN 2.2** | ~$0.08 / s | Open-source model |
-| **fal.ai — Kling v3** | ~$0.084 / s | Best quality — recommended for a demo |
+| **fal.ai LTX Video** | ~$0.02 / clip | Cheapest, best for testing |
+| **fal.ai MiniMax Hailuo 02** | ~$0.045 / s | Good balance |
+| **fal.ai WAN 2.2** | ~$0.08 / s | Open-source model |
+| **fal.ai Kling v3** | ~$0.084 / s | Best quality, recommended for a demo |
 | **Google Veo 3** | $0.40 / s (Fast $0.15/s) | Native audio; needs Google Cloud billing |
 | **Runway Gen-4 Turbo** | ~$0.05 / s | |
 | **Kling (direct API)** | ~$0.09 / s | Prepaid packages |
@@ -172,15 +172,15 @@ See [Configuring the AI Film (video)](#configuring-the-ai-film-video) for setup 
 
 ## Gallery
 
-> _Rig photos and AI-film samples are being added — space reserved below._
+> _Rig photos and AI-film samples are being added, space reserved below._
 
 <!-- ───────────────────────── RIG SCREENSHOTS (add after rig test) ─────────────────────────
      Drag each photo into a GitHub issue/PR comment to get a hosted URL, then paste it here.
 -->
-<!-- RIG PHOTO 1 — full tour on the 3-screen rig -->
+<!-- RIG PHOTO 1, full tour on the 3-screen rig -->
 <!-- ![Tour on the Liquid Galaxy rig](PASTE_URL_HERE) -->
 
-<!-- RIG PHOTO 2 — info balloon + logo overlay -->
+<!-- RIG PHOTO 2, info balloon + logo overlay -->
 <!-- ![Info card + logo on the rig](PASTE_URL_HERE) -->
 
 **App screenshots**
@@ -209,15 +209,15 @@ https://github.com/user-attachments/assets/f6672855-5179-4647-bfd1-f02c30743e05
 
 Tour Director is **Flutter-first with no server**. The APK contains everything:
 
-- **AI (text)** — the app calls the configured LLM endpoint directly (OpenAI-compatible
+- **AI (text)**, the app calls the configured LLM endpoint directly (OpenAI-compatible
   `/chat/completions`). Testers supply their own base URL + key + model.
-- **AI (video)** — a provider-agnostic layer (fal.ai, Veo 3, Runway, Kling, local vLLM,
+- **AI (video)**, a provider-agnostic layer (fal.ai, Veo 3, Runway, Kling, local vLLM,
   custom) generates per-location clips; FFmpeg stitches them on-device.
-- **Geocoding & media** — native geocoder / OpenStreetMap, Wikipedia and Unsplash, all
+- **Geocoding & media**, native geocoder / OpenStreetMap, Wikipedia and Unsplash, all
   called from the app.
-- **KML & flight** — camera views and info-card overlays are built as KML on-device and
+- **KML & flight**, camera views and info-card overlays are built as KML on-device and
   deployed to the rig's web root; the camera is driven via the proven `flytoview=` hook.
-- **Rig control** — SSH / SFTP straight to the Liquid Galaxy master over one persistent
+- **Rig control**, SSH / SFTP straight to the Liquid Galaxy master over one persistent
   connection.
 
 State is managed with **Riverpod** and navigation with **go_router** (a four-tab shell:
@@ -295,7 +295,7 @@ Tap **Test Connection**, then **Save**. No key ships in the app.
 Open **Settings → AI Film**:
 
 1. Turn **AI Film** on.
-2. Pick a **provider** (fal.ai is the simplest — one key, many models).
+2. Pick a **provider** (fal.ai is the simplest, one key, many models).
 3. Paste your **API key** and choose a **model** (LTX Video is cheapest for testing;
    Kling v3 is best for a demo).
 4. Set the **clip duration** and **Save**.
@@ -307,8 +307,8 @@ To try it without running a full tour: **Settings → Advanced LG Controls → T
 1. Make sure your phone and the rig are on the **same network** (VirtualBox rigs: use a
    **Bridged** adapter).
 2. **Settings → LG Connection** → enter the master **IP**, **port** (default `22`), **username**
-   / **password** (default `lg` / `lg`), and the **screen count** — or tap **Scan QR to Connect**.
-3. Tap **Connect** — the status dot turns green and the logo appears on the left-most screen.
+   / **password** (default `lg` / `lg`), and the **screen count**, or tap **Scan QR to Connect**.
+3. Tap **Connect**, the status dot turns green and the logo appears on the left-most screen.
 4. Generate a tour on **Home**, preview it, then **Start** to fly it on the rig.
 
 > If the logo or info card doesn't appear live, tap **Set Refresh** once in
@@ -348,23 +348,23 @@ Planned / in-progress work:
 
 ## GSoC 2026
 
-> _Final deliverables are being finalised — space reserved below._
+> _Final deliverables are being finalised, space reserved below._
 
-- **Demo Day video:** <!-- DEMO VIDEO LINK — add before submission -->
-- **Work Product Submission:** <!-- WPS LINK — add before submission -->
+- **Demo Day video:** <!-- DEMO VIDEO LINK, add before submission -->
+- **Work Product Submission:** <!-- WPS LINK, add before submission -->
 - **Worklog:** maintained through the coding period.
 
 ---
 
 ## Mentors
 
-- **Andreu Ibáñez** — Liquid Galaxy Org Director
+- **Andreu Ibáñez**, Liquid Galaxy Org Director
 - **Yash Raj Bharti**
 - **Vedant Singh**
 
 ## Author
 
-**Kabir Khanuja** — [github.com/KabirKhanuja](https://github.com/KabirKhanuja) || https://www.linkedin.com/in/kabirkhanuja/
+**Kabir Khanuja**, [github.com/KabirKhanuja](https://github.com/KabirKhanuja) || https://www.linkedin.com/in/kabirkhanuja/
 
 ## Acknowledgements
 

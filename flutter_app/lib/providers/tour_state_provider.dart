@@ -26,7 +26,8 @@ class TourState {
   final int currentIndex; // 0-based scene
   final int totalLocations;
   final double sceneProgress; // 0..1 fill of the current scene
-  final bool isPaused; // user tapped Pause; the flight holds at the next boundary
+  final bool
+  isPaused; // user tapped Pause; the flight holds at the next boundary
   final TourFlowArgs? args; // so the "return to tour" banner can re-open it
 
   bool get isRunning => status == TourStatus.running;

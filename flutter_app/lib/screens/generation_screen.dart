@@ -217,8 +217,10 @@ class _GenerationScreenState extends State<GenerationScreen> {
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
-              content: Text('🎬 Your tour is designed! ${_locations!.length} '
-                  'stops ready to explore.'),
+              content: Text(
+                '🎬 Your tour is designed! ${_locations!.length} '
+                'stops ready to explore.',
+              ),
               behavior: SnackBarBehavior.floating,
             ),
           );
