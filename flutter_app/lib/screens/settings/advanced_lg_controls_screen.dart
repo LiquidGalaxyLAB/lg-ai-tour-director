@@ -168,37 +168,30 @@ class AdvancedLgControlsScreen extends ConsumerWidget {
                 childAspectRatio: 1.1,
                 children: [for (final t in tiles) _ControlTile(tile: t)],
               ),
-              const SizedBox(height: 28),
-              const Divider(),
-              const SizedBox(height: 12),
-              Text(
-                kDebugMode ? 'DEVELOPER TESTS' : 'TESTING',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  letterSpacing: 1,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                kDebugMode
-                    ? 'Send a sample KML / camera move to verify the rig '
-                          'connection.'
-                    : 'Run the AI Film pipeline on 3 sample locations '
-                          '(no rig needed).',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Always available: the documented way to test AI Film cheaply
-              // without generating a full tour (see handoff docs).
-              OutlinedButton.icon(
-                onPressed: testAiFilm,
-                icon: const Icon(Icons.movie_creation_outlined),
-                label: const Text('Test AI Film (3 clips)'),
-              ),
-              // Rig-level test tools: debug builds only, hidden in release.
               if (kDebugMode) ...[
+                const SizedBox(height: 28),
+                const Divider(),
+                const SizedBox(height: 12),
+                Text(
+                  'DEVELOPER TESTS',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    letterSpacing: 1,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Sample KML / camera moves and the AI Film pipeline test.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: testAiFilm,
+                  icon: const Icon(Icons.movie_creation_outlined),
+                  label: const Text('Test AI Film (3 clips)'),
+                ),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   onPressed: () => run('Send Test KML', notifier.sendTestKml),
