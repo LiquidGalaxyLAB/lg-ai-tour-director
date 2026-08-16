@@ -1,7 +1,6 @@
 # Leftover / TODO
 
-Things intentionally deferred. The app is feature-complete and demoable without
-these; this is the "later" list.
+Things intentionally deferred. The app is feature-complete and this is the "later" list.
 
 ---
 
@@ -36,38 +35,45 @@ so it won't be *instant* at post-tour, but it's a big net win.
 
 ## 2. "Coming soon" / stubbed buttons (deliberately not wired)
 
-These show a "Coming soon" badge or a snackbar and do nothing functional yet:
+These are display-only or show a snackbar and do nothing functional yet:
 
 - **Tour Preferences → Narration Voice** dropdown
-  (`lib/screens/settings/tour_preferences_screen.dart:104`, `comingSoon: true`).
-  Disabled; TTS currently uses the device's default voice. Real voice selection
-  is OS/device-dependent.
+  (`lib/screens/settings/tour_preferences_screen.dart`, `comingSoon: true`).
+  Disabled; TTS uses the device's default voice. Real voice selection is
+  OS/device-dependent.
 - **Saved tab → "Offline" & "Curated" filter chips**
-  (`lib/screens/saved/saved_screen.dart:31`, `_stubFilters = {2, 3}`). Chips are
-  disabled; only the working filters function.
-- **LG Connection → "Scan QR to connect"**
-  (`lib/screens/settings/lg_connection_screen.dart:245`). Shows the snackbar
-  `qr_connect_coming_soon` ("QR connect — coming soon"); no QR scanning yet.
-  Manual IP/user/pass connection works.
-- **Narration subtitles** — subtitle toggle/voices area is display-only
-  (`narration_subtitles` section). TTS narration itself works; on-screen subtitle
-  options are not wired.
+  (`lib/screens/saved/saved_screen.dart`, `_stubFilters = {2, 3}`). Chips are
+  disabled; only the working filters function. The playlist-category grid
+  (Museums/Temples/…) is decorative too.
+- **Narration subtitles** — the subtitle toggle/voices area is display-only.
+  TTS narration itself works; the on-screen subtitle options are not wired.
 
 To "finish" these: either wire the real feature, or hide the control so nothing
-reads as unfinished. Low risk either way — none block a demo.
+reads as unfinished. 
 
 ---
 
-## 3. Other known deferrals
+## 3. OS push notifications (tried, then removed)
 
-- **AuditorService** — still bypassed in `generation_screen.dart` because geocoding
-  is flaky (it would drop valid locations). Re-enable with a safe fallback once
-  geocoding is reliable.
-- **Video providers** — only **fal.ai** is live-tested. Veo 3, Runway, Kling
-  direct, vLLM-Omni, Custom are code-correct (right exception type, structurally
-  correct endpoints) and fail gracefully, but not verified against their live APIs.
-- **APK size** — release APK is ~117 MB (universal, all ABIs; FFmpeg is the bulk).
-  Use `flutter build apk --split-per-abi` and ship the `arm64-v8a` one (~50 MB),
-  or `flutter build appbundle` for the Play Store.
-- **Switch AI Film to Kling v3 before the real demo** — phone currently has LTX
-  saved from testing (LTX = cheap test model; Kling v3 = demo quality).
+In-app celebratory **SnackBars** fire on three events (tour designed, tour
+complete, AI film ready) and work fine. We prototyped real **OS notifications**
+(`flutter_local_notifications`) with the app logo as the badge, but removed the
+whole pipeline — the permission flow wasn't behaving reliably in the time we had.
+
+If revisited, the notes that matter:
+- Request the permission **after the first frame** (a live Activity must exist);
+  requesting it in `main()` before `runApp()` never shows the dialog.
+- Needs core-library **desugaring** in `android/app/build.gradle.kts` and the
+  `POST_NOTIFICATIONS` manifest permission.
+- Use a monochrome status-bar icon (Android silhouettes the launcher icon).
+
+---
+
+## 4. Other known deferrals
+
+- **Broader device coverage** — the store APK is `--split-per-abi` **arm64-v8a**
+  only (~43 MB). It covers virtually every modern phone (Android 7.0+, 64-bit) but
+  not 32-bit (`armeabi-v7a`) or x86 devices. Build those splits too if wider
+  coverage is ever needed.
+
+
