@@ -211,12 +211,10 @@ See [Configuring the AI Film (video)](#configuring-the-ai-film-video) for setup 
   </tr>
 </table>
 
-**AI Film samples**
+**AI Film sample**
 
-<!-- Drag an .mp4 into a GitHub issue/PR comment to get a playable URL, then paste it here. -->
-<!-- https://github.com/user-attachments/assets/PASTE_VIDEO_URL_HERE -->
-<!-- AI FILM SAMPLE 1 -->
-<!-- AI FILM SAMPLE 2 -->
+https://github.com/user-attachments/assets/f6672855-5179-4647-bfd1-f02c30743e05
+
 
 ---
 
