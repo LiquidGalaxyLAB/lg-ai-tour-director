@@ -430,12 +430,14 @@ class _SceneCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     location.name,
-                    maxLines: 1,
+                    maxLines: 2,
+                    softWrap: true,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
+                      height: 1.15,
                     ),
                   ),
                   Text(

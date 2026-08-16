@@ -216,8 +216,10 @@ class SshConnection extends _$SshConnection {
     //    time only). Wait for GE to come back if it relaunched.
     final relaunched = await LGService.instance.ensureMasterLiveRefresh();
     if (relaunched) {
-      debugPrint('[LandmarkRing] test — enabled master refresh + relaunched lg1, '
-          'waiting ~15s for GE');
+      debugPrint(
+        '[LandmarkRing] test — enabled master refresh + relaunched lg1, '
+        'waiting ~15s for GE',
+      );
       await Future<void>.delayed(const Duration(seconds: 15));
       // Re-frame the landmark after the relaunch.
       await LGService.instance.runCommand(
@@ -399,7 +401,6 @@ class SshConnection extends _$SshConnection {
         await LGService.instance.sendKml(kml, fileName: 'tour.kml');
       }
 
-
       // 2. Drive the camera via the proven flytoview= hook: an opening overview
       //    framing every stop, then per landmark an approach (held so imagery
       //    sharpens + the balloon shows) followed by a smooth, centred 360°
@@ -467,7 +468,8 @@ class SshConnection extends _$SshConnection {
         unawaited(_showStopBalloon(l));
         final flyIn = await _pausableHold(approachHold, frameQuery);
         if (flyIn == 'stop') break;
-        if (flyIn == 'skip') continue; // Next during fly-in → skip this landmark
+        if (flyIn == 'skip')
+          continue; // Next during fly-in → skip this landmark
 
         // Arrived — narration + ring (both persist through the orbit + settle).
         tour.enterScene(j);

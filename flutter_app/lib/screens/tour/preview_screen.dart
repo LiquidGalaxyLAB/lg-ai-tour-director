@@ -74,9 +74,9 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
       generateFilm = decision; // true = verified ok; false = start without film
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('deploying_tour_to_lg'.tr())),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('deploying_tour_to_lg'.tr())));
     unawaited(
       ref
           .read(sshConnectionProvider.notifier)
@@ -88,6 +88,8 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
     );
 
     if (!context.mounted) return;
+
+    ref.read(tourDraftProvider.notifier).clear();
     context.push(
       '/home/active',
       extra: widget.args.copyWith(generateFilm: generateFilm),
@@ -393,33 +395,33 @@ class _LocationCard extends StatelessWidget {
           ),
         ),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.place, color: color),
-          const Spacer(),
-          Text(
-            index.toString().padLeft(2, '0'),
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.place, color: color),
+            const Spacer(),
+            Text(
+              index.toString().padLeft(2, '0'),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-          Text(
-            location.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
+            Text(
+              location.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-          Text(
-            location.type,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+            Text(
+              location.type,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
           ],
         ),
       ),

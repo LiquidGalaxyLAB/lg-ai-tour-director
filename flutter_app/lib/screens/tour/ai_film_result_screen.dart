@@ -28,6 +28,19 @@ class _AiFilmResultScreenState extends ConsumerState<AiFilmResultScreen> {
   void initState() {
     super.initState();
     _path = ref.read(aiFilmProvider).lastResult?.finalVideoPath;
+    if (_path != null && _path!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('🎬 Your AI film is ready!'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+      });
+    }
   }
 
   void _snack(String msg) {

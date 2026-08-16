@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Banner.png" alt="AI Tour Director" width="100%"/>
+  <img src="screenshots/Banner.png" alt="AI Tour Director" width="100%"/>
 </p>
 
 <p align="center">
@@ -68,22 +68,9 @@ the device.
 
 ## How It Works
 
-```
-Prompt  ─▶  AI model        ─▶  Geocoding        ─▶  Media           ─▶  KML + camera
- "..."      (locations +        (coordinates for      (Wikipedia →        (fly-to views,
-            a tour title)        each landmark)        Unsplash →          info balloons)
-                                                       themed fallback)
-                                                                             │
-                                       On-device companion  ◀────────────────┤
-                                       (scene stepping,                      ▼
-                                        narration, subtitles)         Liquid Galaxy rig
-                                                                      (Google Earth flight
-                                                                       + logo + info card)
-                                                                             │
-                                                            Optional ▼
-                                                       AI Film (per-location clips →
-                                                       FFmpeg stitch → save + play)
-```
+<p align="center">
+  <img src="screenshots/diagram.png" alt="Tour Director pipeline: Prompt → AI Model → Geocoding → Media → KML + Camera → Liquid Galaxy rig, with On-device Companion and optional AI Film branches" width="100%"/>
+</p>
 
 1. **Prompt → locations.** The prompt is sent to a configured LLM, which infers the
    *intent* behind it (fun / historical / scenic / foodie …) and returns 4–6 fitting,
@@ -185,7 +172,7 @@ See [Configuring the AI Film (video)](#configuring-the-ai-film-video) for setup 
 
 ## Gallery
 
-> _Rig photos and demo captures are being added — space reserved below._
+> _Rig photos and AI-film samples are being added — space reserved below._
 
 <!-- ───────────────────────── RIG SCREENSHOTS (add after rig test) ─────────────────────────
      Drag each photo into a GitHub issue/PR comment to get a hosted URL, then paste it here.
@@ -198,14 +185,23 @@ See [Configuring the AI Film (video)](#configuring-the-ai-film-video) for setup 
 
 **App screenshots**
 
-<img width="489" alt="Tour Director app" src="https://github.com/user-attachments/assets/b7cf33a0-f8ef-4928-9fae-7359fc3043be" />
+<table align="center">
+  <tr>
+    <td align="center"><img src="screenshots/home-screen.jpg" width="210" alt="Home"/><br/><sub><b>Home</b></sub></td>
+    <td align="center"><img src="screenshots/preview-screen.png" width="210" alt="Preview"/><br/><sub><b>Tour preview</b></sub></td>
+    <td align="center"><img src="screenshots/tour-screen.png" width="210" alt="Active tour"/><br/><sub><b>Active tour</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/tour-gallery.png" width="210" alt="Highlights gallery"/><br/><sub><b>Highlights gallery</b></sub></td>
+    <td align="center"><img src="screenshots/saved-tour.jpg" width="210" alt="Saved tour"/><br/><sub><b>Saved tour</b></sub></td>
+    <td align="center"><img src="screenshots/tour-history.jpg" width="210" alt="Tours history"/><br/><sub><b>Tours history</b></sub></td>
+  </tr>
+</table>
 
-**AI Film samples**
+**AI Film sample**
 
-<!-- Drag an .mp4 into a GitHub issue/PR comment to get a playable URL, then paste it here. -->
-<!-- https://github.com/user-attachments/assets/PASTE_VIDEO_URL_HERE -->
-<!-- AI FILM SAMPLE 1 -->
-<!-- AI FILM SAMPLE 2 -->
+https://github.com/user-attachments/assets/f6672855-5179-4647-bfd1-f02c30743e05
+
 
 ---
 
@@ -368,7 +364,7 @@ Planned / in-progress work:
 
 ## Author
 
-**Kabir Khanuja** — [github.com/KabirKhanuja](https://github.com/KabirKhanuja)
+**Kabir Khanuja** — [github.com/KabirKhanuja](https://github.com/KabirKhanuja) || https://www.linkedin.com/in/kabirkhanuja/
 
 ## Acknowledgements
 

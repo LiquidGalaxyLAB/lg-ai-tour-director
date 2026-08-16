@@ -21,11 +21,13 @@ __pycache__/
 venv/
 env/
 
+#not important
 CLAUDE.md
 **/CLAUDE.md
 LLM_INTEGRATION.md
 for-andreu.md
 demo-day-code-walkthrough.md
+script.md
 
 # build artifacts
 build/
