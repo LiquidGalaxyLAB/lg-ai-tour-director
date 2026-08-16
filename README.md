@@ -185,7 +185,7 @@ See [Configuring the AI Film (video)](#configuring-the-ai-film-video) for setup 
 
 ## Gallery
 
-> _Rig photos and demo captures are being added — space reserved below._
+> _Rig photos and AI-film samples are being added — space reserved below._
 
 <!-- ───────────────────────── RIG SCREENSHOTS (add after rig test) ─────────────────────────
      Drag each photo into a GitHub issue/PR comment to get a hosted URL, then paste it here.
@@ -198,7 +198,18 @@ See [Configuring the AI Film (video)](#configuring-the-ai-film-video) for setup 
 
 **App screenshots**
 
-<img width="489" alt="Tour Director app" src="https://github.com/user-attachments/assets/b7cf33a0-f8ef-4928-9fae-7359fc3043be" />
+<table align="center">
+  <tr>
+    <td align="center"><img src="screenshots/home-screen.jpg" width="210" alt="Home"/><br/><sub><b>Home</b></sub></td>
+    <td align="center"><img src="screenshots/preview-screen.png" width="210" alt="Preview"/><br/><sub><b>Tour preview</b></sub></td>
+    <td align="center"><img src="screenshots/tour-screen.png" width="210" alt="Active tour"/><br/><sub><b>Active tour</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/tour-gallery.png" width="210" alt="Highlights gallery"/><br/><sub><b>Highlights gallery</b></sub></td>
+    <td align="center"><img src="screenshots/saved-tour.jpg" width="210" alt="Saved tour"/><br/><sub><b>Saved tour</b></sub></td>
+    <td align="center"><img src="screenshots/tour-history.jpg" width="210" alt="Tours history"/><br/><sub><b>Tours history</b></sub></td>
+  </tr>
+</table>
 
 **AI Film samples**
 
